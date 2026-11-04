@@ -15,7 +15,9 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useNear } from "@/components/NearProvider";
+import { BentoCard, SPRING_RELIC } from "@/components/TactileBento";
 import { KratonDivider } from "@/components/KawungOrnament";
+import { motion } from "framer-motion";
 import { signNep413WithSecretKey } from "@/lib/gate/nep413";
 
 interface ProtectedLoungeData {
@@ -73,6 +75,9 @@ export default function LoungeGatePage() {
   const [customTokenId, setCustomTokenId] = useState<string>("");
 
   // Judge Inspector Telemetry State
+  const [visualGateMode, setVisualGateMode] = useState<
+    "unlocked" | "revoked" | "lagging"
+  >("unlocked");
   const [inspectorLog, setInspectorLog] = useState<{
     nonceHex: string;
     message: string;
@@ -329,6 +334,195 @@ export default function LoungeGatePage() {
           )}
         </div>
       </div>
+
+      {/* Real-Time Visual Gate Simulator (NEP-413 + Pair Check Portal) */}
+      <BentoCard
+        variant={
+          visualGateMode === "unlocked"
+            ? "jade"
+            : visualGateMode === "lagging"
+            ? "frozen"
+            : "blocked"
+        }
+        className="p-6 lg:p-8"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
+          <div>
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#00EC97]">
+              REAL-TIME REACTIVE PORTAL · NEP-413 + PAIR CHECK
+            </span>
+            <h2 className="mt-1 text-2xl font-extrabold text-white">
+              {isId
+                ? "Simulasi Visual Gerbang Anggota (2-Layer Gate)"
+                : "Two-Layer Cryptographic Gate Visualizer"}
+            </h2>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.97 }}
+              transition={SPRING_RELIC}
+              onClick={() => {
+                setVisualGateMode("unlocked");
+                runInspectorScenario("happy");
+              }}
+              className={`rounded-xl px-3.5 py-2 font-mono text-xs font-bold transition ${
+                visualGateMode === "unlocked"
+                  ? "bg-[#00EC97] text-[#06080D] shadow-jade-sm"
+                  : "border border-white/10 bg-[#06080D] text-slate-300"
+              }`}
+            >
+              {isId ? "1. Pemilik Sah (Terbuka)" : "1. Valid Holder (Open)"}
+            </motion.button>
+
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.97 }}
+              transition={SPRING_RELIC}
+              onClick={() => {
+                setVisualGateMode("revoked");
+                fetchProtectedContent(4, "bob.testnet");
+              }}
+              className={`rounded-xl px-3.5 py-2 font-mono text-xs font-bold transition ${
+                visualGateMode === "revoked"
+                  ? "bg-[#EF4444] text-white shadow-blocked"
+                  : "border border-white/10 bg-[#06080D] text-slate-300"
+              }`}
+            >
+              {isId
+                ? "2. Mantan Pemilik (Terkunci)"
+                : "2. Former Owner (Locked)"}
+            </motion.button>
+
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.97 }}
+              transition={SPRING_RELIC}
+              onClick={() => {
+                setVisualGateMode("lagging");
+                runInspectorScenario("d5_index_behind");
+              }}
+              className={`rounded-xl px-3.5 py-2 font-mono text-xs font-bold transition ${
+                visualGateMode === "lagging"
+                  ? "bg-[#F59E0B] text-[#06080D] shadow-frozen"
+                  : "border border-white/10 bg-[#06080D] text-slate-300"
+              }`}
+            >
+              {isId
+                ? "3. Index Belum Sinkron (Gate Closed)"
+                : "3. Index Lagging (Gate Closed)"}
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Animated Vault Portal Visualization */}
+        <div className="mt-6 grid gap-6 lg:grid-cols-12 lg:items-center">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#06080D]/90 p-6 lg:col-span-5">
+            <motion.div
+              key={visualGateMode}
+              initial={{ scale: 0.9, opacity: 0.6 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={SPRING_RELIC}
+              className={`flex h-28 w-28 items-center justify-center rounded-full border-2 ${
+                visualGateMode === "unlocked"
+                  ? "border-[#00EC97] bg-[#00EC97]/15 shadow-[0_0_50px_rgba(0,236,151,0.45)]"
+                  : visualGateMode === "lagging"
+                  ? "border-[#F59E0B] bg-[#F59E0B]/15 shadow-[0_0_40px_rgba(245,158,11,0.3)]"
+                  : "border-[#EF4444] bg-[#EF4444]/15 shadow-[0_0_45px_rgba(239,68,68,0.4)]"
+              }`}
+            >
+              {visualGateMode === "unlocked" ? (
+                <Unlock className="h-12 w-12 text-[#00EC97]" />
+              ) : (
+                <Lock
+                  className={`h-12 w-12 ${
+                    visualGateMode === "lagging"
+                      ? "text-[#FBBF24]"
+                      : "text-[#F87171]"
+                  }`}
+                />
+              )}
+            </motion.div>
+
+            <span
+              className={`mt-4 font-mono text-xs font-extrabold uppercase tracking-wider ${
+                visualGateMode === "unlocked"
+                  ? "text-[#00EC97]"
+                  : visualGateMode === "lagging"
+                  ? "text-[#FBBF24]"
+                  : "text-[#F87171]"
+              }`}
+            >
+              {visualGateMode === "unlocked"
+                ? "PORTAL UNLOCKED · EMERALD ACCESS"
+                : visualGateMode === "lagging"
+                ? "TRANSFERRING / GATE CLOSED"
+                : "ACCESS REVOKED · SEQ MISMATCH"}
+            </span>
+          </div>
+
+          <div className="space-y-3 lg:col-span-7">
+            {visualGateMode === "unlocked" && (
+              <>
+                <h3 className="text-xl font-bold text-[#00EC97]">
+                  {isId
+                    ? "Pintu Terbuka — Pemegang Sah Terverifikasi di Blok Final"
+                    : "Portal Open — Canonical Holder Verified at Final Block"}
+                </h3>
+                <p className="text-xs leading-relaxed text-slate-300">
+                  {isId
+                    ? "Tanda tangan NEP-413 cocok dengan FullAccess key aktif, dan pembacaan blok final yang sama membuktikan nft_item_info.rotation_seq (#3) == nft_token.seq (#3)."
+                    : "NEP-413 signature matches an active FullAccess key, and same-final-block RPC confirms nft_item_info.rotation_seq (#3) == nft_token.seq (#3)."}
+                </p>
+              </>
+            )}
+
+            {visualGateMode === "revoked" && (
+              <>
+                <h3 className="text-xl font-bold text-[#F87171]">
+                  {isId
+                    ? "Terkunci Reaktif — Mantan Pemilik Ditolak (Ketidakcocokan rotation_seq)"
+                    : "Reactive Lockout — Former Owner Rejected on rotation_seq Mismatch"}
+                </h3>
+                <p className="text-xs leading-relaxed text-slate-300">
+                  {isId
+                    ? "Sesi cookie milik pemilik lama masih terikat pada rotation_seq #3, sedangkan vault di blockchain sudah berpindah ke pemilik baru pada rotation_seq #4. Gerbang langsung menutup akses (HTTP 403)."
+                    : "Former owner's session cookie is bound to rotation_seq #3, while the on-chain vault has rotated to rotation_seq #4. Gate immediately locks with HTTP 403."}
+                </p>
+              </>
+            )}
+
+            {visualGateMode === "lagging" && (
+              <>
+                <h3 className="text-xl font-bold text-[#FBBF24]">
+                  {isId
+                    ? "Transferring / Gate Closed — Index Belum Sinkron dengan Vault"
+                    : "Transferring / Gate Closed — Registry Index Lagging Behind Vault"}
+                </h3>
+                <p className="text-xs leading-relaxed text-slate-300">
+                  {isId
+                    ? "Vault sudah berpindah ke rotation_seq #4 namun index registry masih di #3 (mis. callback kehabisan gas). Gerbang menutup akses secara aman (Fail-Closed) sampai sync() dipanggil."
+                    : "Vault is already at rotation_seq #4 while registry index is at #3. Gate fails closed until permissionless sync() reconciles the index."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVisualGateMode("unlocked");
+                    runInspectorScenario("happy");
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#00EC97] px-4 py-2 font-mono text-xs font-extrabold text-[#06080D] shadow-jade-sm"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {isId
+                    ? "Jalankan sync(token_id) & Buka Gerbang →"
+                    : "Execute sync(token_id) & Heal Index →"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </BentoCard>
 
       {/* Status / Error Banner */}
       {authStep && (

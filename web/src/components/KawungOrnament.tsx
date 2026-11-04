@@ -1,47 +1,56 @@
 import React from "react";
 
-export function KawungPatternBg({ className = "opacity-[0.04]" }: { className?: string }) {
+export function KawungPatternBg({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`pointer-events-none fixed inset-0 z-0 overflow-hidden ${className}`}
+      className={`pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#06080D] ${className}`}
       aria-hidden="true"
     >
-      <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
+      {/* Top Radial Light Bias (#0D1526 + subtle Jade Pusaka aura) */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 85% 55% at 50% -8%, #0D1526 0%, rgba(13, 21, 38, 0.55) 48%, #06080D 100%)",
+        }}
+      />
+      <div
+        className="absolute -top-40 left-1/2 h-[420px] w-[780px] -translate-x-1/2 rounded-full blur-[130px]"
+        style={{ background: "rgba(0, 236, 151, 0.06)" }}
+      />
+
+      {/* Subtle Cryptographic Micro-Grid */}
+      <svg className="absolute inset-0 h-full w-full opacity-[0.035]" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <pattern
-            id="pusaka-kawung"
-            width="64"
-            height="64"
+            id="pusaka-relic-grid"
+            width="56"
+            height="56"
             patternUnits="userSpaceOnUse"
           >
-            <circle
-              cx="32"
-              cy="32"
-              r="30"
-              fill="none"
-              stroke="#D4A64A"
-              strokeWidth="0.75"
-            />
             <path
-              d="M32 2 C46 16, 46 48, 32 62 C18 48, 18 16, 32 2 Z"
+              d="M 56 0 L 0 0 0 56"
               fill="none"
-              stroke="#D4A64A"
-              strokeWidth="0.75"
+              stroke="#FFFFFF"
+              strokeWidth="0.6"
             />
-            <path
-              d="M2 32 C16 18, 48 18, 62 32 C48 46, 16 46, 2 32 Z"
-              fill="none"
-              stroke="#D4A64A"
-              strokeWidth="0.75"
-            />
-            <circle cx="32" cy="32" r="3" fill="#D4A64A" />
-            <circle cx="0" cy="0" r="2" fill="#D4A64A" />
-            <circle cx="64" cy="0" r="2" fill="#D4A64A" />
-            <circle cx="0" cy="64" r="2" fill="#D4A64A" />
-            <circle cx="64" cy="64" r="2" fill="#D4A64A" />
+            <circle cx="0" cy="0" r="1.1" fill="#00EC97" />
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill="url(#pusaka-kawung)" />
+        <rect width="100%" height="100%" fill="url(#pusaka-relic-grid)" />
+      </svg>
+
+      {/* Tactile 2% Noise Texture Overlay */}
+      <svg className="absolute inset-0 h-full w-full opacity-[0.02]" xmlns="http://www.w3.org/2000/svg">
+        <filter id="pusaka-void-noise">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.82"
+            numOctaves="3"
+            stitchTiles="stitch"
+          />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#pusaka-void-noise)" />
       </svg>
     </div>
   );
@@ -49,32 +58,17 @@ export function KawungPatternBg({ className = "opacity-[0.04]" }: { className?: 
 
 export function KratonDivider({ label }: { label?: string }) {
   return (
-    <div className="my-8 flex items-center gap-4">
-      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold-500/35 to-gold-500/60" />
-      <div className="flex items-center gap-2 text-gold-400">
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9L12 2Z"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            fill="rgba(212,166,74,0.18)"
-          />
-        </svg>
+    <div className="my-10 flex items-center gap-4">
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-[#00EC97]/40" />
+      <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#0B0F1A]/90 px-3.5 py-1 text-[#00EC97] backdrop-blur-xl">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#00EC97] shadow-[0_0_8px_rgba(0,236,151,0.8)]" />
         {label && (
-          <span className="font-serif text-xs uppercase tracking-[0.25em] text-gold-300/90">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
             {label}
           </span>
         )}
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9L12 2Z"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            fill="rgba(212,166,74,0.18)"
-          />
-        </svg>
       </div>
-      <div className="h-px flex-1 bg-gradient-to-l from-transparent via-gold-500/35 to-gold-500/60" />
+      <div className="h-px flex-1 bg-gradient-to-l from-transparent via-white/10 to-[#00EC97]/40" />
     </div>
   );
 }
@@ -93,74 +87,68 @@ export function DefaultSeatSvgCard({
   balanceNear: string;
 }) {
   const isFrozen = status === "Frozen" || status === "Listed";
+  const accent = isFrozen ? "#F59E0B" : "#00EC97";
   return (
     <svg
       viewBox="0 0 400 250"
-      className="h-full w-full rounded-xl border border-gold-500/30 bg-obsidian-950 shadow-inner"
+      className="h-full w-full rounded-xl border border-white/10 bg-[#06080D] shadow-inner"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <linearGradient id="kratonCardBg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#090B14" />
-          <stop offset="55%" stopColor="#101424" />
-          <stop offset="100%" stopColor="#1B160C" />
+        <linearGradient id="relicCardBg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#0B0F1A" />
+          <stop offset="55%" stopColor="#0D1526" />
+          <stop offset="100%" stopColor="#06080D" />
         </linearGradient>
-        <linearGradient id="goldAccent" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#D4A64A" />
-          <stop offset="50%" stopColor="#F3C969" />
-          <stop offset="100%" stopColor="#A87E2B" />
+        <linearGradient id="relicEdge" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.22)" />
+          <stop offset="50%" stopColor={accent} />
+          <stop offset="100%" stopColor="rgba(255,255,255,0.06)" />
         </linearGradient>
       </defs>
-      <rect width="400" height="250" rx="12" fill="url(#kratonCardBg)" />
+      <rect width="400" height="250" rx="14" fill="url(#relicCardBg)" />
       <rect
         x="10"
         y="10"
         width="380"
         height="230"
-        rx="8"
+        rx="10"
         fill="none"
-        stroke="url(#goldAccent)"
-        strokeOpacity="0.4"
+        stroke="url(#relicEdge)"
+        strokeOpacity="0.45"
         strokeWidth="1"
       />
-      <circle
-        cx="340"
-        cy="125"
-        r="75"
-        fill="none"
-        stroke="#D4A64A"
-        strokeOpacity="0.12"
-        strokeWidth="1"
-      />
-      <path
-        d="M340 50 C375 85, 375 165, 340 200 C305 165, 305 85, 340 50 Z"
-        fill="none"
-        stroke="#D4A64A"
-        strokeOpacity="0.15"
-        strokeWidth="1"
-      />
-      <path
-        d="M265 125 C300 90, 380 90, 415 125 C380 160, 300 160, 265 125 Z"
-        fill="none"
-        stroke="#D4A64A"
-        strokeOpacity="0.15"
-        strokeWidth="1"
-      />
+      {/* Geometric Cryptographic Seal */}
+      <g transform="translate(332, 125)" opacity="0.2">
+        <polygon
+          points="0,-64 55,-32 55,32 0,64 -55,32 -55,-32"
+          fill="none"
+          stroke={accent}
+          strokeWidth="1.2"
+        />
+        <polygon
+          points="0,-42 36,-21 36,21 0,42 -36,21 -36,-21"
+          fill="none"
+          stroke="#FFFFFF"
+          strokeWidth="0.8"
+        />
+        <circle cx="0" cy="0" r="14" fill="none" stroke={accent} strokeWidth="1.2" />
+      </g>
       <text
         x="26"
-        y="40"
-        fill="#F3C969"
-        fontSize="11"
+        y="38"
+        fill={accent}
+        fontSize="10"
         fontFamily="monospace"
         letterSpacing="2"
       >
-        PUSAKA · SHARDED SEAT VAULT
+        PUSAKA · KEYLESS VAULT RELIC
       </text>
       <text
         x="26"
-        y="74"
+        y="70"
         fill="#FFFFFF"
-        fontSize="20"
+        fontSize="19"
         fontWeight="bold"
         fontFamily="monospace"
       >
@@ -168,38 +156,38 @@ export function DefaultSeatSvgCard({
       </text>
       <rect
         x="26"
-        y="92"
-        width={isFrozen ? "132" : "138"}
+        y="88"
+        width={isFrozen ? "148" : "146"}
         height="24"
         rx="12"
-        fill={isFrozen ? "rgba(244,63,94,0.18)" : "rgba(16,185,129,0.18)"}
-        stroke={isFrozen ? "#F43F5E" : "#10B981"}
+        fill={isFrozen ? "rgba(245,158,11,0.16)" : "rgba(16,185,129,0.16)"}
+        stroke={isFrozen ? "#F59E0B" : "#10B981"}
         strokeWidth="1"
       />
       <text
         x="38"
-        y="108"
-        fill={isFrozen ? "#FB7185" : "#34D399"}
+        y="104"
+        fill={isFrozen ? "#FBBF24" : "#00EC97"}
         fontSize="10"
         fontFamily="monospace"
         fontWeight="bold"
       >
-        {isFrozen ? "FROZEN · LISTED" : "ACTIVE · 0 KEYS"}
+        {isFrozen ? "FROZEN · SAFE SALE" : "IDLE · 0 ACCESS KEYS"}
       </text>
-      <text x="26" y="152" fill="#94A3B8" fontSize="10" fontFamily="sans-serif">
-        CANONICAL OWNER (SEQ #{rotationSeq})
+      <text x="26" y="148" fill="#94A3B8" fontSize="10" fontFamily="monospace">
+        CANONICAL OWNER · ROTATION_SEQ #{rotationSeq}
       </text>
-      <text x="26" y="170" fill="#E2E8F0" fontSize="13" fontFamily="monospace">
+      <text x="26" y="168" fill="#F8FAFC" fontSize="13" fontFamily="monospace">
         {ownerId}
       </text>
-      <text x="26" y="204" fill="#94A3B8" fontSize="10" fontFamily="sans-serif">
-        VAULT BALANCE
+      <text x="26" y="202" fill="#94A3B8" fontSize="10" fontFamily="monospace">
+        VAULT LIQUID BALANCE
       </text>
       <text
         x="26"
         y="224"
-        fill="#F3C969"
-        fontSize="16"
+        fill={accent}
+        fontSize="17"
         fontWeight="bold"
         fontFamily="monospace"
       >

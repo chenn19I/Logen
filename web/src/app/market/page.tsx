@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useNear } from "@/components/NearProvider";
+import { BentoCard } from "@/components/TactileBento";
 import { KratonDivider } from "@/components/KawungOrnament";
 import {
   getAccountLedgers,
@@ -303,45 +304,54 @@ export default function SafeMarketPage() {
                 BigInt(listing.min_balance || "0");
 
               return (
-                <div
+                <BentoCard
                   key={`${listing.token_id}-${listing.nonce}`}
-                  className="flex flex-col justify-between rounded-2xl border border-gold-500/30 bg-obsidian-800/90 p-5 shadow-lg"
+                  variant="frozen"
+                  hoverLift
+                  className="flex flex-col justify-between p-5"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Link
                         href={`/seat/${encodeURIComponent(listing.token_id)}`}
-                        className="inline-flex items-center gap-1 font-mono text-base font-bold text-white hover:text-gold-300"
+                        className="inline-flex items-center gap-1 font-mono text-base font-bold text-white hover:text-[#00EC97]"
                       >
                         {listing.token_id}
-                        <ArrowUpRight className="h-4 w-4 text-gold-400" />
+                        <ArrowUpRight className="h-4 w-4 text-[#00EC97]" />
                       </Link>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-threat-500/40 bg-threat-500/15 px-2.5 py-0.5 font-mono text-[10px] font-bold text-threat-400">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[#F59E0B]/50 bg-[#F59E0B]/15 px-2.5 py-0.5 font-mono text-[10px] font-bold text-[#FBBF24]">
                         <Lock className="h-3 w-3" />
                         NONCE #{listing.nonce} · FROZEN
                       </span>
                     </div>
 
-                    <div className="rounded-xl border border-slate-800 bg-obsidian-950 p-3 font-mono text-xs space-y-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Ask Price:</span>
-                        <span className="text-base font-bold text-gold-300">
-                          {formatYocto(listing.price)} NEAR
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl border border-white/[0.08] bg-[#06080D]/90 p-2.5 font-mono">
+                        <span className="block text-[10px] text-slate-400">
+                          {isId ? "HARGA JUAL" : "ASK PRICE"}
+                        </span>
+                        <span className="mt-0.5 block text-sm font-bold text-white">
+                          {formatYocto(listing.price, 2)} NEAR
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Seller Promised Min:</span>
-                        <span className="text-slate-200">
-                          {formatYocto(listing.min_balance)} NEAR
+                      <div className="rounded-xl border border-[#F59E0B]/35 bg-[#F59E0B]/10 p-2.5 font-mono">
+                        <span className="block text-[10px] text-[#FBBF24]">
+                          {isId ? "SALDO MIN TERKUNCI" : "LOCKED MIN BAL"}
+                        </span>
+                        <span className="mt-0.5 block text-sm font-bold text-[#FBBF24]">
+                          ≥ {formatYocto(listing.min_balance, 2)} NEAR
                         </span>
                       </div>
+                    </div>
+
+                    <div className="rounded-xl border border-white/[0.06] bg-[#06080D]/80 p-3 font-mono text-xs space-y-1.5">
                       <div className="flex justify-between">
                         <span className="text-slate-400">Live Vault Withdrawable:</span>
                         <span
                           className={
                             guardSatisfied
-                              ? "font-bold text-segel-400"
-                              : "font-bold text-threat-400"
+                              ? "font-bold text-[#00EC97]"
+                              : "font-bold text-[#EF4444]"
                           }
                         >
                           {formatYocto(liveWithdrawable)} NEAR
@@ -363,11 +373,12 @@ export default function SafeMarketPage() {
                   <button
                     type="button"
                     onClick={() => openBuyModal({ listing, vault })}
-                    className="mt-4 w-full rounded-xl bg-gradient-to-r from-gold-500 to-gold-400 py-2.5 text-xs font-bold text-obsidian-950 shadow transition hover:brightness-110"
+                    className="mt-4 w-full rounded-xl bg-[#00EC97] py-2.5 text-xs font-extrabold text-[#06080D] shadow-jade-sm transition hover:brightness-110"
                   >
-                    Buy Seat & Vault ({formatYocto(listing.price)} NEAR)
+                    {isId ? "Beli Seat & Dompet" : "Buy Seat & Vault"} (
+                    {formatYocto(listing.price, 2)} NEAR)
                   </button>
-                </div>
+                </BentoCard>
               );
             })}
           </div>
