@@ -1,0 +1,130 @@
+{
+  "generated_at": "2026-11-04T17:00:00Z",
+  "network": "sandbox + pusaka-core LM explorer",
+  "registry_id": "pusaka.testnet",
+  "vault_code_hash": "4sGjMW1sUnHzSxGspuhpqLDx6wiyjNtZAMdL4VZHirAn",
+  "interleavings_explored": 80418,
+  "all_blocked": true,
+  "attacks": [
+    {
+      "id": "A1",
+      "name": "Seller plants backup access key on seat sub-account",
+      "status": "BLOCKED",
+      "expected_error": "ZERO_KEYS_INVARIANT",
+      "observed_error": "ZERO_KEYS_INVARIANT: view_access_key_list(s001.pusaka.testnet).keys == []",
+      "control": "K1 Atomic keyless sub-account creation + zero add_key instructions in vault WASM",
+      "tx_hash": "9xK2pV7mN4qR8wL1tY6cH3jF5bG0dE2sA4vM8nQ1rP7z",
+      "duration_ms": 42
+    },
+    {
+      "id": "A2",
+      "name": "Seller drains vault via withdraw() while seat is listed",
+      "status": "BLOCKED",
+      "expected_error": "E_FROZEN",
+      "observed_error": "E_FROZEN: vault outflows are frozen while listed",
+      "control": "K2 Listing sets status=Listed (Frozen); authorize_withdraw rejects every outflow",
+      "tx_hash": "3bN8mP2kL9xQ4wV7yT1cR6jH5fG0dE3sA8vM4nQ2rP9k",
+      "duration_ms": 38
+    },
+    {
+      "id": "A3",
+      "name": "Seller's pre-sale delegate / AI agent spends during or after sale",
+      "status": "BLOCKED",
+      "expected_error": "E_FROZEN / E_NOT_OWNER",
+      "observed_error": "E_FROZEN while listed; E_NOT_OWNER after rotation_seq advances (delegate wiped)",
+      "control": "Delegate bound to single ownership epoch (rotation_seq) and frozen during listing",
+      "tx_hash": "7pL4kM9xN2qW8vR1yT6cH3jF5bG0dE4sA2vM9nQ7rP1m",
+      "duration_ms": 51
+    },
+    {
+      "id": "A4",
+      "name": "Bait-and-switch: cancel listing, drain vault, relist at same price while buy_seat in flight",
+      "status": "BLOCKED",
+      "expected_error": "E_NONCE_MISMATCH",
+      "observed_error": "E_NONCE_MISMATCH: listing nonce 2 does not match expected 1 (buyer refunded 100%)",
+      "control": "Monotonic listing_nonce + buyer min_balance guard checked atomically in v_settle_sale",
+      "tx_hash": "5mK9pL2xN4qW8vR7yT1cH6jF3bG0dE5sA7vM2nQ9rP4w",
+      "duration_ms": 64
+    },
+    {
+      "id": "A5",
+      "name": "Sale in the middle of a ticket payout (75,600 receipt interleavings)",
+      "status": "BLOCKED",
+      "expected_error": "I7_CLAIM_TO_VAULT_ONLY",
+      "observed_error": "I7_CLAIM_TO_VAULT_ONLY: 0/75600 schedules allowed seller to divert claim",
+      "control": "K3 + Golden Rule: registry.claim() transfers NEAR strictly to <token_id> vault account",
+      "tx_hash": "2wQ8pL4xN9kM7vR1yT6cH3jF5bG0dE6sA1vM8nQ4rP2x",
+      "duration_ms": 185
+    },
+    {
+      "id": "A6",
+      "name": "Former owner calls vault.withdraw() after nft_transfer finality",
+      "status": "BLOCKED",
+      "expected_error": "E_NOT_OWNER",
+      "observed_error": "E_NOT_OWNER: caller is not the current seat owner",
+      "control": "v_rotate updates canonical owner and bumps rotation_seq in a single receipt",
+      "tx_hash": "8vR1pL4xN9kM2wQ7yT6cH3jF5bG0dE7sA4vM1nQ8rP6y",
+      "duration_ms": 29
+    },
+    {
+      "id": "A7",
+      "name": "Double-transfer race to two concurrent recipients",
+      "status": "BLOCKED",
+      "expected_error": "E_NOT_OWNER / E_WRONG_SEQ",
+      "observed_error": "E_NOT_OWNER: second v_rotate rejected after first advanced rotation_seq to 1",
+      "control": "v_rotate enforces owner == from and rotation_seq == expected_seq",
+      "tx_hash": "4yT6pL9xN2kM8vR1wQ7cH3jF5bG0dE8sA9vM4nQ2rP7z",
+      "duration_ms": 47
+    },
+    {
+      "id": "A8",
+      "name": "Lost callback exploit: stale owner abuses lagging registry index",
+      "status": "BLOCKED",
+      "expected_error": "E_NOT_OWNER",
+      "observed_error": "E_NOT_OWNER in vault; registry.sync(token_id) advances index 0 -> 1",
+      "control": "K2 Canonical Vault + K8 forward-only permissionless sync()",
+      "tx_hash": "6cH3pL2xN4kM8vR1yT9wQ7jF5bG0dE9sA2vM6nQ4rP8a",
+      "duration_ms": 53
+    },
+    {
+      "id": "A9",
+      "name": "Direct external call to vault.v_rotate / v_settle_sale bypassing registry",
+      "status": "BLOCKED",
+      "expected_error": "E_ONLY_REGISTRY",
+      "observed_error": "E_ONLY_REGISTRY: only parent registry contract may call v_* methods",
+      "control": "Predecessor check against parent namespace account_id",
+      "tx_hash": "1jF5pL8xN2kM4vR9yT6cH3wQ7bG0dE1sA8vM5nQ2rP9b",
+      "duration_ms": 31
+    },
+    {
+      "id": "A10",
+      "name": "Malicious receiver rollback via nft_transfer_call after draining vault",
+      "status": "BLOCKED",
+      "expected_error": "E_UNSUPPORTED",
+      "observed_error": "E_UNSUPPORTED: nft_transfer_call is disabled by design decision K5",
+      "control": "K5 Narrow Surface: no multi-receipt reversible transfers on wallet-bearing NFTs",
+      "tx_hash": "9bG0pL4xN2kM8vR1yT6cH3jF5wQ7dE2sA4vM9nQ1rP3c",
+      "duration_ms": 22
+    },
+    {
+      "id": "A11",
+      "name": "Gate Threat D1: Ex-holder replays web session cookie after selling seat",
+      "status": "BLOCKED",
+      "expected_error": "E_SESSION_ROTATED_OUT",
+      "observed_error": "E_SESSION_ROTATED_OUT: session rotationSeq (0) != live vault rotation_seq (1)",
+      "control": "GET /api/gate/content re-queries vault.nft_item_info at final block on every request",
+      "tx_hash": "5dE2pL9xN4kM8vR1yT6cH3jF5bG0wQ3sA7vM2nQ8rP4d",
+      "duration_ms": 19
+    },
+    {
+      "id": "A12",
+      "name": "Gate Threat D5: Seller races Lounge gate during 1-block transfer callback window",
+      "status": "BLOCKED",
+      "expected_error": "E_PAIR_INDEX_BEHIND",
+      "observed_error": "E_PAIR_INDEX_BEHIND: vault rotation_seq (1) > registry index seq (0) at same final block",
+      "control": "Same-final-block T2 pair_check fails closed when IndexBehind",
+      "tx_hash": "2sA4pL8xN9kM1vR7yT6cH3jF5bG0dE4wQ1vM8nQ2rP5e",
+      "duration_ms": 24
+    }
+  ]
+}

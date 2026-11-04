@@ -1,0 +1,131 @@
+{
+  "network": "testnet",
+  "registry_id": "pusaka-c10747.testnet",
+  "seat_id": "s001.pusaka-c10747.testnet",
+  "vault_code_hash": "DFuv6MrVh9yz62uvRxYbZhAEewiWeqUKdYvb3kPLmwSg",
+  "registry_code_hash": "HnMPZdTuyDZmGLd7ZHBbvutM9dQ2ZLmVHBxuzHw8zbeU",
+  "generated_at": "2026-11-04T17:59:43.725Z",
+  "interleavings_explored": 80620,
+  "results": [
+    {
+      "id": "A1",
+      "title": "Direct v_rotate Bypass",
+      "attack": "Seller or attacker calls vault.v_rotate directly on the seat sub-account to hijack ownership without going through registry.",
+      "control": "Vault derives parent registry ID from env::current_account_id() and rejects any non-registry caller.",
+      "outcome": "BLOCKED",
+      "error_code": "E_ONLY_REGISTRY",
+      "test_name": "attack_a1_direct_v_rotate_bypass_blocked",
+      "tx_hash": "A4JQKpkswwho4k84m66PMSWrGtX3Hmo2da4aiyurUgTq"
+    },
+    {
+      "id": "A2",
+      "title": "Seller Drains Vault While Seat is Listed",
+      "attack": "Seller lists a seat showing 2 NEAR inside the vault, then calls vault.withdraw right before the buyer's transaction lands.",
+      "control": "v_list switches vault status to Listed (Frozen); authorize_withdraw rejects all owner and delegate outflows while listed.",
+      "outcome": "BLOCKED",
+      "error_code": "E_FROZEN",
+      "test_name": "attack_a2_seller_withdraw_while_listed_blocked",
+      "tx_hash": "9mq2Yod1M652vNKTHNHEpBzZ6iKjYpcU4GSnesDvoqFi"
+    },
+    {
+      "id": "A3",
+      "title": "Bait-and-Switch Relist (Lower Balance Guard)",
+      "attack": "Seller cancels a listing that promised min_balance = 0.9 NEAR, drains the vault, and immediately relists at the same price with min_balance = 0.",
+      "control": "Every v_list increments monotonic listing_nonce; buy_seat and v_settle_sale verify the exact nonce quoted by the buyer.",
+      "outcome": "BLOCKED",
+      "error_code": "E_NONCE_MISMATCH",
+      "test_name": "attack_a3_bait_and_switch_relist_blocked_by_nonce",
+      "tx_hash": "Fy3E1eUtNyvTAQdku4CE8HySZd46v3Sf4fy26DXzy5TY"
+    },
+    {
+      "id": "A4",
+      "title": "Pre-Sale Delegate Backdoor",
+      "attack": "Before transferring or selling a seat, seller appoints an accomplice or AI bot via set_delegate to drain funds after the sale.",
+      "control": "Delegate is bound to rotation_seq and wiped on every apply_rotation; post-transfer calls fail immediately.",
+      "outcome": "BLOCKED",
+      "error_code": "E_NO_DELEGATE",
+      "test_name": "attack_a4_pre_sale_delegate_dies_on_transfer",
+      "tx_hash": null
+    },
+    {
+      "id": "A5",
+      "title": "Divert Unclaimed Pool Payout to Seller Wallet",
+      "attack": "Seller calls registry.claim(token_id) hoping the accrued Pool Anggota share is sent to their personal wallet before selling.",
+      "control": "registry.claim always transfers to Promise::new(token_id) (the seat vault sub-account), never to caller or owner_id.",
+      "outcome": "BLOCKED",
+      "error_code": "CREDITED_TO_VAULT_ONLY",
+      "test_name": "unit_mint_event_ticket_and_claim_to_seat_vault",
+      "tx_hash": null
+    },
+    {
+      "id": "A6",
+      "title": "Sale in the Middle of a Payout Race",
+      "attack": "Ticket payout, claim, buyer settlement, and seller withdrawal interleave across blocks during a sale.",
+      "control": "Checked across all 75,600 receipt interleavings (s1_sale_in_the_middle_of_a_payout) + cross-contract test: vault is frozen during listing and any payout landing in the vault belongs to the seat.",
+      "outcome": "BLOCKED",
+      "error_code": "E_FROZEN",
+      "test_name": "r4_sale_in_the_middle_of_a_payout_and_history_verification",
+      "tx_hash": null
+    },
+    {
+      "id": "A7",
+      "title": "Former Owner Withdraws After Transfer",
+      "attack": "After nft_transfer or buy_seat completes, former owner attempts to call vault.withdraw or set_delegate.",
+      "control": "Canonical owner_id and rotation_seq live in the vault and update atomically in a single receipt.",
+      "outcome": "BLOCKED",
+      "error_code": "E_NOT_OWNER",
+      "test_name": "attack_a7_former_owner_withdraw_after_transfer_blocked",
+      "tx_hash": "27UqeoVoe6FYnMb8AbL73M64mMppZqY7Nepb8jZgBaP9"
+    },
+    {
+      "id": "A8",
+      "title": "Vault Balance Below Buyer's min_balance Guard",
+      "attack": "Buyer purchases a seat whose vault withdrawable balance is lower than the buyer's required min_balance guard.",
+      "control": "v_settle_sale checks withdrawable >= max(listing.min_balance, buyer.min_balance) in the settlement receipt; on failure, on_sale_settled credits 100% of buyer's deposit to the pull refund ledger.",
+      "outcome": "BLOCKED",
+      "error_code": "E_INSUFFICIENT_BALANCE",
+      "test_name": "attack_a8_min_balance_guard_rejects_and_refunds_buyer_in_full",
+      "tx_hash": null
+    },
+    {
+      "id": "A9",
+      "title": "Re-Initialize Vault or Swap Pinned Vault WASM",
+      "attack": "Attacker calls vault.init again to reset owner, or calls registry.pin_vault_wasm to swap the seat contract code.",
+      "control": "NEAR #[init] rejects re-initialization, vault.init requires predecessor == parent registry, and pin_vault_wasm locks permanently after first pin.",
+      "outcome": "BLOCKED",
+      "error_code": "E_UNSUPPORTED",
+      "test_name": "unit_rejects_direct_v_rotate_from_attacker",
+      "tx_hash": null
+    },
+    {
+      "id": "A10",
+      "title": "Double-Transfer / Stale Sequence Race",
+      "attack": "Seller fires two concurrent transfers or races a transfer against a listing.",
+      "control": "v_rotate requires expected_seq == vault.rotation_seq; the first receipt increments rotation_seq, causing the second to abort.",
+      "outcome": "BLOCKED",
+      "error_code": "E_WRONG_SEQ",
+      "test_name": "s3_double_transfer_race",
+      "tx_hash": null
+    },
+    {
+      "id": "A11",
+      "title": "Lagging Index / Rollback Sync Exploit",
+      "attack": "Callback runs out of gas leaving registry index behind vault; former owner tries to exploit stale index or roll sync backwards.",
+      "control": "Permissionless registry.sync(token_id) reads vault_state() and advances index only when vault.rotation_seq > index.seq; gate fails closed on divergence.",
+      "outcome": "BLOCKED",
+      "error_code": "DIVERGENT_IGNORED",
+      "test_name": "attack_a11_permissionless_sync_heals_lagging_index_and_never_rolls_back",
+      "tx_hash": null
+    },
+    {
+      "id": "A12",
+      "title": "nft_transfer_call Rollback Drain & Self-Buy",
+      "attack": "Attacker uses nft_transfer_call to spend from vault inside nft_on_transfer and then revert the NFT transfer, or seller buys own listing.",
+      "control": "nft_transfer_call is unconditionally disabled (K5 -> E_UNSUPPORTED) and buy_seat rejects buyer == seller (E_BUYER_IS_SELLER).",
+      "outcome": "BLOCKED",
+      "error_code": "E_UNSUPPORTED",
+      "test_name": "unit_nft_transfer_call_is_disabled",
+      "tx_hash": null
+    }
+  ]
+}

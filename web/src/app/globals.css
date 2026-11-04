@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "@near-wallet-selector/modal-ui/styles.css";
+
+:root {
+  color-scheme: dark;
+  --font-cormorant: "Cormorant Garamond", Georgia, Cambria, "Times New Roman", serif;
+  --font-jakarta: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-jetbrains: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+body {
+  background-color: #090b14;
+  color: #f1f5f9;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar for Kraton Nocturne theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090b14;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #232b4a;
+  border-radius: 4px;
+  border: 1px solid rgba(212, 166, 74, 0.25);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d4a64a;
+}

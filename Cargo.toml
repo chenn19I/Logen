@@ -1,0 +1,35 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pusaka-core",
+    "crates/pusaka-test-env",
+    "contracts/vault",
+    "contracts/registry",
+]
+# Sandbox integration tests live in their own workspace-excluded crate because
+# near-workspaces only runs on Linux/macOS (see tests/sandbox/README.md).
+exclude = ["tests/sandbox"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/<your-org>/pusaka"
+authors = ["Pusaka team"]
+
+[workspace.dependencies]
+near-sdk = { version = "=5.9.0", default-features = false, features = ["legacy"] }
+borsh = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+pusaka-core = { path = "crates/pusaka-core" }
+pusaka-test-env = { path = "crates/pusaka-test-env" }
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true
+strip = "symbols"

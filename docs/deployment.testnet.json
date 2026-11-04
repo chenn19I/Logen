@@ -1,0 +1,31 @@
+{
+  "network": "testnet",
+  "registryId": "pusaka-c10747.testnet",
+  "organizerId": "alice-c10747.testnet",
+  "kasKlubId": "alice-c10747.testnet",
+  "buyerId": "bob-c10747.testnet",
+  "sampleSeatId": "s001.pusaka-c10747.testnet",
+  "listedSeatId": "garuda.pusaka-c10747.testnet",
+  "vaultCodeHash": "DFuv6MrVh9yz62uvRxYbZhAEewiWeqUKdYvb3kPLmwSg",
+  "registryCodeHash": "HnMPZdTuyDZmGLd7ZHBbvutM9dQ2ZLmVHBxuzHw8zbeU",
+  "deployedAt": "2026-11-04T17:56:57.361Z",
+  "transactions": {
+    "deployAndInit": "2xPVefuJS55qSrkwDVM2MQCU4zdbSQkrkbd62MCxK1h9",
+    "pinVaultWasm": "BvSdmQFEKvEPJxEQ4fCxxk5oVaMsGrBcv87Q5cHUMhdM",
+    "mintSeat1": "FUCMGkn9yuqBuRF5Xt9sFTWbVdsUkJBou3KcUkyjXTFG",
+    "mintSeat2": "6yH3UAxjiApiPviMr8cCnvvtLPfS4fuTeVtrhH5kua1G",
+    "createEvent": "2ANAh5uj2u7uFg2Y7cYQXYCpzwrLkbVmgTk9ar6PWLZ1",
+    "buyTicket": "7Bux5qc333q8f7zsv3dviAB7r9AFQZrYwwftqjSnWqu3",
+    "claimPool": "3GnFKFSqqBLhoWjhmwcuRXKsWEh14HbzjFUh8iKkQAqo",
+    "listSeat1": "7hq1QRywFgN1pSs6Eie4TDWUguAzzoCDhAN7FrGv9HX5",
+    "buySeat1": "2hnQNzxXe49Zjww8Ri78kYnTFgBPbt1zPMbiSuRNoNrZ",
+    "listSeat2": "ATW3ZEGf5fJjEM2HURTmoHTwhFNEGapCHo9JRrFMj9Xe",
+    "sealRegistry": "6fUpPgrJFEDvmaV8sxoUHBnBabLzpoTFSkhVtSpNCXLr"
+  },
+  "attackTransactions": {
+    "A1": "A4JQKpkswwho4k84m66PMSWrGtX3Hmo2da4aiyurUgTq",
+    "A2": "9mq2Yod1M652vNKTHNHEpBzZ6iKjYpcU4GSnesDvoqFi",
+    "A3": "Fy3E1eUtNyvTAQdku4CE8HySZd46v3Sf4fy26DXzy5TY",
+    "A7": "27UqeoVoe6FYnMb8AbL73M64mMppZqY7Nepb8jZgBaP9"
+  }
+}
