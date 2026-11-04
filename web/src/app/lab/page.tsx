@@ -13,6 +13,7 @@ import {
   Shuffle,
 } from "lucide-react";
 import { KratonDivider } from "@/components/KawungOrnament";
+import { useNear } from "@/components/NearProvider";
 import {
   AttackReport,
   createSimulatorPresets,
@@ -24,6 +25,8 @@ import { EXPLORER_URL } from "@/lib/near/rpc";
 import { pairCheck } from "@/lib/gate/pairCheck";
 
 export default function AttackLabPage() {
+  const { lang } = useNear();
+  const isId = lang === "id";
   const presets = useMemo(() => createSimulatorPresets(), []);
   const [selectedPresetId, setSelectedPresetId] =
     useState<SimPresetId>("s1_payout_race");
@@ -124,31 +127,48 @@ export default function AttackLabPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
             <span className="font-mono text-xs uppercase tracking-widest text-threat-400">
-              Track Requirement R0 & R4 · Exhaustive Receipt-Interleaving Proofs
+              {isId
+                ? "Syarat Track R0 & R4 · Bukti 80.620 Urutan Receipt Lintas-Kontrak"
+                : "Track Requirement R0 & R4 · Exhaustive Receipt-Interleaving Proofs"}
             </span>
             <h1 className="font-serif text-3xl font-bold text-white sm:text-4xl">
-              Pusaka Attack Lab & Threat Model (A1–A12)
+              {isId
+                ? "Lab Serangan & Model Ancaman Pusaka (A1–A12)"
+                : "Pusaka Attack Lab & Threat Model (A1–A12)"}
             </h1>
             <p className="max-w-3xl text-xs leading-relaxed text-slate-300">
-              On NEAR, cross-contract calls execute as independent receipts across
-              blocks. A ticket payout can land between a sale&apos;s settlement and its
-              callback, or a seller can race a cancellation against a buyer&apos;s purchase.{" "}
-              <span className="font-mono text-gold-300">pusaka-core</span> proves{" "}
-              <strong className="text-white">80,418+ receipt interleavings</strong>{" "}
-              against Invariants I1–I7. Step through the receipts yourself below!
+              {isId ? (
+                <>
+                  Di NEAR, panggilan lintas-kontrak berjalan sebagai receipt terpisah antar-blok.
+                  Pembayaran tiket bisa tiba tepat di tengah proses jual-beli kursi, atau penjual
+                  nakal bisa mencoba membatalkan iklan tepat saat pembeli membayar.{" "}
+                  <span className="font-mono text-gold-300">pusaka-core</span> membuktikan{" "}
+                  <strong className="text-white">80.620 kemungkinan urutan receipt</strong>{" "}
+                  terhadap Invarian I1–I7. Anda juga bisa mengklik urutan receipt secara manual di bawah!
+                </>
+              ) : (
+                <>
+                  On NEAR, cross-contract calls execute as independent receipts across
+                  blocks. A ticket payout can land between a sale&apos;s settlement and its
+                  callback, or a seller can race a cancellation against a buyer&apos;s purchase.{" "}
+                  <span className="font-mono text-gold-300">pusaka-core</span> proves{" "}
+                  <strong className="text-white">80,620 receipt interleavings</strong>{" "}
+                  against Invariants I1–I7. Step through the receipts yourself below!
+                </>
+              )}
             </p>
           </div>
 
           <div className="rounded-2xl border border-segel-500/40 bg-segel-500/10 px-4 py-3 text-right font-mono text-xs">
             <span className="block text-[10px] text-slate-400">
-              ATTACK SUITE STATUS
+              {isId ? "STATUS LAB SERANGAN" : "ATTACK SUITE STATUS"}
             </span>
             <span className="font-bold text-segel-400">
-              12 / 12 VECTORS BLOCKED
+              {isId ? "12 / 12 SERANGAN DIBLOKIR" : "12 / 12 VECTORS BLOCKED"}
             </span>
             <span className="block text-[10px] text-gold-300">
-              {report?.interleavings_explored?.toLocaleString() || "80,418"} schedules
-              verified
+              {report?.interleavings_explored?.toLocaleString() || "80,620"}{" "}
+              {isId ? "jadwal diverifikasi" : "schedules verified"}
             </span>
           </div>
         </div>

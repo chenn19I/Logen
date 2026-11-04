@@ -31,12 +31,14 @@ interface EnrichedSeat {
 export default function SeatsGalleryPage() {
   const router = useRouter();
   const {
+    lang,
     accountId,
     registryId,
     config,
     openWalletModal,
     callContractMethod,
   } = useNear();
+  const isId = lang === "id";
 
   const [seats, setSeats] = useState<EnrichedSeat[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -92,8 +94,8 @@ export default function SeatsGalleryPage() {
         receiverId: registryId,
         methodName: "mint_seat",
         args,
-        gas: "150000000000000",
-        deposit: config?.seat_price || "5000000000000000000000000",
+        gas: "220000000000000",
+        deposit: config?.seat_price || "2200000000000000000000000",
       });
       setMintHandle("");
       await loadSeats();
@@ -116,15 +118,27 @@ export default function SeatsGalleryPage() {
       <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-gold-500/25 bg-obsidian-800/80 p-6">
         <div>
           <span className="font-mono text-xs uppercase tracking-widest text-gold-400">
-            NEP-171 Collection + Keyless Sub-Account Vaults
+            {isId
+              ? "Koleksi NEP-171 + Brankas Sub-Akun Tanpa Kunci"
+              : "NEP-171 Collection + Keyless Sub-Account Vaults"}
           </span>
           <h1 className="mt-1 font-serif text-3xl font-bold text-white sm:text-4xl">
-            Pusaka Seat Vaults
+            {isId ? "Galeri Kursi & Brankas Pusaka" : "Pusaka Seat Vaults"}
           </h1>
           <p className="mt-1 text-xs text-slate-300">
-            Each token in <span className="font-mono text-gold-300">{registryId}</span> is its
-            own NEAR account running the immutable vault contract with{" "}
-            <strong className="text-segel-400">0 access keys</strong>.
+            {isId ? (
+              <>
+                Setiap kursi di <span className="font-mono text-gold-300">{registryId}</span> adalah
+                sub-akun NEAR tersendiri yang menyimpan uang dan berjalan dengan{" "}
+                <strong className="text-segel-400">0 kunci akses (Zero Access Keys)</strong>.
+              </>
+            ) : (
+              <>
+                Each token in <span className="font-mono text-gold-300">{registryId}</span> is its
+                own NEAR account running the immutable vault contract with{" "}
+                <strong className="text-segel-400">0 access keys</strong>.
+              </>
+            )}
           </p>
         </div>
 
@@ -144,7 +158,7 @@ export default function SeatsGalleryPage() {
               type="submit"
               className="rounded-xl border border-gold-500/40 bg-obsidian-900 px-3 py-2 text-xs font-semibold text-gold-300 hover:bg-obsidian-700"
             >
-              Inspect Vault
+              {isId ? "Buka Brankas" : "Inspect Vault"}
             </button>
           </form>
 
@@ -158,7 +172,7 @@ export default function SeatsGalleryPage() {
                   : "border-slate-700 bg-obsidian-900 text-slate-300"
               }`}
             >
-              My Seats Only
+              {isId ? "Kursi Saya Saja" : "My Seats Only"}
             </button>
           )}
 
@@ -169,7 +183,7 @@ export default function SeatsGalleryPage() {
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-obsidian-900 px-3 py-2 text-xs text-slate-300 hover:border-gold-500/40 hover:text-gold-300"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            {isId ? "Segarkan" : "Refresh"}
           </button>
         </div>
       </div>
@@ -183,10 +197,14 @@ export default function SeatsGalleryPage() {
           <Sparkles className="h-5 w-5 text-gold-400" />
           <div>
             <p className="text-sm font-semibold text-white">
-              Mint a New Keyless Seat Sub-Account
+              {isId
+                ? "Cetak Sub-Akun Kursi Baru Tanpa Kunci (Mint)"
+                : "Mint a New Keyless Seat Sub-Account"}
             </p>
             <p className="font-mono text-xs text-slate-400">
-              Creates `&lt;handle&gt;.{registryId}` with 0 access keys + global vault code hash
+              {isId
+                ? `Membuat <handle>.${registryId} dengan 0 kunci akses + saldo awal brankas`
+                : `Creates <handle>.${registryId} with 0 access keys + pinned vault code`}
             </p>
           </div>
         </div>
@@ -196,7 +214,7 @@ export default function SeatsGalleryPage() {
               type="text"
               value={mintHandle}
               onChange={(e) => setMintHandle(e.target.value)}
-              placeholder="optional-handle"
+              placeholder={isId ? "nama-opsional" : "optional-handle"}
               className="w-36 bg-transparent font-mono text-xs text-white placeholder-slate-500 focus:outline-none"
             />
             <span className="font-mono text-xs text-gold-400">.{registryId}</span>
@@ -207,9 +225,11 @@ export default function SeatsGalleryPage() {
             className="rounded-xl bg-gradient-to-r from-gold-500 to-gold-400 px-4 py-2 text-xs font-bold text-obsidian-950 shadow transition hover:brightness-110 disabled:opacity-50"
           >
             {isMinting
-              ? "Minting..."
-              : `Mint Seat (${formatYocto(
-                  config?.seat_price || "5000000000000000000000000"
+              ? isId
+                ? "Mencetak..."
+                : "Minting..."
+              : `${isId ? "Cetak Kursi" : "Mint Seat"} (${formatYocto(
+                  config?.seat_price || "2200000000000000000000000"
                 )} NEAR)`}
           </button>
         </div>

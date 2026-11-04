@@ -58,11 +58,13 @@ interface ProtectedLoungeData {
 
 export default function LoungeGatePage() {
   const {
+    lang,
     accountId,
     registryId,
     openWalletModal,
     signNep413Message,
   } = useNear();
+  const isId = lang === "id";
 
   const [gateData, setGateData] = useState<ProtectedLoungeData | null>(null);
   const [loadingGate, setLoadingGate] = useState<boolean>(true);
@@ -269,19 +271,38 @@ export default function LoungeGatePage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
             <span className="font-mono text-xs uppercase tracking-widest text-gold-400">
-              Track Requirement R2 · NEP-413 + Same-Final-Block T2 Pair Check
+              {isId
+                ? "Syarat Track R2 · Tanda Tangan NEP-413 + Pair Check T2 di Blok Final yang Sama"
+                : "Track Requirement R2 · NEP-413 + Same-Final-Block T2 Pair Check"}
             </span>
             <h1 className="font-serif text-3xl font-bold text-white sm:text-4xl">
-              Pendopo Agung · Holder-Only Gated Lounge
+              {isId
+                ? "Pendopo Agung · Ruang Eksklusif Pemegang Kursi"
+                : "Pendopo Agung · Holder-Only Gated Lounge"}
             </h1>
             <p className="max-w-2xl text-xs leading-relaxed text-slate-300">
-              Authenticates seat holders via off-chain{" "}
-              <span className="font-mono text-gold-300">NEP-413</span> Borsh signatures (
-              <span className="font-mono">tag = 2^31 + 413</span>), verifies active{" "}
-              <span className="font-mono">FullAccess</span> key ownership on-chain, and
-              re-verifies <span className="font-mono text-segel-400">vault.nft_item_info</span>{" "}
-              at the latest final block on <strong className="text-white">every single HTTP request</strong>{" "}
-              so a former owner is locked out the very block their seat rotates.
+              {isId ? (
+                <>
+                  Membuktikan kepemilikan kursi lewat tanda tangan off-chain{" "}
+                  <span className="font-mono text-gold-300">NEP-413</span>, memeriksa
+                  kunci <span className="font-mono">FullAccess</span> aktif di blockchain,
+                  dan memeriksa ulang{" "}
+                  <span className="font-mono text-segel-400">vault.nft_item_info</span>{" "}
+                  pada blok final terbaru di <strong className="text-white">setiap permintaan HTTP</strong>{" "}
+                  sehingga mantan pemilik otomatis terkunci keluar detik itu juga saat
+                  kursinya berpindah tangan.
+                </>
+              ) : (
+                <>
+                  Authenticates seat holders via off-chain{" "}
+                  <span className="font-mono text-gold-300">NEP-413</span> Borsh signatures (
+                  <span className="font-mono">tag = 2^31 + 413</span>), verifies active{" "}
+                  <span className="font-mono">FullAccess</span> key ownership on-chain, and
+                  re-verifies <span className="font-mono text-segel-400">vault.nft_item_info</span>{" "}
+                  at the latest final block on <strong className="text-white">every single HTTP request</strong>{" "}
+                  so a former owner is locked out the very block their seat rotates.
+                </>
+              )}
             </p>
           </div>
 

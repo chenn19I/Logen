@@ -40,12 +40,14 @@ interface EnrichedListing {
 
 export default function SafeMarketPage() {
   const {
+    lang,
     accountId,
     registryId,
     config,
     openWalletModal,
     callContractMethod,
   } = useNear();
+  const isId = lang === "id";
 
   const [listings, setListings] = useState<EnrichedListing[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
@@ -165,18 +167,34 @@ export default function SafeMarketPage() {
       <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-gold-500/25 bg-obsidian-800/80 p-6">
         <div>
           <span className="font-mono text-xs uppercase tracking-widest text-gold-400">
-            Requirement R4 · Atomic Vault Settlement & Buyer Guard
+            {isId
+              ? "Syarat R4 · Penyelesaian Brankas Atomik & Pelindung Saldo Pembeli"
+              : "Requirement R4 · Atomic Vault Settlement & Buyer Guard"}
           </span>
           <h1 className="mt-1 font-serif text-3xl font-bold text-white sm:text-4xl">
-            Safe Secondary Market
+            {isId ? "Pasar Sekunder Aman (Safe Market)" : "Safe Secondary Market"}
           </h1>
           <p className="mt-1 max-w-2xl text-xs text-slate-300">
-            Listing a seat freezes all vault outflows (<span className="font-mono text-threat-400">E_FROZEN</span>).
-            When you buy, <span className="font-mono text-gold-300">vault.v_settle_sale</span>{" "}
-            verifies the exact <span className="font-mono">listing_nonce</span> and{" "}
-            <span className="font-mono">withdrawable &gt;= max(seller_min, buyer_min)</span>{" "}
-            in the same receipt that rotates ownership—making drain-before-settle and
-            bait-and-switch relisting mathematically impossible.
+            {isId ? (
+              <>
+                Saat kursi dipasang di pasar, seluruh penarikan uang di dalam brankasnya
+                otomatis dibekukan (<span className="font-mono text-threat-400">E_FROZEN</span>).
+                Saat Anda membeli, <span className="font-mono text-gold-300">vault.v_settle_sale</span>{" "}
+                memastikan <span className="font-mono">listing_nonce</span> dan{" "}
+                <span className="font-mono">saldo &gt;= jaminan minimal</span> dalam satu
+                receipt yang sama saat memindahkan kepemilikan—sehingga penjual mustahil
+                menguras isi brankas sebelum transaksi selesai.
+              </>
+            ) : (
+              <>
+                Listing a seat freezes all vault outflows (<span className="font-mono text-threat-400">E_FROZEN</span>).
+                When you buy, <span className="font-mono text-gold-300">vault.v_settle_sale</span>{" "}
+                verifies the exact <span className="font-mono">listing_nonce</span> and{" "}
+                <span className="font-mono">withdrawable &gt;= max(seller_min, buyer_min)</span>{" "}
+                in the same receipt that rotates ownership—making drain-before-settle and
+                bait-and-switch relisting mathematically impossible.
+              </>
+            )}
           </p>
         </div>
 
@@ -187,7 +205,7 @@ export default function SafeMarketPage() {
           className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-obsidian-900 px-4 py-2 text-xs text-slate-300 hover:border-gold-500/40 hover:text-gold-300"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh Market
+          {isId ? "Segarkan Pasar" : "Refresh Market"}
         </button>
       </div>
 

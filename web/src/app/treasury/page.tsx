@@ -17,6 +17,7 @@ import { formatTimestampMs, formatYocto } from "@/lib/near/format";
 
 export default function TreasuryPage() {
   const {
+    lang,
     accountId,
     registryId,
     config,
@@ -25,6 +26,7 @@ export default function TreasuryPage() {
     openWalletModal,
     callContractMethod,
   } = useNear();
+  const isId = lang === "id";
 
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -78,19 +80,36 @@ export default function TreasuryPage() {
       <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-gold-500/25 bg-obsidian-800/80 p-6">
         <div>
           <span className="font-mono text-xs uppercase tracking-widest text-gold-400">
-            Design Decision K10 · Permissionless Pull Ledgers
+            {isId
+              ? "Keputusan Desain K10 · Buku Besar Penarikan Tanpa Izin (Pull Ledgers)"
+              : "Design Decision K10 · Permissionless Pull Ledgers"}
           </span>
           <h1 className="mt-1 font-serif text-3xl font-bold text-white sm:text-4xl">
-            Kas Klub Treasury & Protocol Ledgers
+            {isId
+              ? "Kas Klub & Buku Besar Protokol"
+              : "Kas Klub Treasury & Protocol Ledgers"}
           </h1>
           <p className="mt-1 max-w-2xl text-xs text-slate-300">
-            To prevent failed cross-contract pushes from ever blocking a ticket sale or
-            seat settlement, all outgoing payments in{" "}
-            <span className="font-mono text-gold-300">{registryId}</span> use pull
-            ledgers. Fixed recipient addresses (<span className="font-mono">kas_klub_id</span>{" "}
-            and <span className="font-mono">organizer_id</span>) are immutable from deploy;
-            anyone may trigger <span className="font-mono">release_kas_klub</span> or{" "}
-            <span className="font-mono">release_organizer</span>.
+            {isId ? (
+              <>
+                Untuk mencegah kegagalan transfer lintas-kontrak memblokir penjualan tiket
+                atau jual-beli kursi, seluruh pembayaran keluar di{" "}
+                <span className="font-mono text-gold-300">{registryId}</span> menggunakan
+                sistem <em>Pull Ledger</em>. Alamat penerima (<span className="font-mono">kas_klub_id</span>{" "}
+                dan <span className="font-mono">organizer_id</span>) bersifat permanen, dan
+                siapa saja dapat memicu pencairan dana ke akun tersebut.
+              </>
+            ) : (
+              <>
+                To prevent failed cross-contract pushes from ever blocking a ticket sale or
+                seat settlement, all outgoing payments in{" "}
+                <span className="font-mono text-gold-300">{registryId}</span> use pull
+                ledgers. Fixed recipient addresses (<span className="font-mono">kas_klub_id</span>{" "}
+                and <span className="font-mono">organizer_id</span>) are immutable from deploy;
+                anyone may trigger <span className="font-mono">release_kas_klub</span> or{" "}
+                <span className="font-mono">release_organizer</span>.
+              </>
+            )}
           </p>
         </div>
 
@@ -101,7 +120,7 @@ export default function TreasuryPage() {
           className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-obsidian-900 px-4 py-2 text-xs text-slate-300 hover:text-gold-300"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh Ledgers
+          {isId ? "Segarkan Buku Besar" : "Refresh Ledgers"}
         </button>
       </div>
 

@@ -23,6 +23,7 @@ import { formatYocto } from "@/lib/near/format";
 
 export default function GlobalVerifyPage() {
   const {
+    lang,
     registryId,
     config,
     parentKeysCount,
@@ -30,6 +31,7 @@ export default function GlobalVerifyPage() {
     finalBlockHash,
     refreshChainState,
   } = useNear();
+  const isId = lang === "id";
 
   const [registryAccount, setRegistryAccount] =
     useState<AccountViewResult | null>(null);
@@ -74,19 +76,38 @@ export default function GlobalVerifyPage() {
       <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-gold-500/25 bg-obsidian-800/80 p-6">
         <div>
           <span className="font-mono text-xs uppercase tracking-widest text-segel-400">
-            Sharded NFT Items Draft 1.0.0 · Tier T0–T3 Global Verifier
+            {isId
+              ? "Sharded NFT Items Draft 1.0.0 · Verifikator Global T0–T3"
+              : "Sharded NFT Items Draft 1.0.0 · Tier T0–T3 Global Verifier"}
           </span>
           <h1 className="mt-1 font-serif text-3xl font-bold text-white sm:text-4xl">
-            Bukti Tanpa Kunci · Global Protocol Verification
+            {isId
+              ? "Bukti Tanpa Kunci · Audit On-Chain Langsung"
+              : "Bukti Tanpa Kunci · Global Protocol Verification"}
           </h1>
           <p className="mt-1 max-w-2xl text-xs text-slate-300">
-            Live on-chain audit of the parent Segel status (`view_access_key_list` == 0),
-            pinned <span className="font-mono text-gold-300">vault_code_hash</span>, and
-            every minted seat sub-account at final block{" "}
-            <span className="font-mono text-gold-300">
-              #{finalBlockHeight?.toLocaleString() ?? "—"}
-            </span>
-            .
+            {isId ? (
+              <>
+                Audit langsung ke blockchain untuk memastikan akun induk tersegel (
+                <span className="font-mono">view_access_key_list == 0</span>), kode brankas
+                terkunci (<span className="font-mono text-gold-300">vault_code_hash</span>),
+                serta setiap sub-akun kursi memiliki 0 kunci akses pada blok final{" "}
+                <span className="font-mono text-gold-300">
+                  #{finalBlockHeight?.toLocaleString() ?? "—"}
+                </span>
+                .
+              </>
+            ) : (
+              <>
+                Live on-chain audit of the parent Segel status (`view_access_key_list` == 0),
+                pinned <span className="font-mono text-gold-300">vault_code_hash</span>, and
+                every minted seat sub-account at final block{" "}
+                <span className="font-mono text-gold-300">
+                  #{finalBlockHeight?.toLocaleString() ?? "—"}
+                </span>
+                .
+              </>
+            )}
           </p>
         </div>
 
@@ -97,7 +118,7 @@ export default function GlobalVerifyPage() {
           className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-gold-500 to-gold-400 px-4 py-2.5 text-xs font-bold text-obsidian-950 shadow transition hover:brightness-110 disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          Re-Run Full Chain Audit
+          {isId ? "Jalankan Audit Ulang" : "Re-Run Full Chain Audit"}
         </button>
       </div>
 

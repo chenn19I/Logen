@@ -28,6 +28,7 @@ import {
 
 export default function ClubEventsPage() {
   const {
+    lang,
     accountId,
     registryId,
     config,
@@ -35,6 +36,7 @@ export default function ClubEventsPage() {
     openWalletModal,
     callContractMethod,
   } = useNear();
+  const isId = lang === "id";
 
   const [events, setEvents] = useState<EventView[]>([]);
   const [userTickets, setUserTickets] = useState<Record<number, number>>({});
@@ -156,19 +158,37 @@ export default function ClubEventsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-gold-500/25 bg-obsidian-800/80 p-6">
         <div>
           <span className="font-mono text-xs uppercase tracking-widest text-gold-400">
-            Requirement R1 & R3 · O(1) Ticket Revenue Accrual
+            {isId
+              ? "Syarat R1 & R3 · Akrual Bagi Hasil Tiket O(1)"
+              : "Requirement R1 & R3 · O(1) Ticket Revenue Accrual"}
           </span>
           <h1 className="mt-1 font-serif text-3xl font-bold text-white sm:text-4xl">
-            Club Events & Member Pool Accrual
+            {isId
+              ? "Acara Klub & Bagi Hasil Anggota (40% / 50% / 10%)"
+              : "Club Events & Member Pool Accrual"}
           </h1>
           <p className="mt-1 max-w-2xl text-xs text-slate-300">
-            Every ticket sold via <span className="font-mono text-gold-300">registry.buy_ticket</span>{" "}
-            splits revenue according to the event&apos;s frozen basis points: default{" "}
-            <strong className="text-gold-300">40% Pool Anggota</strong> (shared equally by all{" "}
-            {stats?.seats_minted ?? 0} minted seats),{" "}
-            <strong className="text-segel-400">50% Kas Klub</strong>, and{" "}
-            <strong className="text-indigo-300">10% Organizer</strong>. Seat holders also
-            receive automatic discounts via <span className="font-mono">ticket_price_for</span>.
+            {isId ? (
+              <>
+                Setiap tiket yang terjual lewat{" "}
+                <span className="font-mono text-gold-300">registry.buy_ticket</span> langsung
+                membagi pendapatan: <strong className="text-gold-300">40% Pool Anggota</strong>{" "}
+                (dibagi rata ke {stats?.seats_minted ?? 0} brankas kursi),{" "}
+                <strong className="text-segel-400">50% Kas Klub</strong>, dan{" "}
+                <strong className="text-indigo-300">10% Organizer</strong>. Pemegang kursi
+                juga mendapat diskon otomatis lewat <span className="font-mono">ticket_price_for</span>.
+              </>
+            ) : (
+              <>
+                Every ticket sold via <span className="font-mono text-gold-300">registry.buy_ticket</span>{" "}
+                splits revenue according to the event&apos;s frozen basis points: default{" "}
+                <strong className="text-gold-300">40% Pool Anggota</strong> (shared equally by all{" "}
+                {stats?.seats_minted ?? 0} minted seats),{" "}
+                <strong className="text-segel-400">50% Kas Klub</strong>, and{" "}
+                <strong className="text-indigo-300">10% Organizer</strong>. Seat holders also
+                receive automatic discounts via <span className="font-mono">ticket_price_for</span>.
+              </>
+            )}
           </p>
         </div>
 
@@ -179,7 +199,7 @@ export default function ClubEventsPage() {
           className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-obsidian-900 px-4 py-2 text-xs text-slate-300 hover:border-gold-500/40 hover:text-gold-300"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh Events
+          {isId ? "Segarkan Acara" : "Refresh Events"}
         </button>
       </div>
 

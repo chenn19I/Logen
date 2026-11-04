@@ -35,7 +35,11 @@ interface SignNep413Result {
   signature: string;
 }
 
+export type Language = "id" | "en";
+
 interface NearContextValue {
+  lang: Language;
+  setLang: (lang: Language) => void;
   accountId: string | null;
   registryId: string;
   setRegistryId: (id: string) => void;
@@ -64,6 +68,7 @@ const NearContext = createContext<NearContextValue | null>(null);
 const TLA_GAS_100 = "100000000000000";
 
 export function NearProvider({ children }: { children: React.ReactNode }) {
+  const [lang, setLangState] = useState<Language>("id");
   const [registryId, setRegistryIdState] = useState<string>(DEFAULT_REGISTRY_ID);
   const [selector, setSelector] = useState<WalletSelector | null>(null);
   const [modal, setModal] = useState<WalletSelectorModal | null>(null);
@@ -81,14 +86,28 @@ export function NearProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const savedLang = window.localStorage.getItem("pusaka_lang");
+    if (savedLang === "en" || savedLang === "id") {
+      setLangState(savedLang);
+    }
     const params = new URLSearchParams(window.location.search);
     const fromQuery = params.get("registry");
     const saved = window.localStorage.getItem("pusaka_registry_id");
     if (fromQuery && fromQuery.trim()) {
       setRegistryIdState(fromQuery.trim());
       window.localStorage.setItem("pusaka_registry_id", fromQuery.trim());
-    } else if (saved && saved.trim()) {
+    } else if (saved && saved.trim() && saved.trim() !== "pusaka.testnet") {
       setRegistryIdState(saved.trim());
+    } else {
+      setRegistryIdState(DEFAULT_REGISTRY_ID);
+      window.localStorage.setItem("pusaka_registry_id", DEFAULT_REGISTRY_ID);
+    }
+  }, []);
+
+  const setLang = useCallback((nextLang: Language) => {
+    setLangState(nextLang);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("pusaka_lang", nextLang);
     }
   }, []);
 
@@ -277,6 +296,8 @@ export function NearProvider({ children }: { children: React.ReactNode }) {
   return (
     <NearContext.Provider
       value={{
+        lang,
+        setLang,
         accountId,
         registryId,
         setRegistryId,
