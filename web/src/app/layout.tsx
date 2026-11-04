@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "@near-wallet-selector/modal-ui/styles.css";
 import "./globals.css";
 import { NearProvider } from "@/components/NearProvider";
 import { Navbar } from "@/components/Navbar";
