@@ -26,9 +26,9 @@ import { ConfirmationSheet } from "@/components/seat/ConfirmationSheet";
 import { HandoffOverlay, type HandoffMode } from "@/components/seat/Handoff";
 
 const DEMO_SEAT: Seat = {
-  tokenId: "s007.pusaka.testnet",
+  tokenId: "s007.logen.testnet",
   number: 7,
-  ownerId: "demo.pusaka.testnet",
+  ownerId: "demo.logen.testnet",
   balanceYocto: parseNearToYocto("3.20"),
   withdrawableYocto: parseNearToYocto("3.20"),
   status: "active",
@@ -299,7 +299,7 @@ export default function KitPage() {
           ].map((item) => (
             <div key={item.size} className="text-center">
               <SeatGlyph
-                tokenId="s007.pusaka.testnet"
+                tokenId="s007.logen.testnet"
                 innerDots={item.dots}
                 size={item.size}
               />
@@ -437,7 +437,7 @@ export default function KitPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-6">
         <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
-          Pusaka kit · dark only · radius 4 · 1px lines
+          Logen kit · dark only · radius 4 · 1px lines
         </p>
         <p className="font-mono text-[10px] uppercase tracking-label text-positive">
           No keys. Ever.

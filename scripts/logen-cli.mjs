@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Pusaka CLI & Judge Verification Runner (`scripts/pusaka-cli.mjs`)
+ * Logen CLI & Judge Verification Runner (`scripts/logen-cli.mjs`)
  *
  * Commands:
- *   node scripts/pusaka-cli.mjs judge          # One-command full verification (Rust + WASM hashes + Web tests + Live RPC check)
- *   node scripts/pusaka-cli.mjs attack         # Run all 12 seller/gate attacks (A1-A12) and emit web/public/attack-report.json
- *   node scripts/pusaka-cli.mjs verify-live    # Verify live NEAR Testnet deployment (keylists, code hashes, T2 pair checks)
- *   node scripts/pusaka-cli.mjs deploy-testnet # Provision/deploy Pusaka to NEAR Testnet (keys kept in ~/.near-credentials)
+ *   node scripts/logen-cli.mjs judge          # One-command full verification (Rust + WASM hashes + Web tests + Live RPC check)
+ *   node scripts/logen-cli.mjs attack         # Run all 12 seller/gate attacks (A1-A12) and emit web/public/attack-report.json
+ *   node scripts/logen-cli.mjs verify-live    # Verify live NEAR Testnet deployment (keylists, code hashes, T2 pair checks)
+ *   node scripts/logen-cli.mjs deploy-testnet # Provision/deploy Logen to NEAR Testnet (keys kept in ~/.near-credentials)
  */
 
 import { spawnSync } from "node:child_process";
@@ -80,7 +80,7 @@ function buildEnvWithToolchain() {
 }
 
 function runStep(title, cmd, args, cwd = ROOT) {
-  console.log(`\n=== [PUSAKA] ${title} ===`);
+  console.log(`\n=== [LOGEN] ${title} ===`);
   console.log(`$ ${cmd} ${args.join(" ")}`);
   const res = spawnSync(cmd, args, {
     cwd,
@@ -106,7 +106,7 @@ async function rpcCall(rpcUrl, method, params) {
   const res = await fetch(rpcUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: "pusaka", method, params }),
+    body: JSON.stringify({ jsonrpc: "2.0", id: "logen", method, params }),
   });
   const json = await res.json();
   if (json.error) {
@@ -238,8 +238,8 @@ async function runAttackLab() {
 
   const report = {
     network: deployMeta?.network || "testnet",
-    registry_id: deployMeta?.registryId || "pusaka.testnet",
-    seat_id: deployMeta?.sampleSeatId || "s001.pusaka.testnet",
+    registry_id: deployMeta?.registryId || "logen.testnet",
+    seat_id: deployMeta?.sampleSeatId || "s001.logen.testnet",
     vault_code_hash: deployMeta?.vaultCodeHash || null,
     registry_code_hash: deployMeta?.registryCodeHash || null,
     generated_at: new Date().toISOString(),
@@ -263,7 +263,7 @@ async function runAttackLab() {
     console.log(`\n[OK] Wrote Attack Lab report to ${outPath}`);
   }
 
-  console.log("\n=== [PUSAKA ATTACK LAB SUMMARY] ===");
+  console.log("\n=== [LOGEN ATTACK LAB SUMMARY] ===");
   for (const r of report.results) {
     const txSuffix = r.tx_hash ? ` (tx: ${r.tx_hash})` : "";
     console.log(`  [${r.outcome}] ${r.id} ${r.title.padEnd(42)} -> ${r.error_code}${txSuffix}`);
@@ -279,7 +279,7 @@ async function verifyLiveDeployment() {
     return;
   }
 
-  console.log(`\n=== [PUSAKA] Verifying Live Testnet Deployment on ${registryId} ===`);
+  console.log(`\n=== [LOGEN] Verifying Live Testnet Deployment on ${registryId} ===`);
   try {
     const config = await rpcViewFunction(rpcUrl, registryId, "get_config", {});
     const stats = await rpcViewFunction(rpcUrl, registryId, "get_stats", {});
@@ -331,9 +331,9 @@ async function runJudge() {
     "wasm32-unknown-unknown",
     "--release",
     "-p",
-    "pusaka-vault",
+    "logen-vault",
     "-p",
-    "pusaka-registry",
+    "logen-registry",
   ]);
 
   const vaultWasm = path.join(
@@ -341,24 +341,24 @@ async function runJudge() {
     "target",
     "wasm32-unknown-unknown",
     "release",
-    "pusaka_vault.wasm"
+    "logen_vault.wasm"
   );
   const registryWasm = path.join(
     ROOT,
     "target",
     "wasm32-unknown-unknown",
     "release",
-    "pusaka_registry.wasm"
+    "logen_registry.wasm"
   );
 
   const vaultHash = sha256Base58(vaultWasm);
   const regHash = sha256Base58(registryWasm);
-  console.log("\n=== [PUSAKA] Compiled WASM Artifacts ===");
+  console.log("\n=== [LOGEN] Compiled WASM Artifacts ===");
   console.log(
-    `  pusaka_vault.wasm    : ${vaultHash.sizeBytes} bytes | sha256(base58) = ${vaultHash.codeHashBase58}`
+    `  logen_vault.wasm    : ${vaultHash.sizeBytes} bytes | sha256(base58) = ${vaultHash.codeHashBase58}`
   );
   console.log(
-    `  pusaka_registry.wasm : ${regHash.sizeBytes} bytes | sha256(base58) = ${regHash.codeHashBase58}`
+    `  logen_registry.wasm : ${regHash.sizeBytes} bytes | sha256(base58) = ${regHash.codeHashBase58}`
   );
 
   await runAttackLab();
@@ -368,7 +368,7 @@ async function runJudge() {
   }
 
   await verifyLiveDeployment();
-  console.log("\n=== [PUSAKA] ALL JUDGE VERIFICATION CHECKS PASSED ===");
+  console.log("\n=== [LOGEN] ALL JUDGE VERIFICATION CHECKS PASSED ===");
 }
 
 const cmd = process.argv[2] || "judge";

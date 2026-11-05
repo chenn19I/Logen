@@ -1,4 +1,4 @@
-//! Cross-contract integration & Attack Lab test suite (`pusaka-registry` + `pusaka-vault`).
+//! Cross-contract integration & Attack Lab test suite (`logen-registry` + `logen-vault`).
 //!
 //! Runs natively on every OS (`cargo test --workspace`) by driving the real `RegistryContract`
 //! and `VaultContract` state machines across simulated receipts, verifying:
@@ -10,21 +10,21 @@
 
 use near_sdk::json_types::U128;
 use near_sdk::AccountId;
-use pusaka_registry::{
+use logen_registry::{
     RegistryContract, RotationReceipt as RegRotationReceipt, SaleSettlementDto, VaultListingDto,
     VaultStateDto,
 };
-use pusaka_test_env::set_context;
-use pusaka_vault::VaultContract;
+use logen_test_env::set_context;
+use logen_vault::VaultContract;
 
 const NEAR: u128 = 10u128.pow(24);
 const S_NS: u64 = 1_000_000_000;
 
 fn reg_id() -> AccountId {
-    "pusaka.testnet".parse().unwrap()
+    "logen.testnet".parse().unwrap()
 }
 fn seat_id() -> AccountId {
-    "s001.pusaka.testnet".parse().unwrap()
+    "s001.logen.testnet".parse().unwrap()
 }
 fn alice() -> AccountId {
     "alice.testnet".parse().unwrap()
@@ -82,11 +82,11 @@ impl Harness {
         );
         reg.pin_vault_wasm(vec![0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);
 
-        // Step 1: Alice mints s001.pusaka.testnet
+        // Step 1: Alice mints s001.logen.testnet
         set_ctx(reg_id(), alice(), 2 * NEAR, 102 * NEAR, now_ns);
         let _ = reg.mint_seat(None, None);
 
-        // Step 2: Sub-account batch receipt initializes VaultContract on s001.pusaka.testnet
+        // Step 2: Sub-account batch receipt initializes VaultContract on s001.logen.testnet
         let vault_balance = NEAR;
         set_ctx(seat_id(), reg_id(), 0, vault_balance, now_ns);
         let vault = VaultContract::init(alice(), None);
@@ -180,7 +180,7 @@ fn r4_sale_in_the_middle_of_a_payout_and_history_verification() {
     // Mid-sale: someone calls `claim(s001)`! The 1 NEAR pool share is sent to s001's vault.
     set_ctx(reg_id(), fan(), 0, 107 * NEAR, h.now_ns);
     let _ = h.reg.claim(seat_id());
-    h.vault_balance += NEAR; // Transfer receipt lands in s001.pusaka.testnet vault!
+    h.vault_balance += NEAR; // Transfer receipt lands in s001.logen.testnet vault!
 
     // Vault settles the sale atomically in a single receipt
     set_ctx(seat_id(), reg_id(), 0, h.vault_balance, h.now_ns);

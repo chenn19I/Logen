@@ -140,6 +140,42 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
+name = "logen-core"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+]
+
+[[package]]
+name = "logen-registry"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "logen-core",
+ "logen-test-env",
+ "logen-vault",
+ "near-sdk",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "logen-test-env"
+version = "0.1.0"
+
+[[package]]
+name = "logen-vault"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "logen-core",
+ "logen-test-env",
+ "near-sdk",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -239,42 +275,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "pusaka-core"
-version = "0.1.0"
-dependencies = [
- "borsh",
-]
-
-[[package]]
-name = "pusaka-registry"
-version = "0.1.0"
-dependencies = [
- "borsh",
- "near-sdk",
- "pusaka-core",
- "pusaka-test-env",
- "pusaka-vault",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "pusaka-test-env"
-version = "0.1.0"
-
-[[package]]
-name = "pusaka-vault"
-version = "0.1.0"
-dependencies = [
- "borsh",
- "near-sdk",
- "pusaka-core",
- "pusaka-test-env",
- "serde",
- "serde_json",
 ]
 
 [[package]]

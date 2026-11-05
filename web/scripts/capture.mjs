@@ -4,7 +4,7 @@ import path from "node:path";
 
 const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const PORT = 9333;
-const PROFILE = path.join(process.env.TEMP ?? "C:\\Windows\\Temp", "pusaka-edge-profile");
+const PROFILE = path.join(process.env.TEMP ?? "C:\\Windows\\Temp", "logen-edge-profile");
 const OUT = path.resolve("screenshots");
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

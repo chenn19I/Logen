@@ -87,7 +87,7 @@ const EVENTS: ClubEvent[] = [
 const PINNED_HASH = "DFuv6MrVh9yz62uvRxYbZhAEewiWeqUKdYvb3kPLmwSg";
 
 function tokenIdFor(n: number): string {
-  return `s${String(n).padStart(3, "0")}.pusaka.testnet`;
+  return `s${String(n).padStart(3, "0")}.logen.testnet`;
 }
 
 function holderTimeline(seed: Seed): SeatHolder[] {
@@ -242,7 +242,7 @@ function seedHistory(seed: Seed): HistoryEntry[] {
         id: "9-paid-1",
         atMs: Date.UTC(2026, 9, 20, 10, 0),
         kind: "paid_out",
-        label: "Withdrawal to demo.pusaka.testnet",
+        label: "Withdrawal to demo.logen.testnet",
         detail: "Authorised by the holder",
         amountYocto: near(0.5),
         holderId: DEMO_ACCOUNT,

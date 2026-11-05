@@ -1,13 +1,13 @@
-//! # pusaka-core
+//! # logen-core
 //!
-//! Pure, dependency-free state machines and arithmetic for Pusaka (design decision K9).
+//! Pure, dependency-free state machines and arithmetic for Logen (design decision K9).
 //!
 //! The NEAR contracts in `contracts/` are thin adapters around this crate: every rule that
 //! decides *who owns a seat*, *who may spend from it*, and *how ticket revenue is split*
 //! lives here, so the exact same code runs in
 //!
-//! * the on-chain contracts (`pusaka-vault`, `pusaka-registry`),
-//! * the unit/property tests (`cargo test -p pusaka-core`), and
+//! * the on-chain contracts (`logen-vault`, `logen-registry`),
+//! * the unit/property tests (`cargo test -p logen-core`), and
 //! * the receipt-interleaving explorer (`tests/interleavings.rs`), which exhaustively
 //!   reorders cross-contract receipts to prove a seller can never keep the money.
 #![forbid(unsafe_code)]

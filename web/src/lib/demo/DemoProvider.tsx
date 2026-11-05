@@ -27,7 +27,7 @@ interface DemoContextValue {
 }
 
 const DemoContext = createContext<DemoContextValue | null>(null);
-const STORAGE_KEY = "pusaka_demo_mode";
+const STORAGE_KEY = "logen_demo_mode";
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
   const { registryId, accountId } = useNear();

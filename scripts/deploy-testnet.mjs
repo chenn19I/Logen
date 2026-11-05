@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Pusaka NEAR Testnet Provisioner, Deployer & On-Chain Attack Lab Runner
+ * Logen NEAR Testnet Provisioner, Deployer & On-Chain Attack Lab Runner
  * (`scripts/deploy-testnet.mjs`)
  *
  * Uses Node's built-in `node:crypto` Ed25519 + exact NEAR Borsh transaction encoding
@@ -214,7 +214,7 @@ async function rpcRequest(method, params) {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: "pusaka", method, params }),
+        body: JSON.stringify({ jsonrpc: "2.0", id: "logen", method, params }),
       });
       const data = await res.json();
       if (data.error) {
@@ -310,14 +310,14 @@ async function createTestnetAccountViaFaucet(accountId, publicKeyStr) {
 }
 
 async function prepareAccounts() {
-  const statePath = path.join(CRED_DIR, "pusaka-active-accounts.json");
+  const statePath = path.join(CRED_DIR, "logen-active-accounts.json");
   if (fs.existsSync(statePath)) {
     const existing = JSON.parse(fs.readFileSync(statePath, "utf8"));
     console.log("Loaded prepared testnet accounts:", existing);
     return existing;
   }
   const suffix = crypto.randomBytes(3).toString("hex");
-  const registryId = `pusaka-${suffix}.testnet`;
+  const registryId = `logen-${suffix}.testnet`;
   const aliceId = `alice-${suffix}.testnet`;
   const bobId = `bob-${suffix}.testnet`;
 
@@ -362,14 +362,14 @@ async function deployAndSeed() {
     "target",
     "wasm32-unknown-unknown",
     "release",
-    "pusaka_vault.wasm"
+    "logen_vault.wasm"
   );
   const regWasmPath = path.join(
     ROOT,
     "target",
     "wasm32-unknown-unknown",
     "release",
-    "pusaka_registry.wasm"
+    "logen_registry.wasm"
   );
   const vaultWasm = fs.readFileSync(vaultWasmPath);
   const regWasm = fs.readFileSync(regWasmPath);
@@ -377,7 +377,7 @@ async function deployAndSeed() {
   const vaultCodeHash = base58Encode(crypto.createHash("sha256").update(vaultWasm).digest());
   const registryCodeHash = base58Encode(crypto.createHash("sha256").update(regWasm).digest());
 
-  console.log(`\n1. Deploying pusaka_registry.wasm (${regWasm.length}B) to ${accounts.registryId} ...`);
+  console.log(`\n1. Deploying logen_registry.wasm (${regWasm.length}B) to ${accounts.registryId} ...`);
   const deployTx = await signAndSendTx(regKey, accounts.registryId, [
     Actions.deployContract(regWasm),
     Actions.functionCall(
@@ -395,7 +395,7 @@ async function deployAndSeed() {
   ]);
   console.log(`   tx: ${deployTx.txHash}`);
 
-  console.log(`2. Pinning pusaka_vault.wasm (${vaultWasm.length}B, hash=${vaultCodeHash}) ...`);
+  console.log(`2. Pinning logen_vault.wasm (${vaultWasm.length}B, hash=${vaultCodeHash}) ...`);
   const borshVault = Buffer.concat([borshU32(vaultWasm.length), vaultWasm]);
   const pinTx = await signAndSendTx(regKey, accounts.registryId, [
     Actions.functionCall("pin_vault_wasm", borshVault, 100n * TGAS, 0n),

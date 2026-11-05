@@ -1,5 +1,5 @@
 [package]
-name = "pusaka-test-env"
+name = "logen-test-env"
 description = "Cross-platform (Windows/macOS/Linux) in-memory NEAR host environment for native contract testing."
 version.workspace = true
 edition.workspace = true

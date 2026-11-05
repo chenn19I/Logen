@@ -9,7 +9,7 @@ import { Navbar } from "@/components/Navbar";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
-  title: "Pusaka — The seat that carries its own wallet",
+  title: "Logen — The seat that carries its own wallet",
   description:
     "A members club where each seat is an NFT that owns its own keyless wallet. Sell the seat and the money, history and access go with it. NEAR Testnet.",
 };

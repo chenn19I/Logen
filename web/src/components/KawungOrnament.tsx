@@ -6,7 +6,7 @@ export function KawungPatternBg({ className = "" }: { className?: string }) {
       className={`pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#06080D] ${className}`}
       aria-hidden="true"
     >
-      {/* Top Radial Light Bias (#0D1526 + subtle Jade Pusaka aura) */}
+      {/* Top Radial Light Bias (#0D1526 + subtle Jade Logen aura) */}
       <div
         className="absolute inset-0"
         style={{
@@ -23,7 +23,7 @@ export function KawungPatternBg({ className = "" }: { className?: string }) {
       <svg className="absolute inset-0 h-full w-full opacity-[0.035]" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <pattern
-            id="pusaka-relic-grid"
+            id="logen-relic-grid"
             width="56"
             height="56"
             patternUnits="userSpaceOnUse"
@@ -37,12 +37,12 @@ export function KawungPatternBg({ className = "" }: { className?: string }) {
             <circle cx="0" cy="0" r="1.1" fill="#00EC97" />
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill="url(#pusaka-relic-grid)" />
+        <rect width="100%" height="100%" fill="url(#logen-relic-grid)" />
       </svg>
 
       {/* Tactile 2% Noise Texture Overlay */}
       <svg className="absolute inset-0 h-full w-full opacity-[0.02]" xmlns="http://www.w3.org/2000/svg">
-        <filter id="pusaka-void-noise">
+        <filter id="logen-void-noise">
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.82"
@@ -50,7 +50,7 @@ export function KawungPatternBg({ className = "" }: { className?: string }) {
             stitchTiles="stitch"
           />
         </filter>
-        <rect width="100%" height="100%" filter="url(#pusaka-void-noise)" />
+        <rect width="100%" height="100%" filter="url(#logen-void-noise)" />
       </svg>
     </div>
   );
@@ -142,7 +142,7 @@ export function DefaultSeatSvgCard({
         fontFamily="monospace"
         letterSpacing="2"
       >
-        PUSAKA · KEYLESS VAULT RELIC
+        LOGEN · KEYLESS VAULT RELIC
       </text>
       <text
         x="26"

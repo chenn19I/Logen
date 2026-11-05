@@ -86,28 +86,28 @@ export function NearProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const savedLang = window.localStorage.getItem("pusaka_lang");
+    const savedLang = window.localStorage.getItem("logen_lang");
     if (savedLang === "en" || savedLang === "id") {
       setLangState(savedLang);
     }
     const params = new URLSearchParams(window.location.search);
     const fromQuery = params.get("registry");
-    const saved = window.localStorage.getItem("pusaka_registry_id");
+    const saved = window.localStorage.getItem("logen_registry_id");
     if (fromQuery && fromQuery.trim()) {
       setRegistryIdState(fromQuery.trim());
-      window.localStorage.setItem("pusaka_registry_id", fromQuery.trim());
-    } else if (saved && saved.trim() && saved.trim() !== "pusaka.testnet") {
+      window.localStorage.setItem("logen_registry_id", fromQuery.trim());
+    } else if (saved && saved.trim() && saved.trim() !== "logen.testnet") {
       setRegistryIdState(saved.trim());
     } else {
       setRegistryIdState(DEFAULT_REGISTRY_ID);
-      window.localStorage.setItem("pusaka_registry_id", DEFAULT_REGISTRY_ID);
+      window.localStorage.setItem("logen_registry_id", DEFAULT_REGISTRY_ID);
     }
   }, []);
 
   const setLang = useCallback((nextLang: Language) => {
     setLangState(nextLang);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("pusaka_lang", nextLang);
+      window.localStorage.setItem("logen_lang", nextLang);
     }
   }, []);
 
@@ -115,7 +115,7 @@ export function NearProvider({ children }: { children: React.ReactNode }) {
     const cleaned = id.trim() || DEFAULT_REGISTRY_ID;
     setRegistryIdState(cleaned);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("pusaka_registry_id", cleaned);
+      window.localStorage.setItem("logen_registry_id", cleaned);
     }
   }, []);
 

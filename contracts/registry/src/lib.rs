@@ -1,6 +1,6 @@
-//! # pusaka-registry
+//! # logen-registry
 //!
-//! Deployed onto the parent account (e.g. `pusaka.testnet`), which is then sealed (all access keys
+//! Deployed onto the parent account (e.g. `logen.testnet`), which is then sealed (all access keys
 //! deleted). Implements:
 //!
 //! - **NEP-171 / NEP-177 / NEP-181 / NEP-297** non-fungible token views, transfers, and events
@@ -29,14 +29,14 @@ use near_sdk::{
     env, ext_contract, near_bindgen, AccountId, Gas, NearToken, PanicOnDefault, Promise,
     PromiseError,
 };
-use pusaka_core::math::apply_bps;
-use pusaka_core::{
+use logen_core::math::apply_bps;
+use logen_core::{
     Accumulator, Bps, CoreError, IndexEntry, Listing, ListingMirror, SyncOutcome, VaultSnapshot,
     BPS_DENOMINATOR,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-use pusaka_test_env as _;
+use logen_test_env as _;
 
 const GAS_VAULT_CALL: Gas = Gas::from_tgas(35);
 const GAS_CALLBACK: Gas = Gas::from_tgas(35);
@@ -412,7 +412,7 @@ pub struct RegistryContract {
 
 #[near_bindgen]
 impl RegistryContract {
-    /// Initialises the Pusaka registry.
+    /// Initialises the Logen registry.
     /// `vault_wasm_base64` may be provided at init or uploaded once before sealing via
     /// `set_vault_wasm` (which locks forever once set).
     #[init]
@@ -481,7 +481,7 @@ impl RegistryContract {
     }
 
     /// One-time setup call during deployment (before parent keys are deleted / sealed):
-    /// pins the compiled `pusaka-vault` WASM bytes and computes its SHA-256 `vault_code_hash`
+    /// pins the compiled `logen-vault` WASM bytes and computes its SHA-256 `vault_code_hash`
     /// (Base58) on-chain so it can never be forged or replaced once set.
     pub fn pin_vault_wasm(&mut self, #[serializer(borsh)] wasm_bytes: Vec<u8>) -> String {
         if env::predecessor_account_id() != env::current_account_id()
@@ -509,8 +509,8 @@ impl RegistryContract {
     pub fn nft_metadata(&self) -> NftContractMetadata {
         NftContractMetadata {
             spec: "nft-2.0.0".to_string(),
-            name: "Pusaka Membership".to_string(),
-            symbol: "PUSAKA".to_string(),
+            name: "Logen Membership".to_string(),
+            symbol: "LOGEN".to_string(),
             icon: Some(
                 "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%230B0E1A'/><path d='M32 8L42 24L32 56L22 24Z' fill='none' stroke='%23D4A64A' stroke-width='3'/><circle cx='32' cy='24' r='4' fill='%23F3C969'/></svg>".to_string(),
             ),
@@ -568,7 +568,7 @@ impl RegistryContract {
     }
 
     // -------------------------------------------------------------------------
-    // Pusaka Views (docs/API.md)
+    // Logen Views (docs/API.md)
     // -------------------------------------------------------------------------
 
     pub fn get_config(&self) -> ConfigView {
@@ -1020,7 +1020,7 @@ impl RegistryContract {
         let view = ListingView::from_mirror(&token_id, &mirror);
         seat.index.listing = Some(mirror);
         emit_nep297(
-            "pusaka",
+            "logen",
             "1.0.0",
             "seat_listed",
             serde_json::json!({
@@ -1074,7 +1074,7 @@ impl RegistryContract {
         if seat.index.seq == expected_seq {
             seat.index.listing = None;
             emit_nep297(
-                "pusaka",
+                "logen",
                 "1.0.0",
                 "seat_unlisted",
                 serde_json::json!({ "token_id": token_id }),
@@ -1180,7 +1180,7 @@ impl RegistryContract {
                 // 100% of buyer's deposit is credited to their pull refund ledger.
                 *self.refunds.entry(buyer.clone()).or_insert(0) += paid.0;
                 emit_nep297(
-                    "pusaka",
+                    "logen",
                     "1.0.0",
                     "sale_refunded",
                     serde_json::json!({
@@ -1300,7 +1300,7 @@ impl RegistryContract {
             bps: self.default_bps,
         });
         emit_nep297(
-            "pusaka",
+            "logen",
             "1.0.0",
             "event_created",
             serde_json::json!({
@@ -1356,7 +1356,7 @@ impl RegistryContract {
         let out_count = *count;
 
         emit_nep297(
-            "pusaka",
+            "logen",
             "1.0.0",
             "ticket_bought",
             serde_json::json!({
@@ -1393,7 +1393,7 @@ impl RegistryContract {
         });
 
         emit_nep297(
-            "pusaka",
+            "logen",
             "1.0.0",
             "pool_claimed",
             serde_json::json!({
@@ -1500,7 +1500,7 @@ impl RegistryContract {
             token_id: s.token_id.to_string(),
             owner_id: s.index.owner.parse().unwrap(),
             metadata: TokenMetadata {
-                title: Some(format!("Pusaka Seat #{:03} ({})", s.number, s.token_id)),
+                title: Some(format!("Logen Seat #{:03} ({})", s.number, s.token_id)),
                 description: Some(
                     "Keyless NEAR membership seat that carries its own sub-account wallet, treasury pool share, and safe-sale vault.".to_string(),
                 ),
@@ -1564,7 +1564,7 @@ fn render_seat_svg(
 </defs>\
 <rect width='420' height='260' rx='18' fill='url(%23bg)' stroke='%23D4A64A' stroke-width='2'/>\
 <rect x='14' y='14' width='392' height='232' rx='12' fill='none' stroke='%23D4A64A' stroke-opacity='0.35' stroke-dasharray='4 4'/>\
-<text x='30' y='46' fill='%23F3C969' font-family='serif' font-size='20' font-weight='bold'>PUSAKA SEAT %23{number:03}</text>\
+<text x='30' y='46' fill='%23F3C969' font-family='serif' font-size='20' font-weight='bold'>LOGEN SEAT %23{number:03}</text>\
 <text x='390' y='44' text-anchor='end' fill='%2310B981' font-family='monospace' font-size='11'>BUKTI TANPA KUNCI</text>\
 <text x='30' y='74' fill='%23E2E8F0' font-family='monospace' font-size='13'>{token_id}</text>\
 <line x1='30' y1='92' x2='390' y2='92' stroke='%23D4A64A' stroke-opacity='0.25'/>\
@@ -1584,16 +1584,16 @@ fn render_seat_svg(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pusaka_test_env::set_context;
+    use logen_test_env::set_context;
 
     const NEAR: u128 = 10u128.pow(24);
 
     fn ctx(predecessor: &str, deposit: u128, ts_ns: u64) {
-        set_context("pusaka.testnet", predecessor, deposit, 50 * NEAR, ts_ns);
+        set_context("logen.testnet", predecessor, deposit, 50 * NEAR, ts_ns);
     }
 
     fn setup_registry() -> RegistryContract {
-        ctx("pusaka.testnet", 0, 1_000_000_000);
+        ctx("logen.testnet", 0, 1_000_000_000);
         let mut reg = RegistryContract::init(
             "org.testnet".parse().unwrap(),
             "kas.testnet".parse().unwrap(),
@@ -1612,7 +1612,7 @@ mod tests {
     #[test]
     fn unit_mint_event_ticket_and_claim_to_seat_vault() {
         let mut reg = setup_registry();
-        let seat_id: AccountId = "s001.pusaka.testnet".parse().unwrap();
+        let seat_id: AccountId = "s001.logen.testnet".parse().unwrap();
         reg.pending_mints.insert(seat_id.clone(), true);
         let view = reg
             .on_mint_seat(
@@ -1653,7 +1653,7 @@ mod tests {
         ctx("alice.testnet", 1, 2_000_000_000);
         reg.nft_transfer_call(
             "bob.testnet".parse().unwrap(),
-            "s001.pusaka.testnet".parse().unwrap(),
+            "s001.logen.testnet".parse().unwrap(),
             None,
             None,
             "".to_string(),

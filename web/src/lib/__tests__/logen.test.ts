@@ -75,17 +75,17 @@ describe("NEP-413 Borsh serializer & Ed25519 signature verifier", () => {
     for (let i = 0; i < 32; i++) nonce[i] = i + 1;
 
     const bytes = serializeNep413Payload({
-      message: "pusaka",
+      message: "logen",
       nonce,
-      recipient: "pusaka-lounge",
+      recipient: "logen-lounge",
       callbackUrl: null,
     });
 
     // First 4 bytes must be little-endian 2147484061 (0x8000019d -> [0x9d, 0x01, 0x00, 0x80])
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     expect(view.getUint32(0, true)).toBe(NEP413_TAG);
-    // Next 4 bytes: length of "pusaka" = 6
-    expect(view.getUint32(4, true)).toBe(6);
+    // Next 4 bytes: length of "logen" = 5
+    expect(view.getUint32(4, true)).toBe(5);
     // Final byte: Option::None = 0
     expect(bytes[bytes.length - 1]).toBe(0);
   });
@@ -94,9 +94,9 @@ describe("NEP-413 Borsh serializer & Ed25519 signature verifier", () => {
     const kp = nacl.sign.keyPair();
     const nonce = new Uint8Array(32).fill(7);
     const payload = {
-      message: "Verify Pusaka Lounge Seat Ownership",
+      message: "Verify Logen Lounge Seat Ownership",
       nonce,
-      recipient: "pusaka-lounge",
+      recipient: "logen-lounge",
       callbackUrl: null,
     };
 
@@ -121,14 +121,14 @@ describe("NEP-413 Borsh serializer & Ed25519 signature verifier", () => {
 
 describe("T0-T2 Pair Check & Gate Decision Table", () => {
   it("validates direct sub-accounts (T0 namespace)", () => {
-    expect(verifyDirectSubaccount("s001.pusaka.testnet", "pusaka.testnet")).toBe(true);
-    expect(verifyDirectSubaccount("garuda.pusaka.testnet", "pusaka.testnet")).toBe(true);
-    expect(verifyDirectSubaccount("deep.s001.pusaka.testnet", "pusaka.testnet")).toBe(false);
-    expect(verifyDirectSubaccount("pusaka.testnet", "pusaka.testnet")).toBe(false);
-    expect(verifyDirectSubaccount("s001.evil.testnet", "pusaka.testnet")).toBe(false);
+    expect(verifyDirectSubaccount("s001.logen.testnet", "logen.testnet")).toBe(true);
+    expect(verifyDirectSubaccount("garuda.logen.testnet", "logen.testnet")).toBe(true);
+    expect(verifyDirectSubaccount("deep.s001.logen.testnet", "logen.testnet")).toBe(false);
+    expect(verifyDirectSubaccount("logen.testnet", "logen.testnet")).toBe(false);
+    expect(verifyDirectSubaccount("s001.evil.testnet", "logen.testnet")).toBe(false);
   });
 
-  it("implements pair_check matching pusaka-core", () => {
+  it("implements pair_check matching logen-core", () => {
     expect(pairCheck("alice.testnet", 1, "alice.testnet", 1)).toBe("Consistent");
     expect(pairCheck("alice.testnet", 1, "bob.testnet", 2)).toBe("IndexBehind");
     expect(pairCheck("alice.testnet", 2, "alice.testnet", 1)).toBe("Invalid");
@@ -138,16 +138,16 @@ describe("T0-T2 Pair Check & Gate Decision Table", () => {
   it("fails closed when vault rotation_seq advances ahead of index (Threat D5)", () => {
     const check = evaluateGatePairCheck({
       expectedAccountId: "alice.testnet",
-      pinnedRegistryId: "pusaka.testnet",
-      tokenId: "s001.pusaka.testnet",
+      pinnedRegistryId: "logen.testnet",
+      tokenId: "s001.logen.testnet",
       indexOwner: "alice.testnet",
       indexSeq: 0,
       itemInfo: {
         spec: SHARDED_ITEM_SPEC,
         init: true,
         status: "Active",
-        collection_id: "pusaka.testnet",
-        token_id: "s001.pusaka.testnet",
+        collection_id: "logen.testnet",
+        token_id: "s001.logen.testnet",
         owner_id: "bob.testnet",
         rotation_seq: 1,
         rotation_epoch: 0,

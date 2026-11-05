@@ -1,4 +1,4 @@
-# Pinned, reproducible toolchain for building and testing the Pusaka contracts.
+# Pinned, reproducible toolchain for building and testing the Logen contracts.
 # Usage: see Makefile (`make docker-judge`) or README "Reproduce".
 FROM rust:1.86-bookworm
 

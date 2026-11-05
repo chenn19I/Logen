@@ -140,7 +140,7 @@ export function SeatCard({
           <div className="mono-label">Seat</div>
           <div className="font-mono text-40 leading-none text-paper tabular">{number}</div>
           <div className="mt-2 font-mono text-12 uppercase tracking-label text-paper-muted">
-            Pusaka club
+            Logen club
           </div>
         </div>
       </div>

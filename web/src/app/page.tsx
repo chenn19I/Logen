@@ -86,7 +86,7 @@ function ConnectScreen() {
               {[2, 3, 4, 5, 6, 7].map((dots, index) => (
                 <SeatGlyph
                   key={dots}
-                  tokenId={`s00${index + 1}.pusaka.testnet`}
+                  tokenId={`s00${index + 1}.logen.testnet`}
                   innerDots={dots}
                   size={38}
                 />
@@ -104,7 +104,7 @@ function ConnectScreen() {
               <PixelChair size={280} />
             </div>
             <div className="mt-4 border border-line bg-ink px-4 py-2 text-center font-mono text-[11px] uppercase tracking-label text-paper-dim">
-              Seat 07 · Inside · Pusaka
+              Seat 07 · Inside · Logen
             </div>
           </div>
         </div>

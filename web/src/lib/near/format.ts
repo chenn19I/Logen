@@ -61,7 +61,7 @@ export function parseNearToYocto(nearStr: string): string {
 }
 
 /**
- * Overflow-safe basis point calculation matching pusaka-core `apply_bps(amount, bps)`.
+ * Overflow-safe basis point calculation matching logen-core `apply_bps(amount, bps)`.
  * `amount * bps / 10_000`
  */
 export function applyBps(amountYocto: string | bigint, bps: number): bigint {
@@ -75,7 +75,7 @@ export function applyBps(amountYocto: string | bigint, bps: number): bigint {
 
 /**
  * Splits a ticket payment into Pool Anggota (40%), Kas Klub (50% + dust), and Organizer (10%),
- * matching `pusaka_core::split::Bps::split`.
+ * matching `logen_core::split::Bps::split`.
  */
 export function splitTicketRevenue(
   amountYocto: string | bigint,

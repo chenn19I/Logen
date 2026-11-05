@@ -11,8 +11,8 @@
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
-const VAULT_WASM_PATH: &str = "../../target/wasm32-unknown-unknown/release/pusaka_vault.wasm";
-const REGISTRY_WASM_PATH: &str = "../../target/wasm32-unknown-unknown/release/pusaka_registry.wasm";
+const VAULT_WASM_PATH: &str = "../../target/wasm32-unknown-unknown/release/logen_vault.wasm";
+const REGISTRY_WASM_PATH: &str = "../../target/wasm32-unknown-unknown/release/logen_registry.wasm";
 
 #[tokio::test]
 async fn sandbox_full_lifecycle_keyless_proof_and_sale_mid_payout() -> anyhow::Result<()> {
@@ -53,7 +53,7 @@ async fn sandbox_full_lifecycle_keyless_proof_and_sale_mid_payout() -> anyhow::R
         .into_result()?;
 
     let registry_acc = root
-        .create_subaccount("pusaka")
+        .create_subaccount("logen")
         .initial_balance(NearToken::from_near(25))
         .transact()
         .await?
@@ -107,7 +107,7 @@ async fn sandbox_full_lifecycle_keyless_proof_and_sale_mid_payout() -> anyhow::R
     // Organizer creates an event & fan buys a ticket
     org.call(registry.id(), "create_event")
         .args_json(json!({
-            "name": "Pusaka Genesis",
+            "name": "Logen Genesis",
             "price": NearToken::from_near(2).as_yoctonear().to_string(),
             "capacity": 50,
             "starts_at_ms": 1800000000000u64,

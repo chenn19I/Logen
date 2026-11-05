@@ -1,4 +1,4 @@
-// Pair check & namespace verification logic matching pusaka-core/src/index.rs and Sharded NFT Items draft (1.0.0)
+// Pair check & namespace verification logic matching logen-core/src/index.rs and Sharded NFT Items draft (1.0.0)
 
 export type PairCheckStatus = "Consistent" | "IndexBehind" | "Invalid";
 
@@ -11,8 +11,8 @@ export const SHARDED_ITEM_SPEC = "sharded-item-1.0.0";
 
 /**
  * Verifies Tier T0 Namespace: `tokenId` must be a direct sub-account of `registryId`.
- * e.g. `s001.pusaka.testnet` is a direct sub-account of `pusaka.testnet`,
- * whereas `a.b.pusaka.testnet` or `pusaka.testnet` or `s001.other.testnet` is not.
+ * e.g. `s001.logen.testnet` is a direct sub-account of `logen.testnet`,
+ * whereas `a.b.logen.testnet` or `logen.testnet` or `s001.other.testnet` is not.
  */
 export function verifyDirectSubaccount(tokenId: string, registryId: string): boolean {
   const t = tokenId.trim().toLowerCase();
@@ -26,7 +26,7 @@ export function verifyDirectSubaccount(tokenId: string, registryId: string): boo
 /**
  * Decision table for consumers comparing `registry.nft_token` (or `get_seat`) with
  * `vault.nft_item_info` read at the **same final block** (Tier T2 in Sharded NFT Items draft).
- * Mirrors `pusaka_core::index::pair_check` exactly.
+ * Mirrors `logen_core::index::pair_check` exactly.
  */
 export function pairCheck(
   indexOwner: string,

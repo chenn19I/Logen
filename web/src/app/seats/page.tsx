@@ -123,7 +123,7 @@ export default function SeatsGalleryPage() {
               : "NEP-171 Collection + Keyless Sub-Account Vaults"}
           </span>
           <h1 className="mt-1 font-serif text-3xl font-bold text-white sm:text-4xl">
-            {isId ? "Galeri Kursi & Brankas Pusaka" : "Pusaka Seat Vaults"}
+            {isId ? "Galeri Kursi & Brankas Logen" : "Logen Seat Vaults"}
           </h1>
           <p className="mt-1 text-xs text-slate-300">
             {isId ? (

@@ -1,6 +1,6 @@
 [package]
-name = "pusaka-core"
-description = "Pure state machines and arithmetic for Pusaka (no NEAR dependencies)."
+name = "logen-core"
+description = "Pure state machines and arithmetic for Logen (no NEAR dependencies)."
 version.workspace = true
 edition.workspace = true
 license.workspace = true

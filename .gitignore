@@ -1,5 +1,5 @@
 # =============================================================================
-# Pusaka — Security & Private Files (NEVER COMMIT)
+# Logen — Security & Private Files (NEVER COMMIT)
 # =============================================================================
 # NEAR private keys, keystores, and account credentials
 .near-credentials/
@@ -31,7 +31,7 @@ submission.json
 .submission*
 HACKATHON.md
 10-nfts.md
-Pusaka PRD dan Threat Model.md
+Logen PRD dan Threat Model.md
 .playwright-cli/
 
 # =============================================================================

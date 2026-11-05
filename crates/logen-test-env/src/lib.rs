@@ -1,5 +1,5 @@
 //! Cross-platform in-memory NEAR VM host environment (`near-sys` symbols) for running
-//! `pusaka-vault` and `pusaka-registry` tests natively on Windows, macOS, and Linux without
+//! `logen-vault` and `logen-registry` tests natively on Windows, macOS, and Linux without
 //! requiring Unix-only `near-vm-runner` / `rustix`.
 //!
 //! Never compiled on `wasm32-unknown-unknown`.
@@ -31,7 +31,7 @@ pub struct MockContext {
 impl Default for MockContext {
     fn default() -> Self {
         Self {
-            current_account_id: "pusaka.testnet".to_string(),
+            current_account_id: "logen.testnet".to_string(),
             signer_account_id: "alice.testnet".to_string(),
             predecessor_account_id: "alice.testnet".to_string(),
             input: Vec::new(),

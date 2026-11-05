@@ -6,10 +6,10 @@ export function SiteFooter() {
     <footer className="border-t border-line">
       <div className="mx-auto flex w-full max-w-page flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-end md:justify-between">
         <div className="flex items-start gap-3">
-          <SeatGlyph tokenId="pusaka-club-footer" innerDots={6} size={28} />
+          <SeatGlyph tokenId="logen-club-footer" innerDots={6} size={28} />
           <div>
             <div className="font-display text-14 font-semibold uppercase tracking-[0.06em] text-paper">
-              Pusaka
+              Logen
             </div>
             <p className="mt-1 max-w-[38ch] text-12 leading-relaxed text-paper-muted">
               A members club where every seat is an NFT with its own keyless wallet.

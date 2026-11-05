@@ -52,12 +52,12 @@ export function Navbar() {
         <Link
           href="/"
           className="flex min-w-0 items-center gap-3 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
-          aria-label="Pusaka home"
+          aria-label="Logen home"
         >
-          <SeatGlyph tokenId="pusaka-club" innerDots={6} size={26} />
+          <SeatGlyph tokenId="logen-club" innerDots={6} size={26} />
           <span className="flex items-baseline gap-2">
             <span className="font-display text-16 font-semibold uppercase tracking-[0.06em] text-paper">
-              Pusaka
+              Logen
             </span>
             <span className="hidden font-mono text-[9px] uppercase tracking-label text-paper-muted sm:inline">
               Members club

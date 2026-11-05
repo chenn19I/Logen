@@ -1,6 +1,6 @@
 use core::fmt;
 
-/// Every rejection in Pusaka maps to one stable code. Contracts panic with
+/// Every rejection in Logen maps to one stable code. Contracts panic with
 /// `"<CODE>: <detail>"`, the Attack Lab matches on the code, and the README's threat
 /// table names the same codes.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,5 +1,5 @@
-// Pure TypeScript port of `pusaka-core` Receipt-Interleaving Explorer & Threat Matrix (A1-A12)
-// Mirrors `crates/pusaka-core/src/vault.rs`, `index.rs`, and `tests/interleavings.rs`.
+// Pure TypeScript port of `logen-core` Receipt-Interleaving Explorer & Threat Matrix (A1-A12)
+// Mirrors `crates/logen-core/src/vault.rs`, `index.rs`, and `tests/interleavings.rs`.
 
 export interface ThreatScenario {
   id: string;
@@ -133,7 +133,7 @@ export const THREAT_MODEL_A1_A12: ThreatScenario[] = [
     title: "Direct external call to `v_rotate`, `v_list`, `v_cancel`, or `v_settle_sale` bypassing registry",
     indonesianTitle: "Panggilan langsung ke fungsi internal vault (`v_rotate`, `v_settle_sale`) tanpa lewat registry",
     vector:
-      "Attacker calls `s001.pusaka.testnet::v_rotate` directly from their wallet to seize ownership without owning the NFT.",
+      "Attacker calls `s001.logen.testnet::v_rotate` directly from their wallet to seize ownership without owning the NFT.",
     control:
       "Strict Parent Predecessor Check: Every `v_*` method checks `env::predecessor_account_id() == registry_id` (derived from parent namespace) and panics with `E_ONLY_REGISTRY`.",
     errorCode: "E_ONLY_REGISTRY",
@@ -274,10 +274,10 @@ export function createSimulatorPresets(): SimScenarioPreset[] {
     {
       id: "s1_payout_race",
       title: "S1 · Sale in the Middle of a Payout (Track Requirement R4)",
-      subtitle: "75,600 receipt interleavings proved in pusaka-core",
+      subtitle: "75,600 receipt interleavings proved in logen-core",
       totalInterleavingsInRustTest: 75600,
       description:
-        "Alice lists s001.pusaka.testnet (balance 20 NEAR, reserve 4 NEAR) for 100 NEAR with min_balance = 10 NEAR. While Bob's buy_seat(100 NEAR) is in flight, a fan buys a 50 NEAR event ticket, someone triggers claim(), Alice tries to withdraw(), and Alice's delegate agent tries to delegate_withdraw(). Step through the receipts in ANY order!",
+        "Alice lists s001.logen.testnet (balance 20 NEAR, reserve 4 NEAR) for 100 NEAR with min_balance = 10 NEAR. While Bob's buy_seat(100 NEAR) is in flight, a fan buys a 50 NEAR event ticket, someone triggers claim(), Alice tries to withdraw(), and Alice's delegate agent tries to delegate_withdraw(). Step through the receipts in ANY order!",
       initialWorld: {
         vaultOwner: "alice.testnet",
         vaultSeq: 0,
@@ -517,7 +517,7 @@ export function createSimulatorPresets(): SimScenarioPreset[] {
     {
       id: "s2_bait_and_switch",
       title: "S2 · Bait-and-Switch Relist Attack",
-      subtitle: "4,620 receipt interleavings proved in pusaka-core",
+      subtitle: "4,620 receipt interleavings proved in logen-core",
       totalInterleavingsInRustTest: 4620,
       description:
         "Alice lists s001 for 100 NEAR promising min_balance = 10 NEAR (nonce=1). While Bob's buy_seat(nonce=1) is in flight, Alice cancels the listing, drains 16 NEAR from the vault, and relists at 100 NEAR with min_balance = 0 (nonce=2). Try ordering Alice's cancel+drain+relist before Bob's settlement!",

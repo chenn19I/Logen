@@ -1,6 +1,6 @@
 [package]
-name = "pusaka-registry"
-description = "Pusaka NEP-171 registry, seat sub-account factory, O(1) revenue accumulator, safe secondary market, and pull ledgers."
+name = "logen-registry"
+description = "Logen NEP-171 registry, seat sub-account factory, O(1) revenue accumulator, safe secondary market, and pull ledgers."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -13,10 +13,10 @@ near-sdk = { workspace = true }
 borsh = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-pusaka-core = { workspace = true, features = ["borsh"] }
+logen-core = { workspace = true, features = ["borsh"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-pusaka-test-env = { workspace = true }
+logen-test-env = { workspace = true }
 
 [dev-dependencies]
-pusaka-vault = { path = "../vault" }
+logen-vault = { path = "../vault" }

@@ -1,4 +1,4 @@
-# Pusaka Threat Model & Formal Invariants
+# Logen Threat Model & Formal Invariants
 
 **Specification Version:** `2.0` · **Item Standard:** `sharded-item-1.0.0` · **Collection Standard:** `NEP-171 / NEP-177 / NEP-181 / NEP-297`
 
@@ -12,7 +12,7 @@ A membership NFT that carries its own wallet must guarantee one property above a
 
 On NEAR Protocol, cross-contract calls execute asynchronously across multiple blocks and receipts, and a smart contract **cannot enumerate the access keys on its own account**. Therefore, key-rotation wallets cannot prove to a secondary buyer that no backup key was left behind.
 
-**Pusaka** eliminates access keys entirely:
+**Logen** eliminates access keys entirely:
 - Every seat sub-account (`sNNN.<registry>` or `<handle>.<registry>`) is created in a single atomic batch receipt (`CreateAccount` → `Transfer` → `DeployContract` → `FunctionCall("init")`) with **zero `AddKey` actions** (`K1`).
 - The parent registry account is sealed after deployment (`K1`, `K7`).
 - Authority lives exclusively in `VaultCore` on the seat sub-account (`K2`), guarded by a monotonic `rotation_seq` and `listing_nonce`.
@@ -21,7 +21,7 @@ On NEAR Protocol, cross-contract calls execute asynchronously across multiple bl
 
 ## 2. Formal Invariants Verified Across 80,620 Receipt Interleavings
 
-The receipt-interleaving explorer ([`crates/pusaka-core/tests/interleavings.rs`](../crates/pusaka-core/tests/interleavings.rs)) models every cross-contract receipt and checks seven invariants after every step and at every terminal leaf:
+The receipt-interleaving explorer ([`crates/logen-core/tests/interleavings.rs`](../crates/logen-core/tests/interleavings.rs)) models every cross-contract receipt and checks seven invariants after every step and at every terminal leaf:
 
 | Invariant | Statement |
 | --- | --- |
@@ -37,7 +37,7 @@ The receipt-interleaving explorer ([`crates/pusaka-core/tests/interleavings.rs`]
 
 ## 3. Seller & Protocol Threat Matrix (A1–A12)
 
-| ID | Threat / Attack Vector | Mechanism Attempted | Defense in Pusaka | Error Code | Test Coverage |
+| ID | Threat / Attack Vector | Mechanism Attempted | Defense in Logen | Error Code | Test Coverage |
 | --- | --- | --- | --- | --- | --- |
 | **A1** | **Direct `v_rotate` Bypass** | Seller or attacker calls `v_rotate`, `v_list`, `v_cancel`, or `v_settle_sale` directly on `s001.<registry>`. | `assert_registry()` derives the parent account ID from `env::current_account_id()` and requires `env::predecessor_account_id() == registry`. | `E_ONLY_REGISTRY` | `attack_a1_direct_v_rotate_bypass_blocked` |
 | **A2** | **Drain Vault While Listed** | Seller lists seat with 2 NEAR in vault, then calls `vault.withdraw` or `set_delegate` while a buyer's transaction is in flight. | `v_list` transitions vault to `Status::Listed`. `authorize_withdraw` and `set_delegate` reject all calls while `is_frozen(now)` is true. | `E_FROZEN` | `attack_a2_seller_withdraw_while_listed_blocked`, `s1_sale_in_the_middle_of_a_payout` |
@@ -59,7 +59,7 @@ The receipt-interleaving explorer ([`crates/pusaka-core/tests/interleavings.rs`]
 The holder-only lounge (`/lounge` and `/api/gate/*`) enforces five server-side controls:
 
 - **D1 — Stale Session After Transfer:** Session cookies bind `{ accountId, tokenId, rotationSeq, exp }`. Every `GET /api/gate/content` re-queries `registry.get_seat` and `vault.nft_item_info` at `finality: "final"` and immediately returns `403` if `rotation_seq` or `owner_id` changed.
-- **D2 — Signature Replay:** `POST /api/gate/challenge` generates a fresh 32-byte random nonce bound to an HMAC-signed short-lived challenge cookie. NEP-413 verification hashes the exact Borsh payload (`tag = 2^31 + 413`, `message`, `nonce`, `recipient = "pusaka-lounge"`, `callbackUrl = None`).
+- **D2 — Signature Replay:** `POST /api/gate/challenge` generates a fresh 32-byte random nonce bound to an HMAC-signed short-lived challenge cookie. NEP-413 verification hashes the exact Borsh payload (`tag = 2^31 + 413`, `message`, `nonce`, `recipient = "logen-lounge"`, `callbackUrl = None`).
 - **D3 — Unbound / Revoked Key:** `POST /api/gate/verify` calls NEAR RPC `view_access_key` at `finality: "final"` to confirm the Ed25519 public key that signed the NEP-413 challenge is currently an active `FullAccess` key on `accountId`.
 - **D4 — Spoofed Collection Item:** The gate pins `REGISTRY_ID` from server configuration and verifies Tier T0 namespace (`<label>.<REGISTRY_ID>`) before querying the seat vault.
 - **D5 — Mid-Transfer Race Window (`IndexBehind`):** Between `vault.v_rotate` (Receipt 2) and `registry.on_rotated` (Receipt 3), `vault.rotation_seq > index.rotation_seq`. `evaluateGatePairCheck` **fails closed** whenever `pairCheck != Consistent`, instructing the client to wait for finality or invoke `sync(token_id)`.

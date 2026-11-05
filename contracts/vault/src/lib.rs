@@ -1,4 +1,4 @@
-//! # pusaka-vault
+//! # logen-vault
 //!
 //! Deployed onto every seat sub-account (`sNNN.<registry>` or `<handle>.<registry>`), with **zero**
 //! access keys on the sub-account. The vault is the canonical source of truth for:
@@ -17,12 +17,12 @@ use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near_bindgen, AccountId, NearToken, PanicOnDefault, Promise};
-use pusaka_core::{
+use logen_core::{
     CoreError, Delegate, Listing, Spender, VaultCore, ITEM_SPEC,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-use pusaka_test_env as _;
+use logen_test_env as _;
 
 /// Default reserve kept on the seat sub-account to cover state storage (0.05 NEAR).
 pub const DEFAULT_STORAGE_RESERVE: u128 = 50_000_000_000_000_000_000_000;
@@ -485,23 +485,23 @@ impl VaultContract {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pusaka_test_env::set_context;
+    use logen_test_env::set_context;
 
     const NEAR: u128 = 10u128.pow(24);
     const S_NS: u64 = 1_000_000_000;
 
     fn ctx(predecessor: &str, deposit: u128, balance: u128, ts_ns: u64) {
-        set_context("s001.pusaka.testnet", predecessor, deposit, balance, ts_ns);
+        set_context("s001.logen.testnet", predecessor, deposit, balance, ts_ns);
     }
 
     #[test]
     fn unit_init_and_item_info_derives_parent() {
-        ctx("pusaka.testnet", 0, 2 * NEAR, 10 * S_NS);
+        ctx("logen.testnet", 0, 2 * NEAR, 10 * S_NS);
         let v = VaultContract::init("alice.testnet".parse().unwrap(), None);
         let info = v.nft_item_info();
         assert_eq!(info.spec, "sharded-item-1.0.0");
-        assert_eq!(info.collection_id.as_str(), "pusaka.testnet");
-        assert_eq!(info.token_id.as_str(), "s001.pusaka.testnet");
+        assert_eq!(info.collection_id.as_str(), "logen.testnet");
+        assert_eq!(info.token_id.as_str(), "s001.logen.testnet");
         assert_eq!(info.owner_id.as_str(), "alice.testnet");
         assert_eq!(info.status, "Active");
         assert_eq!(info.rotation_seq, 0);
@@ -510,7 +510,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "E_ONLY_REGISTRY")]
     fn unit_rejects_direct_v_rotate_from_attacker() {
-        ctx("pusaka.testnet", 0, 2 * NEAR, 10 * S_NS);
+        ctx("logen.testnet", 0, 2 * NEAR, 10 * S_NS);
         let mut v = VaultContract::init("alice.testnet".parse().unwrap(), None);
         ctx("mallory.testnet", 0, 2 * NEAR, 11 * S_NS);
         v.v_rotate(
@@ -523,7 +523,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "E_FROZEN")]
     fn unit_listing_freezes_owner_withdraw() {
-        ctx("pusaka.testnet", 0, 2 * NEAR, 10 * S_NS);
+        ctx("logen.testnet", 0, 2 * NEAR, 10 * S_NS);
         let mut v = VaultContract::init("alice.testnet".parse().unwrap(), None);
         v.v_list(
             "alice.testnet".parse().unwrap(),
@@ -538,13 +538,13 @@ mod tests {
 
     #[test]
     fn unit_settle_sale_rotates_and_kills_delegate() {
-        ctx("pusaka.testnet", 0, 3 * NEAR, 10 * S_NS);
+        ctx("logen.testnet", 0, 3 * NEAR, 10 * S_NS);
         let mut v = VaultContract::init("alice.testnet".parse().unwrap(), None);
 
         ctx("alice.testnet", 1, 3 * NEAR, 11 * S_NS);
         v.set_delegate("bot.testnet".parse().unwrap(), U128(NEAR), 600);
 
-        ctx("pusaka.testnet", 0, 3 * NEAR, 12 * S_NS);
+        ctx("logen.testnet", 0, 3 * NEAR, 12 * S_NS);
         let listed = v.v_list(
             "alice.testnet".parse().unwrap(),
             U128(5 * NEAR),

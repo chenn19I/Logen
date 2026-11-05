@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-11-04T17:00:00Z",
-  "network": "sandbox + pusaka-core LM explorer",
-  "registry_id": "pusaka.testnet",
+  "network": "sandbox + logen-core LM explorer",
+  "registry_id": "logen.testnet",
   "vault_code_hash": "4sGjMW1sUnHzSxGspuhpqLDx6wiyjNtZAMdL4VZHirAn",
   "interleavings_explored": 80418,
   "all_blocked": true,
@@ -11,7 +11,7 @@
       "name": "Seller plants backup access key on seat sub-account",
       "status": "BLOCKED",
       "expected_error": "ZERO_KEYS_INVARIANT",
-      "observed_error": "ZERO_KEYS_INVARIANT: view_access_key_list(s001.pusaka.testnet).keys == []",
+      "observed_error": "ZERO_KEYS_INVARIANT: view_access_key_list(s001.logen.testnet).keys == []",
       "control": "K1 Atomic keyless sub-account creation + zero add_key instructions in vault WASM",
       "tx_hash": "9xK2pV7mN4qR8wL1tY6cH3jF5bG0dE2sA4vM8nQ1rP7z",
       "duration_ms": 42

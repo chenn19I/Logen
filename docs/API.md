@@ -1,10 +1,10 @@
-# Pusaka contract API
+# Logen contract API
 
 All balances are yoctoNEAR encoded as decimal **strings**. All timestamps exposed by views are
 **milliseconds since epoch as JSON numbers** (`*_ms`). Sequence numbers / nonces are JSON numbers.
-Seat ids (`token_id`) are full NEAR account ids, e.g. `s007.pusaka.testnet`.
+Seat ids (`token_id`) are full NEAR account ids, e.g. `s007.logen.testnet`.
 
-## Registry (`<registry>`, e.g. `pusaka.testnet`) — sealed, no access keys, no upgrade path
+## Registry (`<registry>`, e.g. `logen.testnet`) — sealed, no access keys, no upgrade path
 
 ### NEP-171 / 177 / 181 views
 
@@ -17,7 +17,7 @@ Seat ids (`token_id`) are full NEAR account ids, e.g. `s007.pusaka.testnet`.
 | `nft_supply_for_owner` | `{account_id}` | `"1"` |
 | `nft_tokens_for_owner` | `{account_id, from_index?, limit?}` | `Token[]` |
 
-### Pusaka views
+### Logen views
 
 | Method | Args | Returns |
 | --- | --- | --- |

@@ -5,7 +5,7 @@
 //! between the sale's settlement and its callback, a seller's withdrawal can race a buyer's
 //! purchase, a relist can race a buy that quoted the old listing, and so on.
 //!
-//! This test models every Pusaka receipt as a step that runs the **same `pusaka-core` code the
+//! This test models every Logen receipt as a step that runs the **same `logen-core` code the
 //! contracts run**, then explores *every* possible interleaving of a scenario's transactions
 //! (each transaction's own receipts stay in order, as on NEAR). After every step and at every
 //! leaf it checks the invariants that together say "a seller can never keep the money":
@@ -21,7 +21,7 @@
 //!   `vault_final = vault_at_settlement + landed_after - buyer_outflows`.
 //! * **I7 claims go to the vault** – the pool share never reaches a person's wallet directly.
 
-use pusaka_core::{
+use logen_core::{
     math::apply_bps, Accumulator, Bps, IndexEntry, ListingMirror, Spender, VaultCore, VaultSnapshot,
 };
 use std::collections::BTreeMap;
@@ -135,7 +135,7 @@ struct Ctx {
     amount: u128,
     seq: u64,
     nonce: u64,
-    sale: Option<pusaka_core::SaleOutcome>,
+    sale: Option<logen_core::SaleOutcome>,
     who: String,
 }
 
@@ -549,8 +549,8 @@ fn s4_lost_callback_then_sync() {
     }
     assert_eq!(w0.vault.owner, "bob");
     assert_eq!(w0.index.owner, "alice"); // index lags, never leads
-    assert_eq!(pusaka_core::pair_check(&w0.index.owner, w0.index.seq, &w0.vault.owner, w0.vault.rotation_seq),
-        pusaka_core::PairCheck::IndexBehind);
+    assert_eq!(logen_core::pair_check(&w0.index.owner, w0.index.seq, &w0.vault.owner, w0.vault.rotation_seq),
+        logen_core::PairCheck::IndexBehind);
 
     let txs = vec![
         tx_sync(),

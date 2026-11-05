@@ -1,4 +1,4 @@
-name: Pusaka Verification & Judge Suite
+name: Logen Verification & Judge Suite
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
         run: cargo test --workspace
 
       - name: Build Release WASM Smart Contracts
-        run: cargo build --target wasm32-unknown-unknown --release -p pusaka-vault -p pusaka-registry
+        run: cargo build --target wasm32-unknown-unknown --release -p logen-vault -p logen-registry
 
   web-and-gate:
     name: Web App, NEP-413 Gate & Pair-Check Tests

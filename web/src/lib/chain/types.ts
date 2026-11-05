@@ -100,4 +100,4 @@ export interface ChainPort {
   subscribe(listener: () => void): () => void;
 }
 
-export const DEMO_ACCOUNT = "demo.pusaka.testnet";
+export const DEMO_ACCOUNT = "demo.logen.testnet";

@@ -13,7 +13,7 @@ export async function POST() {
   const nonceBase64 = nonceBytes.toString("base64");
   const issuedAtMs = Date.now();
   const expiresAtMs = issuedAtMs + 5 * 60 * 1000; // 5 minutes TTL
-  const message = `Pusaka Kraton Lounge Authentication · Issued ${new Date(
+  const message = `Logen Kraton Lounge Authentication · Issued ${new Date(
     issuedAtMs
   ).toISOString()}`;
 

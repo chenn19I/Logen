@@ -4,7 +4,7 @@ all: judge
 
 # Build NEAR smart contracts to WebAssembly (wasm32-unknown-unknown)
 build:
-	cargo build --target wasm32-unknown-unknown --release -p pusaka-vault -p pusaka-registry
+	cargo build --target wasm32-unknown-unknown --release -p logen-vault -p logen-registry
 
 # Run all Rust unit, property, receipt-interleaving (LM), and cross-contract tests
 test:
@@ -20,16 +20,16 @@ web-build:
 
 # One-command reproducibility suite for Claude Code, Codex, and human judges
 judge:
-	node scripts/pusaka-cli.mjs judge
+	node scripts/logen-cli.mjs judge
 
 # Run the Attack Lab suite (A1-A12 seller & gate exploits) and generate attack-report.json
 attack:
-	node scripts/pusaka-cli.mjs attack
+	node scripts/logen-cli.mjs attack
 
 # Reproducible Linux container verification (runs L0 + LM + L1 near-workspaces sandbox)
 docker-judge:
-	docker build -t pusaka-builder -f docker/Dockerfile docker
-	docker run --rm -v "$(CURDIR):/work" pusaka-builder sh -c "cargo test --workspace && cargo build --target wasm32-unknown-unknown --release && cargo test --manifest-path tests/sandbox/Cargo.toml"
+	docker build -t logen-builder -f docker/Dockerfile docker
+	docker run --rm -v "$(CURDIR):/work" logen-builder sh -c "cargo test --workspace && cargo build --target wasm32-unknown-unknown --release && cargo test --manifest-path tests/sandbox/Cargo.toml"
 
 clean:
 	cargo clean

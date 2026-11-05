@@ -157,7 +157,7 @@ function getProtectedLoungePayload(session: LoungeSessionPayload) {
     boundRotationSeq: session.rotationSeq,
     perks: [
       {
-        code: "PUSAKA-KRATON-VIP",
+        code: "LOGEN-KRATON-VIP",
         title: "20% Member Ticket Discount Active",
         description: `Your seat (${session.tokenId}) automatically unlocks discounted pricing via registry.ticket_price_for(event_id, "${session.accountId}").`,
       },

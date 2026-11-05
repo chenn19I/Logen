@@ -1,8 +1,8 @@
 import crypto from "crypto";
 
-export const CHALLENGE_COOKIE_NAME = "pusaka_gate_challenge";
-export const SESSION_COOKIE_NAME = "pusaka_lounge_session";
-export const LOUNGE_RECIPIENT = "pusaka-lounge";
+export const CHALLENGE_COOKIE_NAME = "logen_gate_challenge";
+export const SESSION_COOKIE_NAME = "logen_lounge_session";
+export const LOUNGE_RECIPIENT = "logen-lounge";
 
 export interface ChallengeCookiePayload {
   nonceHex: string; // 64 hex chars = 32 bytes
@@ -27,7 +27,7 @@ function getSecret(overrideSecret?: string): string {
   return (
     overrideSecret ||
     process.env.SESSION_SECRET ||
-    "pusaka-dev-hmac-secret-32-bytes-minimum-key"
+    "logen-dev-hmac-secret-32-bytes-minimum-key"
   );
 }
 

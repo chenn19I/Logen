@@ -65,7 +65,7 @@ export async function nearRpcQuery<T>(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jsonrpc: "2.0",
-          id: "pusaka",
+          id: "logen",
           method: "query",
           params,
         }),
@@ -122,7 +122,7 @@ export async function getFinalBlock(): Promise<{
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jsonrpc: "2.0",
-          id: "pusaka-block",
+          id: "logen-block",
           method: "block",
           params: { finality: "final" },
         }),
