@@ -21,7 +21,7 @@ Most "NFT wallets" transfer control by adding a new access key for the buyer and
 
 ## 2. Live NEAR Testnet Deployment (`pusaka-c10747.testnet`)
 
-Pusaka is deployed and verified live on **NEAR Testnet** (configured by default in `web/` and `docs/deployment.testnet.json`):
+Pusaka is deployed and verified live on **NEAR Testnet** (configured by default in `web/` and [`docs/deployment.testnet.json`](./docs/deployment.testnet.json)):
 
 | Role | Account ID | On-Chain Status |
 | --- | --- | --- |
@@ -55,7 +55,7 @@ Pusaka is deployed and verified live on **NEAR Testnet** (configured by default 
 
 ## 3. Reproduce in One Command ("Do X — See Y")
 
-Pusaka is structured so AI screeners (Claude Code / Codex) and human judges can verify every claim from a clean clone.
+Pusaka is structured so AI screeners (Claude Code & Codex) and human judges can verify every claim from a clean clone, both on-chain and in interactive demo mode.
 
 ### Prerequisites
 - **Rust `1.86.0`** with `wasm32-unknown-unknown` target (`rustup target add wasm32-unknown-unknown`)
@@ -68,14 +68,26 @@ Pusaka is structured so AI screeners (Claude Code / Codex) and human judges can 
 | **1. Full Judge Suite** | `node scripts/pusaka-cli.mjs judge` *(or `make judge`)* | Runs **41 Rust tests** (including **80,620** cross-contract receipt interleavings), compiles `pusaka_vault.wasm` & `pusaka_registry.wasm`, prints their SHA-256 Base58 code hashes, generates `web/public/attack-report.json`, and runs the **Vitest NEP-413 & Pair-Check test suite**. |
 | **2. Run Attack Lab** | `node scripts/pusaka-cli.mjs attack` *(or `make attack`)* | Runs seller & gate exploit scenarios **A1–A12**; every attack finishes `BLOCKED` with its deterministic error code (`E_ONLY_REGISTRY`, `E_FROZEN`, `E_NONCE_MISMATCH`, `E_NO_DELEGATE`, `E_NOT_OWNER`, `E_INSUFFICIENT_BALANCE`, `E_UNSUPPORTED`). |
 | **3. Explore Receipt Interleavings** | `cargo test -p pusaka-core --test interleavings -- --nocapture` | Exhaustively explores **75,600** receipt orderings of a *sale in the middle of a payout* (`s1_sale_in_the_middle_of_a_payout`), **4,620** orderings of a *bait-and-switch relist* (`s2_bait_and_switch_relist`), double-transfer races, lost callbacks + `sync`, expiry races, and 400 randomized schedules. |
-| **4. Start Web App** | `cd web && pnpm install && pnpm dev` | Opens Pusaka UI at `http://localhost:3000` with live NEAR Testnet RPC inspection, Seat Vault controls, Safe Market, Events, NEP-413 Holder Lounge, Verification Dashboard, and interactive Attack Lab. |
+| **4. Start Web App** | `cd web && pnpm install && pnpm dev` | Opens Pusaka at `http://localhost:3000`. Connect a NEAR Testnet wallet or click **"Preview with demo data"** (`Demo` toggle in the navbar) to test the Seat Wallet (`/`), Holder Lounge (`/lounge`), Safe Market (`/market`), Per-Seat History (`/seat/[id]`), 5-Row On-Chain Proof Verifier (`/verify`), and Attack Lab (`/lab`). |
 | **5. Linux Sandbox (Optional)** | `make docker-judge` | Builds the pinned `rust:1.86-bookworm` container and runs L0 + LM + L1 `near-workspaces` local validator node tests (`tests/sandbox`). |
+
+### Web Application Routes (`web/src/app`)
+
+| Route | Purpose |
+| --- | --- |
+| `/` | **Seat Wallet**: View seat balance & withdrawable NEAR, open the 5-row on-chain proof drawer (`VerifyDrawer`), withdraw funds, list/delist seat with confirmation sheets, or simulate a live sale handoff (`HandoffOverlay`). |
+| `/lounge` | **Holder-Only Lounge (Track Requirement R2)**: Gated by NEP-413 challenge signature + RPC `FullAccess` check + per-request same-final-block T2 pair check (`/api/gate/{challenge,verify,content}`). |
+| `/market` | **Safe Secondary Market**: Browse listed seats with inside-balance vs. asking-price comparison bars (`CompareBar`) and atomic `buy_seat` settlement. |
+| `/seat/[id]` | **Per-Seat History (Track Requirement R3)**: Monthly ledger of **All**, **Earned** (event pool shares), **Paid out** (vault outflows), and **Holders** (ownership timeline with `rotation_seq` & acquisition type). |
+| `/verify` | **On-Chain Proof Verifier**: Interactive 5-row verification table checking `Access keys (0)`, `Pinned code hash`, `Same-block identity pair-check`, `Canonical holder`, and `Registry seal status`. |
+| `/lab` | **Interactive Attack Lab**: Run and inspect all 12 seller & gate exploit scenarios (`A1–A12`) grouped by *Before the sale*, *During the sale*, *After the sale*, and *Keys and signatures*, linked to automated tests and live Testnet transactions. |
+| `/events` · `/seats` · `/treasury` · `/kit` | Club event ticket sales, full seat directory, O(1) accumulator & treasury split inspector, and UI component/token kit. |
 
 ---
 
-## 3. How Control Passes on Transfer & Why the Old Owner Cannot Keep Access (Track Requirement R1)
+## 4. How Control Passes on Transfer & Why the Old Owner Cannot Keep Access (Track Requirement R1)
 
-### 3.1 Step-by-Step Receipt Flow on Transfer (`nft_transfer`)
+### 4.1 Step-by-Step Receipt Flow on Transfer (`nft_transfer`)
 
 ```text
 Owner A                     Registry (pusaka.<net>)                Seat Vault (s001.pusaka.<net>)
@@ -103,7 +115,7 @@ Owner A                     Registry (pusaka.<net>)                Seat Vault (s
    It then sets `vault.owner = B`, increments `vault.rotation_seq = n + 1`, and clears `vault.delegate = None`. **Control moves at this exact receipt.** Any subsequent call by `A` or `A`'s former delegate to the vault fails immediately.
 3. **Receipt 3 (`registry.on_rotated` & `sync` healing)**: The callback updates the registry's NEP-171 index to `(B, n + 1)`, appends to the seat's holder timeline, and emits the NEP-297 `nft_transfer` event. If the callback ever runs out of gas, the vault is already at `(B, n + 1)` while the index is at `(A, n)`. Anyone can call `registry.sync(token_id)` (design decision `K8`), which reads `vault.vault_state()` and advances the index only when `vault.rotation_seq > index.seq` (never rolling backwards).
 
-### 3.2 Six Controls That Stop a Former Owner from Keeping Access
+### 4.2 Six Controls That Stop a Former Owner from Keeping Access
 
 | Vector Attempted by Seller | Why It Fails in Pusaka |
 | --- | --- |
@@ -116,7 +128,7 @@ Owner A                     Registry (pusaka.<net>)                Seat Vault (s
 
 ---
 
-## 4. Threat Model & Attack Lab Matrix (R0 & R4)
+## 5. Threat Model & Attack Lab Matrix (R0 & R4)
 
 Every threat documented in [`docs/THREAT_MODEL.md`](./docs/THREAT_MODEL.md) is mapped to an invariant, an error code, and an automated test executed by `make judge` and `make attack`:
 
@@ -133,12 +145,12 @@ Every threat documented in [`docs/THREAT_MODEL.md`](./docs/THREAT_MODEL.md) is m
 | **A9** | Attacker calls `vault.init` again or tries to overwrite pinned `vault_wasm` | `#[init]` + parent check on vault; `pin_vault_wasm` locks permanently after first call | `E_UNSUPPORTED` / `E_ONLY_REGISTRY` | `unit_rejects_direct_v_rotate_from_attacker` |
 | **A10** | Seller fires two concurrent `nft_transfer` calls (`double-transfer race`) | `v_rotate` checks `expected_seq == rotation_seq`; second receipt aborts | `E_WRONG_SEQ` | `s3_double_transfer_race` (180 paths) |
 | **A11** | Callback runs out of gas leaving index behind vault; stale owner tries to act | `registry.sync(token_id)` heals index forward-only; gate fails closed while `vault.seq > index.seq` | `DIVERGENT_IGNORED` / Healed | `attack_a11_permissionless_sync_heals_lagging_index_and_never_rolls_back` & `s4_lost_callback_then_sync` |
-| **A12** | `nft_transfer_call` rollback drain or seller buying own listing | `nft_transfer_call` disabled (`K5`); self-buy rejected | `E_UNSUPPORTED` / `E_BUYER_IS_SELLER` | `unit_nft_transfer_call_is_disabled` |
+| **A12** | `nft_transfer_call` rollback drain or seller buying own listing | `nft_transfer_call` is disabled (`K5`); self-buy rejected | `E_UNSUPPORTED` / `E_BUYER_IS_SELLER` | `unit_nft_transfer_call_is_disabled` |
 | **D1–D5** | Web gate replay, forged key, stale session, or mid-transfer race on `/lounge` | Server-issued HMAC nonce challenge + Ed25519 NEP-413 verify + RPC `FullAccess` check + per-request same-final-block T2 pair check | `401` / `403` Fail-Closed | `web/src/lib/__tests__/pusaka.test.ts` |
 
 ---
 
-## 5. Architecture & Repository Layout
+## 6. Architecture & Repository Layout
 
 ```text
 pusaka/
@@ -163,8 +175,15 @@ pusaka/
 │   └── deploy-testnet.mjs    # Pure-Node Ed25519 + Borsh NEAR Testnet provisioner, deployer & live attack runner
 ├── docs/
 │   ├── API.md                # Complete contract JSON interface & error code reference
-│   └── THREAT_MODEL.md       # Formal invariants (I1-I7) and Threat Model (A1-A12, D1-D5)
-└── web/                      # Next.js 15 App Router UI (Seat Vaults, Safe Market, Events, NEP-413 Lounge, Attack Lab)
+│   ├── THREAT_MODEL.md       # Formal invariants (I1-I7) and Threat Model (A1-A12, D1-D5)
+│   └── deployment.testnet.json # Live NEAR Testnet account IDs, code hashes & transaction hashes
+└── web/                      # Next.js 16 App Router UI (Seat Wallet, Lounge, Safe Market, History, Proof Verifier, Attack Lab)
+    ├── screenshots/          # Captured desktop & mobile UI states across all routes
+    ├── scripts/capture.mjs   # Automated screenshot capture script
+    └── src/
+        ├── app/              # App Router pages (/, /lounge, /market, /seat/[id], /verify, /lab, /events, /seats, /treasury, /kit)
+        ├── components/       # Seat cards, glyphs, proof drawer, confirmation sheets, handoff overlay & primitive UI
+        └── lib/              # Chain hooks, DemoProvider, NEP-413 verifier, T2 pair-check, NEAR RPC client & Vitest suite
 ```
 
 ### Compiled WASM Artifacts (`Rust 1.86.0`, `wasm32-unknown-unknown`, `opt-level = "z"`, `lto = true`, `strip = "symbols"`)
@@ -176,7 +195,7 @@ pusaka/
 
 ---
 
-## 6. Third-Party Verification Ladder (`sharded-item-1.0.0`)
+## 7. Third-Party Verification Ladder (`sharded-item-1.0.0`)
 
 Pusaka implements the four-tier verification ladder from the [Sharded NFT Items draft](https://github.com/houseofstake/tla-contracts/blob/main/docs/sharded-nft-items.md):
 
@@ -187,18 +206,18 @@ Pusaka implements the four-tier verification ladder from the [Sharded NFT Items 
 
 ---
 
-## 7. Disclosure of Libraries, Templates & AI Tooling (HACKATHON.md Q-005)
+## 8. Disclosure of Libraries, Templates & AI Tooling (HACKATHON.md Q-005)
 
 All Pusaka smart contracts (`pusaka-core`, `pusaka-vault`, `pusaka-registry`), the receipt-interleaving explorer, the NEP-413 + T2 pair-check gate, and the web application were built from scratch during the NEAR Hackathon window (Nov 2026).
 
 - **Open-source libraries used**:
   - Rust: `near-sdk` (`5.9.0`), `borsh` (`1.x`), `serde` (`1.x`), `serde_json` (`1.x`), `near-workspaces` (`0.16`, dev/sandbox).
-  - Web / TypeScript: `next` (`15.x`), `react` (`19.x`), `@noble/curves` / `tweetnacl` (Ed25519 verification), `lucide-react`, `tailwindcss`, `vitest`.
+  - Web / TypeScript: `next` (`16.4.5`), `react` (`19.3.1`), `@tanstack/react-query` (`5.106.0`), `@near-wallet-selector/*` (`8.9.15`), `near-api-js` (`5.0.1`), `@radix-ui/react-dialog` (`1.3.1`), `@radix-ui/react-switch` (`1.4.1`), `@radix-ui/react-tabs` (`1.2.1`), `framer-motion` (`14.9.1`), `tweetnacl` (`1.0.3`, Ed25519 verification), `lucide-react` (`0.460.0`), `tailwindcss` (`3.4.17`), `vitest` (`2.1.8`).
 - **Design reference**: The `nft_item_info()` view structure (`spec: "sharded-item-1.0.0"`) and T0–T3 verification ladder follow the public [Sharded NFT Items draft](https://github.com/houseofstake/tla-contracts/blob/main/docs/sharded-nft-items.md) linked in Track 10 (`10-nfts.md`). No code was copied from `tla-contracts`.
-- **AI coding tools**: Built with assistance from Claude / Gemini in Antigravity IDE for pair-programming, test generation, and UI scaffolding.
+- **AI coding tools**: Built with assistance from Claude / Gemini in Antigravity IDE for pair-programming, test generation, and UI implementation.
 
 ---
 
-## 8. License
+## 9. License
 
 Released under the [MIT License](./LICENSE).
