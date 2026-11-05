@@ -2,67 +2,374 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: dark;
-  --font-jakarta: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-jetbrains: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--line);
+  }
+
+  html {
+    background: var(--bg);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: var(--text-16);
+    line-height: var(--leading-body);
+    font-feature-settings: "ss01", "cv01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: var(--tracking-display);
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--bg-deep);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  input,
+  textarea {
+    font: inherit;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted);
+    opacity: 1;
+  }
+
+  hr {
+    border: 0;
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  /* Thin terminal scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+  }
 }
 
-body {
-  background-color: #06080d;
-  color: #f8fafc;
-  min-height: 100vh;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-}
+@layer components {
+  .mono-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-12);
+    line-height: 1.4;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--muted);
+  }
 
-/* Tight -0.03em architectural tracking for headings */
-h1, h2, h3, h4, .font-serif {
-  letter-spacing: -0.03em;
-}
+  .mono-value {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
 
-/* Tactile Bento Glass Surface utility */
-.bento-glass {
-  background: rgba(11, 15, 26, 0.8);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  border-left: 1px solid rgba(255, 255, 255, 0.05);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
+  .bracket-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-12);
+    line-height: 1.4;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--muted);
+  }
 
-/* Frozen Glass crystalline frost pattern for Listed / Frozen Vaults */
-.frozen-glass {
-  background: linear-gradient(
-      135deg,
-      rgba(245, 158, 11, 0.09) 0%,
-      rgba(11, 15, 26, 0.86) 42%,
-      rgba(56, 189, 248, 0.06) 100%
+  .panel {
+    background: var(--surface);
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .panel-sunken {
+    background: var(--surface-sunken);
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .hairline {
+    border-top: var(--hairline) solid var(--line);
+  }
+
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* A quiet terminal texture, used only behind the first screen. */
+  .terminal-grid {
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(236, 232, 216, 0.055) 1px,
+      transparent 0
     );
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
-  border-top: 1px solid rgba(245, 158, 11, 0.38);
-  border-left: 1px solid rgba(245, 158, 11, 0.14);
-  border-right: 1px solid rgba(245, 158, 11, 0.14);
-  border-bottom: 1px solid rgba(245, 158, 11, 0.12);
+    background-size: 24px 24px;
+    background-position: 0 0;
+  }
+
+  .surface-wash {
+    background:
+      linear-gradient(180deg, rgba(236, 232, 216, 0.025), transparent 45%),
+      var(--surface);
+  }
+
+  .sheet-shadow {
+    box-shadow: var(--shadow-sheet);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
 }
 
-/* Subtle custom scrollbar for Void Canvas */
-::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+@layer utilities {
+  .text-72 {
+    font-size: var(--text-72);
+    line-height: 0.95;
+  }
+
+  .text-40 {
+    font-size: var(--text-40);
+    line-height: 1.02;
+  }
+
+  .text-24 {
+    font-size: var(--text-24);
+    line-height: 1.15;
+  }
+
+  .text-16 {
+    font-size: var(--text-16);
+  }
+
+  .text-14 {
+    font-size: var(--text-14);
+  }
+
+  .text-12 {
+    font-size: var(--text-12);
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: #06080d;
+/* Signature motion. Every animation below is opt-in and disabled for reduced motion. */
+@keyframes dot-ping {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
-::-webkit-scrollbar-thumb {
-  background: #131e35;
-  border-radius: 9999px;
-  border: 1px solid rgba(0, 236, 151, 0.2);
+@keyframes stamp-in {
+  0% {
+    transform: scale(1.35) rotate(-4deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.96) rotate(-4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(-4deg);
+    opacity: 1;
+  }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #00ec97;
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes sheet-in-right {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes sheet-in-bottom {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.sheet-overlay {
+  animation: fade-in var(--dur-2) var(--ease) both;
+}
+
+.sheet-content {
+  animation: sheet-in-right var(--dur-3) var(--ease) both;
+}
+
+.sheet-content[data-side="bottom"] {
+  animation-name: sheet-in-bottom;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-dot-ping {
+  transform-origin: center;
+  animation: dot-ping var(--dur-3) var(--ease) both;
+}
+
+.animate-stamp-in {
+  animation: stamp-in var(--dur-3) var(--ease) both;
+}
+
+.animate-skeleton {
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-dot-ping,
+  .animate-stamp-in,
+  .animate-skeleton {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* NEAR wallet selector: bring the modal into the same room. */
+:root {
+  --wallet-selector-backdrop-bg: rgba(6, 8, 5, 0.78);
+}
+
+.near-wallet-selector-modal .modal-ui {
+  --heading-color: var(--text);
+  --text-color: var(--muted);
+  --sidebar-border-color: var(--line);
+  --wallet-option-border-color: var(--line);
+  --wallet-option-outline-color: var(--accent);
+  --close-button-bg-color: var(--surface-raised);
+  --close-button-fill-icon-color: var(--text);
+  --spinner-color: var(--accent);
+  --get-wallet-option-bg-color: var(--surface-sunken);
+  --get-wallet-option-bg-color-hover: var(--accent-soft);
+  --get-wallet-option-border-color: var(--line);
+  --get-wallet-outline-color: var(--accent);
+  --secondary-button-bg-color: var(--accent-soft);
+  --secondary-button-border-color: transparent;
+  --secondary-button-text-color: var(--accent);
+  --what-wallet-icon-color: var(--text);
+  --deprecated-icon-bg-color: var(--surface-raised);
+  --deprecated-icon-bg-color-selected: var(--accent);
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-family: var(--font-display);
+}
+
+.near-wallet-selector-modal .modal-ui h1,
+.near-wallet-selector-modal .modal-ui h2,
+.near-wallet-selector-modal .modal-ui h3 {
+  font-family: var(--font-display);
 }

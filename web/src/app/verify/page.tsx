@@ -1,325 +1,313 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import {
-  ShieldCheck,
-  CheckCircle2,
-  XCircle,
   AlertTriangle,
-  RefreshCw,
+  ArrowLeft,
+  Check,
+  CircleAlert,
   ExternalLink,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
 } from "lucide-react";
 import { useNear } from "@/components/NearProvider";
-import { KratonDivider } from "@/components/KawungOrnament";
-import {
-  EXPLORER_URL,
-  getNftTokens,
-  verifyKeylessProofOnChain,
-  viewAccount,
-} from "@/lib/near/rpc";
-import type { AccountViewResult, KeylessProofCheck } from "@/lib/near/types";
-import { formatYocto } from "@/lib/near/format";
+import { useDemo } from "@/lib/demo/DemoProvider";
+import { useProof, useSeats } from "@/lib/chain/hooks";
+import type { ProofRow } from "@/lib/chain/types";
+import { EXPLORER_URL } from "@/lib/near/rpc";
+import { formatTime, near, seatLabel } from "@/lib/utils";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Chip";
+import { Panel } from "@/components/ui/Panel";
+import { VerifyDrawer } from "@/components/seat/VerifyDrawer";
+import { SeatGlyph } from "@/components/seat/SeatGlyph";
 
-export default function GlobalVerifyPage() {
-  const {
-    lang,
-    registryId,
-    config,
-    parentKeysCount,
-    finalBlockHeight,
-    finalBlockHash,
-    refreshChainState,
-  } = useNear();
-  const isId = lang === "id";
+function RowMark({ row }: { row: ProofRow }) {
+  if (row.status === "ok") {
+    return (
+      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border border-[rgba(123,216,143,0.4)] bg-positive-soft text-positive">
+        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border border-[rgba(230,180,80,0.4)] bg-caution-soft text-caution">
+      <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+    </span>
+  );
+}
 
-  const [registryAccount, setRegistryAccount] =
-    useState<AccountViewResult | null>(null);
-  const [seatProofs, setSeatProofs] = useState<
-    Record<string, KeylessProofCheck>
-  >({});
-  const [seatIds, setSeatIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+export default function VerifyPage() {
+  const { accountId, openWalletModal } = useNear();
+  const { demo, demoAccount } = useDemo();
+  const currentAccount = demo ? demoAccount : accountId;
+  const seatsQuery = useSeats();
+  const seats = seatsQuery.data ?? [];
+  const [selectedId, setSelectedId] = useState<string>("");
+  const seat = seats.find((item) => item.tokenId === selectedId) ?? seats[0];
+  const proofQuery = useProof(seat?.tokenId);
 
-  const runGlobalVerification = useCallback(async () => {
-    setLoading(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [checkingRow, setCheckingRow] = useState<string | null>(null);
+  const [checkingAll, setCheckingAll] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+
+  const recheck = async (rowId?: string) => {
+    if (rowId) setCheckingRow(rowId);
+    else setCheckingAll(true);
+    setAnnouncement(rowId ? "Checking this row." : "Checking every row.");
     try {
-      await refreshChainState();
-      const [regAcct, tokens] = await Promise.all([
-        viewAccount(registryId).catch(() => null),
-        getNftTokens(registryId, "0", 50),
-      ]);
-      setRegistryAccount(regAcct);
-
-      const ids = tokens.map((t) => t.token_id);
-      setSeatIds(ids);
-
-      const proofs = await Promise.all(
-        ids.map(async (id) => {
-          const p = await verifyKeylessProofOnChain(id, registryId);
-          return [id, p] as const;
-        })
+      await proofQuery.refetch();
+      setAnnouncement(
+        rowId ? "Row checked against the chain." : "All five rows checked."
       );
-      setSeatProofs(Object.fromEntries(proofs));
+    } catch {
+      setAnnouncement("The check did not complete. Nothing changed.");
     } finally {
-      setLoading(false);
+      setCheckingRow(null);
+      setCheckingAll(false);
     }
-  }, [registryId, refreshChainState]);
+  };
 
-  useEffect(() => {
-    runGlobalVerification();
-  }, [runGlobalVerification]);
+  if (seatsQuery.isLoading) {
+    return (
+      <div className="space-y-6" aria-busy="true" aria-label="Reading your seat">
+        <div className="h-8 w-56 animate-skeleton rounded bg-line" />
+        <div className="h-96 animate-skeleton rounded border border-line bg-surface" />
+      </div>
+    );
+  }
+
+  if (!seat) {
+    return (
+      <Panel className="mx-auto max-w-prose p-8 text-center">
+        <ShieldCheck className="mx-auto h-6 w-6 text-paper-muted" aria-hidden="true" />
+        <h1 className="mt-4 text-24 font-semibold text-paper">
+          No seat to verify.
+        </h1>
+        <p className="mt-2 text-14 leading-relaxed text-paper-muted">
+          Connect a wallet that holds a seat, or buy one on the market.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          {!currentAccount ? (
+            <Button onClick={openWalletModal}>Connect wallet</Button>
+          ) : null}
+          <LinkButton href="/market" variant="secondary">
+            Browse market
+          </LinkButton>
+        </div>
+      </Panel>
+    );
+  }
+
+  const proof = proofQuery.data;
+  const warnings = proof?.rows.filter((row) => row.status === "warn").length ?? 0;
+  const summaryTone = warnings > 0 ? "caution" : "positive";
+  const summaryText =
+    warnings > 0
+      ? `${5 - warnings} pass, ${warnings} warning`
+      : "All five checks pass";
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-gold-500/25 bg-obsidian-800/80 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <span className="font-mono text-xs uppercase tracking-widest text-segel-400">
-            {isId
-              ? "Sharded NFT Items Draft 1.0.0 · Verifikator Global T0–T3"
-              : "Sharded NFT Items Draft 1.0.0 · Tier T0–T3 Global Verifier"}
+          <Link
+            href={`/seat/${encodeURIComponent(seat.tokenId)}`}
+            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted hover:text-paper"
+          >
+            <ArrowLeft className="h-3 w-3" aria-hidden="true" />
+            Back to seat
+          </Link>
+          <span className="bracket-label mt-4 block">
+            [ VERIFY / SEAT {seatLabel(seat.tokenId)} ]
           </span>
-          <h1 className="mt-1 font-serif text-3xl font-bold text-white sm:text-4xl">
-            {isId
-              ? "Bukti Tanpa Kunci · Audit On-Chain Langsung"
-              : "Bukti Tanpa Kunci · Global Protocol Verification"}
+          <h1 className="mt-2 text-40 font-semibold text-paper">
+            Five checks. One seat.
           </h1>
-          <p className="mt-1 max-w-2xl text-xs text-slate-300">
-            {isId ? (
-              <>
-                Audit langsung ke blockchain untuk memastikan akun induk tersegel (
-                <span className="font-mono">view_access_key_list == 0</span>), kode brankas
-                terkunci (<span className="font-mono text-gold-300">vault_code_hash</span>),
-                serta setiap sub-akun kursi memiliki 0 kunci akses pada blok final{" "}
-                <span className="font-mono text-gold-300">
-                  #{finalBlockHeight?.toLocaleString() ?? "—"}
-                </span>
-                .
-              </>
-            ) : (
-              <>
-                Live on-chain audit of the parent Segel status (`view_access_key_list` == 0),
-                pinned <span className="font-mono text-gold-300">vault_code_hash</span>, and
-                every minted seat sub-account at final block{" "}
-                <span className="font-mono text-gold-300">
-                  #{finalBlockHeight?.toLocaleString() ?? "—"}
-                </span>
-                .
-              </>
-            )}
+          <p className="mt-2 max-w-[56ch] text-14 leading-relaxed text-paper-muted">
+            Read again from the chain. No keys, no hidden owner, no swapped code.
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={runGlobalVerification}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-gold-500 to-gold-400 px-4 py-2.5 text-xs font-bold text-obsidian-950 shadow transition hover:brightness-110 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          {isId ? "Jalankan Audit Ulang" : "Re-Run Full Chain Audit"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip tone={demo ? "neutral" : "accent"} dot>
+            {demo ? "Simulated" : "NEAR Testnet"}
+          </Chip>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setDrawerOpen(true)}
+          >
+            Open drawer
+          </Button>
+        </div>
       </div>
 
-      {/* Parent Registry & Config Verification Cards */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-gold-500/30 bg-obsidian-900/90 p-6 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-xs uppercase tracking-wider text-gold-400">
-              Tier T3 Provenance · Parent Registry Segel
+      {seats.length > 1 ? (
+        <div>
+          <div className="mono-label mb-2">Choose a seat</div>
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {seats.map((item) => {
+              const active = item.tokenId === seat.tokenId;
+              return (
+                <button
+                  key={item.tokenId}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setSelectedId(item.tokenId)}
+                  className={`flex shrink-0 items-center gap-2 rounded border px-3 py-2 font-mono text-12 transition-colors ${
+                    active
+                      ? "border-signal bg-signal-soft text-paper"
+                      : "border-line bg-surface text-paper-muted hover:border-line-strong"
+                  }`}
+                >
+                  <SeatGlyph tokenId={item.tokenId} innerDots={item.innerDots} size={20} />
+                  Seat {seatLabel(item.tokenId)}
+                  <span className="text-positive">{near(item.balanceYocto, 2)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-y border-line py-3">
+        <div className="flex items-center gap-3">
+          <SeatGlyph tokenId={seat.tokenId} innerDots={seat.innerDots} size={28} />
+          <div>
+            <div className="font-mono text-12 uppercase tracking-label text-paper">
+              Seat {seatLabel(seat.tokenId)}
+            </div>
+            <div className="mt-0.5 break-all font-mono text-[10px] uppercase tracking-label text-paper-muted">
+              {seat.tokenId}
+            </div>
+          </div>
+        </div>
+        {proof ? (
+          <Chip tone={summaryTone} dot>
+            {summaryText}
+          </Chip>
+        ) : null}
+      </div>
+
+      <Panel>
+        <div className="divide-y divide-line">
+          {proofQuery.isLoading && !proof ? (
+            Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="flex gap-3 px-4 py-5">
+                <div className="h-6 w-6 animate-skeleton rounded border border-line" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-24 animate-skeleton rounded bg-line" />
+                  <div className="h-4 w-48 animate-skeleton rounded bg-line" />
+                  <div className="h-3 w-full max-w-[420px] animate-skeleton rounded bg-line" />
+                </div>
+              </div>
+            ))
+          ) : (
+            proof?.rows.map((row, index) => (
+              <div
+                key={row.id}
+                className="flex items-start gap-3 px-4 py-5 sm:gap-4 sm:px-5"
+              >
+                <RowMark row={row} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-mono text-[10px] text-paper-muted">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="mono-label">{row.label}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void recheck(row.id)}
+                      disabled={checkingRow === row.id}
+                      className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-label text-paper-muted transition-colors hover:text-paper disabled:opacity-50"
+                    >
+                      {checkingRow === row.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3" aria-hidden="true" />
+                      )}
+                      Re-check
+                    </button>
+                  </div>
+                  <div
+                    className={`mt-1 break-all font-mono text-14 ${
+                      row.status === "warn" ? "text-caution" : "text-paper"
+                    }`}
+                  >
+                    {row.value}
+                  </div>
+                  <p className="mt-1 max-w-[68ch] text-12 leading-relaxed text-paper-muted">
+                    {row.detail}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            <span>
+              Block {proof?.blockHeight?.toLocaleString("en-US") ?? "—"}
             </span>
-            {parentKeysCount === 0 && registryAccount ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-segel-500 bg-segel-500/15 px-3 py-0.5 font-mono text-xs font-bold text-segel-400">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                SEALED (0 KEYS)
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-0.5 font-mono text-xs text-amber-300">
-                Keys: {parentKeysCount ?? "—"}
-              </span>
-            )}
+            <span>Checked {proof ? formatTime(proof.checkedAtMs) : "—"}</span>
           </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-obsidian-950 p-4 font-mono text-xs space-y-2">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Registry Account:</span>
-              <a
-                href={`${EXPLORER_URL}/address/${registryId}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 font-bold text-gold-300 hover:underline"
-              >
-                {registryId}
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Access Keys Count:</span>
-              <span
-                className={
-                  parentKeysCount === 0
-                    ? "font-bold text-segel-400"
-                    : "text-amber-300"
-                }
-              >
-                {parentKeysCount !== null ? `${parentKeysCount} keys` : "—"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Registry Code Hash:</span>
-              <span className="truncate max-w-[230px] text-slate-200">
-                {registryAccount?.code_hash || "—"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Pinned Final Block Hash:</span>
-              <span className="truncate max-w-[230px] text-slate-400">
-                {finalBlockHash || "—"}
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => void recheck()}
+              loading={checkingAll}
+            >
+              <RefreshCw className="h-3 w-3" aria-hidden="true" />
+              Re-check all
+            </Button>
+            <a
+              href={`${EXPLORER_URL}/address/${seat.tokenId}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 hover:text-paper"
+            >
+              Explorer
+              <ExternalLink className="h-3 w-3" aria-hidden="true" />
+            </a>
           </div>
         </div>
+      </Panel>
 
-        <div className="rounded-3xl border border-gold-500/30 bg-obsidian-900/90 p-6 space-y-3">
-          <span className="font-mono text-xs uppercase tracking-wider text-gold-400">
-            Immutable Protocol Configuration (`get_config`)
-          </span>
-          <div className="rounded-2xl border border-slate-800 bg-obsidian-950 p-4 font-mono text-xs space-y-2">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Expected Vault Code Hash:</span>
-              <span className="truncate max-w-[240px] font-bold text-segel-400">
-                {config?.vault_code_hash || "—"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Seat Mint Price:</span>
-              <span className="text-white">
-                {formatYocto(config?.seat_price ?? "0")} NEAR
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Vault Initial Storage Reserve:</span>
-              <span className="text-white">
-                {formatYocto(config?.vault_initial_balance ?? "0")} NEAR
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Secondary Sale Royalty:</span>
-              <span className="text-gold-300">
-                {config ? `${config.royalty_bps / 100}%` : "5%"} →{" "}
-                {config?.kas_klub_id || "Kas Klub"}
-              </span>
-            </div>
-          </div>
-        </div>
+      <div className="flex items-start gap-2">
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-positive" aria-hidden="true" />
+        <p className="max-w-[64ch] text-12 leading-relaxed text-paper-muted">
+          This seat has no keys. Only the club contract can move its money, and only
+          for the current holder.
+        </p>
       </div>
 
-      <KratonDivider label="Per-Seat Keyless & Pair-Check Matrix" />
+      {proofQuery.isError ? (
+        <p className="flex items-center gap-2 text-12 text-danger" role="alert">
+          <CircleAlert className="h-4 w-4" aria-hidden="true" />
+          That did not go through. Nothing moved.
+        </p>
+      ) : null}
 
-      {/* Seat Verification Table */}
-      <section className="rounded-3xl border border-gold-500/25 bg-obsidian-800/70 p-6">
-        <h2 className="mb-4 font-serif text-2xl font-bold text-white">
-          All Minted Seats Verification ({seatIds.length})
-        </h2>
+      <div aria-live="polite" className="sr-only">
+        {announcement}
+      </div>
 
-        {loading ? (
-          <div className="h-40 animate-pulse rounded-2xl bg-obsidian-900/60" />
-        ) : seatIds.length === 0 ? (
-          <p className="font-mono text-xs text-slate-400">
-            No seats minted yet on `{registryId}`. Visit{" "}
-            <Link href="/seats" className="text-gold-300 underline">
-              /seats
-            </Link>{" "}
-            to mint or inspect a specific seat.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="pb-2">Seat (`token_id`)</th>
-                  <th className="pb-2">Vault Owner (@seq)</th>
-                  <th className="pb-2">T0 Namespace</th>
-                  <th className="pb-2">T1/T2 Pair Check</th>
-                  <th className="pb-2">0 Access Keys</th>
-                  <th className="pb-2">Vault Code Hash</th>
-                  <th className="pb-2">Verdict</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {seatIds.map((id) => {
-                  const p = seatProofs[id];
-                  return (
-                    <tr key={id}>
-                      <td className="py-3 font-bold text-gold-300">
-                        <Link
-                          href={`/seat/${encodeURIComponent(id)}`}
-                          className="hover:underline"
-                        >
-                          {id}
-                        </Link>
-                      </td>
-                      <td className="py-3 text-white">
-                        {p?.vaultOwner ?? "—"} (#{p?.vaultSeq ?? "—"})
-                      </td>
-                      <td className="py-3">
-                        {p?.t0NamespaceOk ? (
-                          <span className="text-segel-400">✓ Direct Child</span>
-                        ) : (
-                          <span className="text-threat-400">✗ Invalid</span>
-                        )}
-                      </td>
-                      <td className="py-3">
-                        {p?.pairStatus === "Consistent" ? (
-                          <span className="text-segel-400">✓ Consistent</span>
-                        ) : p?.pairStatus === "IndexBehind" ? (
-                          <span className="text-amber-300">⟳ IndexBehind</span>
-                        ) : (
-                          <span className="text-threat-400">✗ Divergent</span>
-                        )}
-                      </td>
-                      <td className="py-3">
-                        {p?.seatZeroKeysOk ? (
-                          <span className="font-bold text-segel-400">
-                            ✓ 0 Keys
-                          </span>
-                        ) : (
-                          <span className="text-threat-400">
-                            {p?.seatKeysCount ?? "—"} Keys
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3">
-                        {p?.vaultCodeHashOk ? (
-                          <span className="text-segel-400">✓ Matches Config</span>
-                        ) : (
-                          <span className="text-slate-400">
-                            {p?.actualCodeHash.slice(0, 10)}...
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3">
-                        {p?.allVerified ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-segel-500/20 px-2.5 py-0.5 text-[10px] font-bold text-segel-400">
-                            <CheckCircle2 className="h-3 w-3" />
-                            BUKTI TANPA KUNCI
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] text-amber-300">
-                            <AlertTriangle className="h-3 w-3" />
-                            Check Detail
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <VerifyDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        proof={proof}
+        loading={proofQuery.isLoading}
+        onRecheck={async () => {
+          await proofQuery.refetch();
+        }}
+      />
     </div>
   );
 }

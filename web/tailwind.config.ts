@@ -9,67 +9,115 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        void: "#06080D",
-        bento: "#0B0F1A",
-        radial: "#0D1526",
-        jade: {
-          300: "#5CFFB8",
-          400: "#00EC97",
-          500: "#00EC97",
-          600: "#00BA77",
+        // Semantic tokens. Use these on every new surface.
+        ink: {
+          DEFAULT: "var(--bg)",
+          deep: "var(--bg-deep)",
         },
-        // Harmonized aliases so every route shares the Tactile Cryptographic Relic palette
+        surface: {
+          DEFAULT: "var(--surface)",
+          raised: "var(--surface-raised)",
+          sunken: "var(--surface-sunken)",
+        },
+        line: {
+          DEFAULT: "var(--line)",
+          strong: "var(--line-strong)",
+        },
+        paper: {
+          DEFAULT: "var(--text)",
+          dim: "var(--text-dim)",
+          muted: "var(--muted)",
+        },
+        signal: {
+          DEFAULT: "var(--accent)",
+          strong: "var(--accent-strong)",
+          soft: "var(--accent-soft)",
+        },
+        positive: {
+          DEFAULT: "var(--positive)",
+          soft: "var(--positive-soft)",
+        },
+        caution: {
+          DEFAULT: "var(--caution)",
+          soft: "var(--caution-soft)",
+        },
+        danger: {
+          DEFAULT: "var(--danger)",
+          soft: "var(--danger-soft)",
+        },
+
+        // Compatibility aliases for the routes that are not part of the
+        // redesign yet. They resolve to the same semantic palette.
+        void: "var(--bg)",
+        bento: "var(--surface)",
+        radial: "var(--surface-raised)",
         obsidian: {
-          950: "#06080D",
-          900: "#0B0F1A",
-          800: "#0D1526",
-          700: "#131E35",
-          600: "#1C2B4B",
+          950: "var(--bg-deep)",
+          900: "var(--surface)",
+          800: "var(--surface)",
+          700: "var(--surface-raised)",
+          600: "var(--line-strong)",
         },
         gold: {
-          200: "#A7FFDE",
-          300: "#5CFFB8",
-          400: "#00EC97",
-          500: "#00EC97",
-          600: "#00C47D",
-          700: "#008F5B",
+          200: "var(--accent-strong)",
+          300: "var(--accent)",
+          400: "var(--accent)",
+          500: "var(--accent)",
+          600: "var(--accent-strong)",
+          700: "var(--accent-strong)",
+        },
+        jade: {
+          300: "var(--positive)",
+          400: "var(--positive)",
+          500: "var(--positive)",
+          600: "var(--positive)",
         },
         segel: {
-          400: "#10B981",
-          500: "#10B981",
-          600: "#059669",
+          400: "var(--positive)",
+          500: "var(--positive)",
+          600: "var(--positive)",
         },
         amber: {
-          300: "#FCD34D",
-          400: "#FBBF24",
-          500: "#F59E0B",
+          300: "var(--caution)",
+          400: "var(--caution)",
+          500: "var(--caution)",
         },
         threat: {
-          400: "#F87171",
-          500: "#EF4444",
-          600: "#DC2626",
+          400: "var(--danger)",
+          500: "var(--danger)",
+          600: "var(--danger)",
         },
       },
       fontFamily: {
-        // Tactile Cryptographic Relic: Plus Jakarta Sans / Inter for all UI & display headings
-        serif: ["var(--font-jakarta)", "Inter", "system-ui", "sans-serif"],
-        sans: ["var(--font-jakarta)", "Inter", "system-ui", "sans-serif"],
-        mono: ["var(--font-jetbrains)", "JetBrains Mono", "monospace"],
+        sans: ["var(--font-display)"],
+        display: ["var(--font-display)"],
+        mono: ["var(--font-mono)"],
+        serif: ["var(--font-display)"],
+      },
+      maxWidth: {
+        page: "1120px",
+        prose: "680px",
+      },
+      borderRadius: {
+        DEFAULT: "var(--radius)",
+        sheet: "var(--radius)",
+      },
+      spacing: {
+        18: "4.5rem",
+        22: "5.5rem",
       },
       letterSpacing: {
-        relic: "-0.03em",
+        label: "var(--tracking-label)",
+        display: "var(--tracking-display)",
+        relic: "var(--tracking-display)",
       },
-      backgroundImage: {
-        "kraton-radial":
-          "radial-gradient(ellipse 80% 50% at 50% -10%, #0D1526 0%, rgba(13, 21, 38, 0.55) 45%, #06080D 100%)",
-        "relic-radial":
-          "radial-gradient(ellipse 80% 50% at 50% -10%, #0D1526 0%, rgba(11, 15, 26, 0.7) 50%, #06080D 100%)",
+      transitionTimingFunction: {
+        calm: "var(--ease)",
       },
-      boxShadow: {
-        jade: "0 0 28px rgba(0, 236, 151, 0.25)",
-        "jade-sm": "0 0 16px rgba(0, 236, 151, 0.18)",
-        frozen: "0 0 28px rgba(245, 158, 11, 0.18)",
-        blocked: "0 0 28px rgba(239, 68, 68, 0.22)",
+      transitionDuration: {
+        120: "120ms",
+        200: "200ms",
+        320: "320ms",
       },
     },
   },

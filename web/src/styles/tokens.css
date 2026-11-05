@@ -1,0 +1,79 @@
+/*
+ * PUSAKA / LOGE design tokens
+ * A calm terminal: ink, paper, one blue signal.
+ * Extracted from the reference boards, normalised to the brief defaults.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Palette */
+  --bg: #11140f;
+  --bg-deep: #0b0d09;
+  --surface: #181c16;
+  --surface-raised: #1d221b;
+  --surface-sunken: #141812;
+  --line: #2a2f27;
+  --line-strong: #3a4136;
+  --text: #ece8d8;
+  --text-dim: #c9c6b8;
+  --muted: #8d9585;
+  --accent: #3b9bff;
+  --accent-strong: #6ab7ff;
+  --accent-soft: rgba(59, 155, 255, 0.12);
+  --positive: #7bd88f;
+  --positive-soft: rgba(123, 216, 143, 0.12);
+  --caution: #e6b450;
+  --caution-soft: rgba(230, 180, 80, 0.12);
+  --danger: #ff6b5e;
+  --danger-soft: rgba(255, 107, 94, 0.12);
+  --focus: #9acaff;
+  --overlay: rgba(6, 8, 5, 0.72);
+
+  /* Type */
+  --font-display: "Geist", "Inter Tight", "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+    Monaco, Consolas, monospace;
+  --text-12: 0.75rem;
+  --text-14: 0.875rem;
+  --text-16: 1rem;
+  --text-24: 1.5rem;
+  --text-40: 2.5rem;
+  --text-72: clamp(3rem, 9vw, 4.5rem);
+  --leading-tight: 1.04;
+  --leading-snug: 1.25;
+  --leading-body: 1.55;
+  --tracking-label: 0.08em;
+  --tracking-display: -0.025em;
+
+  /* Space: 8px grid */
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-5: 2.5rem;
+  --space-6: 3rem;
+  --space-8: 4rem;
+
+  /* Shape */
+  --radius: 4px;
+  --hairline: 1px;
+  --max-width: 1120px;
+
+  /* Motion */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* One elevation, for sheets only */
+  --shadow-sheet: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 1ms;
+    --dur-2: 1ms;
+    --dur-3: 1ms;
+  }
+}

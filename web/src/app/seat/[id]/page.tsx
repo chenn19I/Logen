@@ -1,950 +1,625 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
-  ShieldCheck,
-  AlertTriangle,
-  RefreshCw,
-  Lock,
-  Unlock,
-  Send,
-  Coins,
-  UserCheck,
-  History,
-  CheckCircle2,
-  XCircle,
-  ExternalLink,
+  ArrowDownLeft,
   ArrowLeft,
-  Sparkles,
+  ArrowUpRight,
+  CircleAlert,
+  ExternalLink,
+  History,
+  RefreshCw,
+  UserRound,
 } from "lucide-react";
 import { useNear } from "@/components/NearProvider";
-import { DefaultSeatSvgCard, KratonDivider } from "@/components/KawungOrnament";
-import {
-  EXPLORER_URL,
-  getNftToken,
-  getSeat,
-  getSeatHistory,
-  getVaultItemInfo,
-  getVaultOutflows,
-  getVaultState,
-  verifyKeylessProofOnChain,
-} from "@/lib/near/rpc";
+import { useDemo } from "@/lib/demo/DemoProvider";
+import { useProof, useSeat, useSeatHistory } from "@/lib/chain/hooks";
 import type {
-  KeylessProofCheck,
-  Nep171Token,
-  NftItemInfo,
+  HistoryEntry,
+  Seat,
+  SeatHolder,
   SeatHistory,
-  SeatView,
-  VaultOutflow,
-  VaultStateView,
-} from "@/lib/near/types";
+} from "@/lib/chain/types";
+import { EXPLORER_URL } from "@/lib/near/rpc";
 import {
-  formatTimestampMs,
-  formatYocto,
-  parseNearToYocto,
-} from "@/lib/near/format";
+  durationLabel,
+  formatDate,
+  formatMonth,
+  formatTime,
+  near,
+  seatLabel,
+  shortAccount,
+} from "@/lib/utils";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Chip";
+import { Panel } from "@/components/ui/Panel";
+import { Sheet } from "@/components/ui/Sheet";
+import {
+  TabsContent,
+  TabsList,
+  TabsRoot,
+  TabsTrigger,
+} from "@/components/ui/Tabs";
+import { SeatCard } from "@/components/seat/SeatCard";
+import { SeatGlyph } from "@/components/seat/SeatGlyph";
+import { ProofStamp } from "@/components/seat/ProofStamp";
+import { VerifyDrawer } from "@/components/seat/VerifyDrawer";
 
-export default function SeatDetailPage() {
+function EntryIcon({ kind }: { kind: HistoryEntry["kind"] }) {
+  const Icon =
+    kind === "earned" || kind === "credit"
+      ? ArrowDownLeft
+      : kind === "paid_out"
+        ? ArrowUpRight
+        : UserRound;
+  const tone =
+    kind === "earned" || kind === "credit"
+      ? "border-[rgba(123,216,143,0.3)] bg-positive-soft text-positive"
+      : "border-line bg-surface-sunken text-paper-muted";
+  return (
+    <span
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded border ${tone}`}
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" />
+    </span>
+  );
+}
+
+function holderChip(
+  entry: HistoryEntry,
+  currentOwner: string,
+  currentAccount: string | null
+) {
+  if (entry.holderId === currentAccount) {
+    return <Chip tone="accent">You</Chip>;
+  }
+  return (
+    <Chip tone="neutral">
+      {shortAccount(entry.holderId, 20)}
+      {entry.holderId === currentOwner ? " · now" : ""}
+    </Chip>
+  );
+}
+
+function amountLabel(entry: HistoryEntry): {
+  text: string;
+  className: string;
+} {
+  if (!entry.amountYocto) return { text: "—", className: "text-paper-muted" };
+  const value = near(entry.amountYocto, 2);
+  if (entry.kind === "earned" || entry.kind === "credit") {
+    return { text: `+${value}`, className: "text-positive" };
+  }
+  if (entry.kind === "paid_out") {
+    return { text: `−${value}`, className: "text-paper-dim" };
+  }
+  return { text: value, className: "text-paper-muted" };
+}
+
+function MonthGroup({
+  month,
+  entries,
+  currentOwner,
+  currentAccount,
+  onSelect,
+}: {
+  month: string;
+  entries: HistoryEntry[];
+  currentOwner: string;
+  currentAccount: string | null;
+  onSelect: (entry: HistoryEntry) => void;
+}) {
+  return (
+    <section aria-label={month}>
+      <h3 className="mono-label sticky top-16 z-10 -mx-4 bg-ink px-4 py-3 sm:mx-0 sm:px-0">
+        {month}
+      </h3>
+      <div className="border-t border-line">
+        {entries.map((entry) => {
+          const amount = amountLabel(entry);
+          return (
+            <button
+              key={entry.id}
+              type="button"
+              onClick={() => onSelect(entry)}
+              className="grid w-full grid-cols-[32px_1fr_auto] items-center gap-3 border-b border-line px-0 py-3 text-left transition-colors duration-120 hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+            >
+              <EntryIcon kind={entry.kind} />
+              <span className="min-w-0">
+                <span className="block truncate text-14 text-paper">
+                  {entry.label}
+                </span>
+                <span className="mt-1 flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                    {formatDate(entry.atMs, { month: "short", day: "numeric" })} ·{" "}
+                    {formatTime(entry.atMs)}
+                  </span>
+                  {holderChip(entry, currentOwner, currentAccount)}
+                </span>
+              </span>
+              <span className="text-right">
+                <span className={`block font-mono text-14 tabular ${amount.className}`}>
+                  {amount.text}
+                </span>
+                <span className="block font-mono text-[9px] uppercase tracking-label text-paper-muted">
+                  NEAR
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function HoldersStrip({
+  holders,
+  currentAccount,
+}: {
+  holders: SeatHolder[];
+  currentAccount: string | null;
+}) {
+  const now = Date.now();
+  return (
+    <div>
+      <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+        {holders.map((holder, index) => {
+          const active = holder.untilMs === null;
+          return (
+            <div
+              key={`${holder.ownerId}-${holder.seq}-${index}`}
+              className={`min-w-[230px] shrink-0 rounded border p-4 ${
+                active
+                  ? "border-[rgba(59,155,255,0.4)] bg-signal-soft"
+                  : "border-line bg-surface"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="bracket-label">[ {String(holder.seq + 1).padStart(2, "0")} ]</span>
+                <Chip tone={active ? "accent" : "neutral"} dot={active}>
+                  {active ? "Current" : "Past"}
+                </Chip>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                <SeatGlyph
+                  tokenId={`${holder.ownerId}-${holder.seq}`}
+                  innerDots={active ? 6 : 3}
+                  size={40}
+                />
+                <div className="min-w-0">
+                  <div className="truncate font-mono text-14 text-paper">
+                    {holder.ownerId === currentAccount ? "You" : holder.ownerId}
+                  </div>
+                  <div className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                    {holder.via === "mint"
+                      ? "Minted"
+                      : holder.via === "sale"
+                        ? "Bought the seat"
+                        : holder.via === "transfer"
+                          ? "Received the seat"
+                          : "Synced"}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 border-t border-line pt-3 font-mono text-[10px] uppercase leading-relaxed tracking-label text-paper-muted">
+                <div>{formatDate(holder.sinceMs, { month: "short", day: "numeric", year: "numeric" })}</div>
+                <div className="mt-1">
+                  {active
+                    ? `${durationLabel(holder.sinceMs, now)} and counting`
+                    : durationLabel(holder.sinceMs, holder.untilMs ?? now)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-12 leading-relaxed text-paper-muted">
+        A seat can change hands. Its money, its history and its access move with it.
+      </p>
+    </div>
+  );
+}
+
+function DetailDrawer({
+  entry,
+  seat,
+  currentAccount,
+  open,
+  onOpenChange,
+}: {
+  entry: HistoryEntry | null;
+  seat: Seat;
+  currentAccount: string | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const explorer = entry?.txHash
+    ? `${EXPLORER_URL}/tx/${entry.txHash}`
+    : `${EXPLORER_URL}/address/${seat.tokenId}`;
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={entry?.label ?? "History"}
+      description={
+        entry
+          ? `${formatDate(entry.atMs, {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })} · ${formatTime(entry.atMs)}`
+          : undefined
+      }
+      footer={
+        <a
+          href={explorer}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 font-mono text-12 text-paper-muted underline decoration-line underline-offset-4 hover:text-paper"
+        >
+          Open in explorer
+          <ExternalLink className="h-3 w-3" aria-hidden="true" />
+        </a>
+      }
+    >
+      {entry ? (
+        <dl className="divide-y divide-line border-y border-line">
+          <div className="grid gap-1 py-3 sm:grid-cols-[140px_1fr] sm:gap-4">
+            <dt className="mono-label">Amount</dt>
+            <dd className="font-mono text-24 tabular text-paper">
+              {entry.amountYocto ? near(entry.amountYocto, 2) : "—"}
+              <span className="ml-1 text-12 text-paper-muted">NEAR</span>
+            </dd>
+          </div>
+          <div className="grid gap-1 py-3 sm:grid-cols-[140px_1fr] sm:gap-4">
+            <dt className="mono-label">Holder at the time</dt>
+            <dd className="font-mono text-14 text-paper">
+              {entry.holderId === currentAccount ? "You" : entry.holderId}
+            </dd>
+          </div>
+          <div className="grid gap-1 py-3 sm:grid-cols-[140px_1fr] sm:gap-4">
+            <dt className="mono-label">Detail</dt>
+            <dd className="text-14 leading-relaxed text-paper-dim">
+              {entry.detail ?? "—"}
+            </dd>
+          </div>
+          <div className="grid gap-1 py-3 sm:grid-cols-[140px_1fr] sm:gap-4">
+            <dt className="mono-label">Transaction</dt>
+            <dd className="break-all font-mono text-12 text-paper-muted">
+              {entry.txHash ?? "Recorded in the seat's history. No separate hash."}
+            </dd>
+          </div>
+        </dl>
+      ) : null}
+    </Sheet>
+  );
+}
+
+function HistorySkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-label="Reading seat history">
+      <div className="h-8 w-48 animate-skeleton rounded bg-line" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="h-24 animate-skeleton rounded border border-line bg-surface" />
+        ))}
+      </div>
+      <div className="h-64 animate-skeleton rounded border border-line bg-surface" />
+    </div>
+  );
+}
+
+export default function SeatHistoryPage() {
   const params = useParams<{ id: string }>();
-  const rawId = decodeURIComponent(params?.id || "");
-  const {
-    accountId,
-    registryId,
-    config,
-    openWalletModal,
-    callContractMethod,
-  } = useNear();
+  const tokenId = decodeURIComponent(params?.id ?? "");
+  const { accountId, registryId } = useNear();
+  const { demo, demoAccount } = useDemo();
+  const currentAccount = demo ? demoAccount : accountId;
 
-  const tokenId = rawId.includes(".") ? rawId : `${rawId}.${registryId}`;
+  const seatQuery = useSeat(tokenId);
+  const historyQuery = useSeatHistory(tokenId);
+  const proofQuery = useProof(tokenId);
 
-  const [token, setToken] = useState<Nep171Token | null>(null);
-  const [seat, setSeat] = useState<SeatView | null>(null);
-  const [vault, setVault] = useState<VaultStateView | null>(null);
-  const [itemInfo, setItemInfo] = useState<NftItemInfo | null>(null);
-  const [history, setHistory] = useState<SeatHistory>({
-    holders: [],
-    claims: [],
-    earnings: [],
-  });
-  const [outflows, setOutflows] = useState<VaultOutflow[]>([]);
-  const [proof, setProof] = useState<KeylessProofCheck | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [actionStatus, setActionStatus] = useState<string | null>(null);
-  const [isBusy, setIsBusy] = useState<boolean>(false);
+  const [proofOpen, setProofOpen] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
 
-  // Action Form States
-  const [withdrawNear, setWithdrawNear] = useState<string>("0.5");
-  const [withdrawTo, setWithdrawTo] = useState<string>("");
-  const [delegateAccount, setDelegateAccount] = useState<string>("");
-  const [delegateAllowance, setDelegateAllowance] = useState<string>("1");
-  const [delegateTtlSec, setDelegateTtlSec] = useState<string>("3600");
-  const [listPriceNear, setListPriceNear] = useState<string>("10");
-  const [listMinBalNear, setListMinBalNear] = useState<string>("1");
-  const [listTtlSec, setListTtlSec] = useState<string>("86400");
-  const [transferTo, setTransferTo] = useState<string>("");
-  const [delegateWithdrawNear, setDelegateWithdrawNear] = useState<string>("0.2");
+  const seat = seatQuery.data;
+  const history = historyQuery.data;
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [tk, st, vt, ii, hist, out, prf] = await Promise.all([
-        getNftToken(tokenId, registryId),
-        getSeat(tokenId, registryId),
-        getVaultState(tokenId),
-        getVaultItemInfo(tokenId),
-        getSeatHistory(tokenId, registryId, 100),
-        getVaultOutflows(tokenId),
-        verifyKeylessProofOnChain(tokenId, registryId),
-      ]);
-      setToken(tk);
-      setSeat(st);
-      setVault(vt);
-      setItemInfo(ii);
-      setHistory(hist);
-      setOutflows(out);
-      setProof(prf);
-    } finally {
-      setLoading(false);
-    }
-  }, [tokenId, registryId]);
-
-  useEffect(() => {
-    loadAll();
-  }, [loadAll]);
-
-  const canonicalOwner = vault?.owner_id || itemInfo?.owner_id || seat?.owner_id || "—";
-  const canonicalSeq = vault?.rotation_seq ?? itemInfo?.rotation_seq ?? seat?.rotation_seq ?? 0;
-  const isOwner = Boolean(accountId && accountId === canonicalOwner);
-  const activeDelegateId =
-    vault?.delegate?.account_id || vault?.delegate?.account || null;
-  const isDelegate = Boolean(accountId && activeDelegateId === accountId);
-  const isListed =
-    vault?.status === "Listed" || itemInfo?.status === "Frozen";
-
-  const runAction = async (label: string, fn: () => Promise<unknown>) => {
-    setActionStatus(null);
-    if (!accountId) {
-      openWalletModal();
-      return;
-    }
-    setIsBusy(true);
-    try {
-      await fn();
-      setActionStatus(`Success: ${label}`);
-      await loadAll();
-    } catch (err) {
-      setActionStatus(
-        `${label} failed: ${err instanceof Error ? err.message : String(err)}`
-      );
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
-  // Merge timeline events for R3 Seat History View + Cumulative Balance SVG Chart
-  const mergedTimeline = useMemo(() => {
-    type TimelineEvent = {
-      at_ms: number;
-      kind: "holder" | "earning" | "claim" | "outflow";
-      badge: string;
-      title: string;
-      subtitle: string;
-      deltaYocto: bigint; // impact on seat vault balance
-    };
-    const items: TimelineEvent[] = [];
-
-    const initialReserve = BigInt(
-      vault?.storage_reserve || config?.vault_initial_balance || "0"
-    );
-
-    for (const h of history.holders) {
-      items.push({
-        at_ms: h.since_ms,
-        kind: "holder",
-        badge: `SEQ #${h.seq} · ${h.via.toUpperCase()}`,
-        title: `Owner → ${h.owner_id}`,
-        subtitle: h.price
-          ? `Settled via Safe Sale for ${formatYocto(h.price)} NEAR`
-          : `Control rotated to ${h.owner_id} at seq=${h.seq}`,
-        deltaYocto: h.seq === 0 ? initialReserve : 0n,
-      });
-    }
-
-    for (const e of history.earnings) {
-      items.push({
-        at_ms: e.at_ms,
-        kind: "earning",
-        badge: `EVENT #${e.event_id} ACCRUAL`,
-        title: `+${formatYocto(e.per_seat)} NEAR accrued to seat checkpoint`,
-        subtitle: `40% member pool shared across ${e.seats} minted seats`,
-        deltaYocto: 0n, // enters vault upon claim
-      });
-    }
-
-    for (const c of history.claims) {
-      items.push({
-        at_ms: c.at_ms,
-        kind: "claim",
-        badge: "POOL CLAIM TO VAULT",
-        title: `+${formatYocto(c.amount)} NEAR landed in ${tokenId}`,
-        subtitle: `Triggered by ${c.by} (credited directly to seat account)`,
-        deltaYocto: BigInt(c.amount || "0"),
-      });
-    }
-
-    for (const o of outflows) {
-      items.push({
-        at_ms: o.at_ms,
-        kind: "outflow",
-        badge: `${o.kind.toUpperCase()} (SEQ #${o.seq})`,
-        title: `-${formatYocto(o.amount)} NEAR → ${o.to}`,
-        subtitle: `Authorized by ${o.by} during ownership epoch #${o.seq}`,
-        deltaYocto: -BigInt(o.amount || "0"),
-      });
-    }
-
-    items.sort((a, b) => a.at_ms - b.at_ms);
-
-    let running = 0n;
-    return items.map((item) => {
-      running = running + item.deltaYocto;
-      if (running < 0n) running = 0n;
-      return { ...item, cumulativeYocto: running };
+  const grouped = useMemo(() => {
+    const items = history?.items ?? [];
+    const map = new Map<string, HistoryEntry[]>();
+    items.forEach((entry) => {
+      const key = formatMonth(entry.atMs);
+      const list = map.get(key) ?? [];
+      list.push(entry);
+      map.set(key, list);
     });
-  }, [history, outflows, vault?.storage_reserve, config?.vault_initial_balance, tokenId]);
+    return Array.from(map.entries());
+  }, [history]);
+
+  const earnedEntries = (history?.items ?? []).filter(
+    (entry) => entry.kind === "earned" || entry.kind === "credit"
+  );
+  const paidEntries = (history?.items ?? []).filter(
+    (entry) => entry.kind === "paid_out"
+  );
+
+  if (seatQuery.isLoading || historyQuery.isLoading) return <HistorySkeleton />;
+
+  if (seatQuery.isError || !seat) {
+    return (
+      <Panel className="mx-auto max-w-prose p-8 text-center">
+        <CircleAlert className="mx-auto h-6 w-6 text-caution" aria-hidden="true" />
+        <h1 className="mt-4 text-24 font-semibold text-paper">
+          This seat is not here.
+        </h1>
+        <p className="mt-2 text-14 leading-relaxed text-paper-muted">
+          Check the seat link, or read the chain again.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Button variant="secondary" onClick={() => seatQuery.refetch()}>
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            Try again
+          </Button>
+          <LinkButton href="/market" variant="secondary">
+            Browse market
+          </LinkButton>
+        </div>
+      </Panel>
+    );
+  }
+
+  const number = seatLabel(seat.tokenId);
+  const data: SeatHistory = history ?? {
+    seatId: seat.tokenId,
+    items: [],
+    holders: [],
+    earnedYocto: "0",
+    paidOutYocto: "0",
+    holdersCount: 1,
+  };
 
   return (
     <div className="space-y-8">
-      {/* Top Breadcrumb */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href="/seats"
-          className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-gold-300"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to All Seat Vaults
-        </Link>
-        <div className="flex items-center gap-2">
-          <a
-            href={`${EXPLORER_URL}/address/${tokenId}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gold-500/30 bg-obsidian-800 px-3 py-1.5 font-mono text-xs text-gold-300 hover:bg-obsidian-700"
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted hover:text-paper"
           >
-            NearBlocks: {tokenId}
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-          <button
-            type="button"
-            onClick={loadAll}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-obsidian-800 px-3 py-1.5 text-xs text-slate-300 hover:text-gold-300"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            Re-Verify at Final Block
-          </button>
-        </div>
-      </div>
-
-      {/* Seat Hero + Bukti Tanpa Kunci (Keyless Proof) Live Verifier */}
-      <div className="grid gap-6 lg:grid-cols-12">
-        {/* Left: Seat Card & Vault State Summary */}
-        <div className="space-y-4 rounded-3xl border border-gold-500/30 bg-obsidian-800/80 p-6 lg:col-span-5">
-          <div className="aspect-[16/10] w-full overflow-hidden rounded-2xl border border-gold-500/20 bg-obsidian-950">
-            {token?.metadata?.media &&
-            token.metadata.media.startsWith("data:image/svg+xml") ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={token.metadata.media}
-                alt={tokenId}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <DefaultSeatSvgCard
-                tokenId={tokenId}
-                ownerId={canonicalOwner}
-                rotationSeq={canonicalSeq}
-                status={isListed ? "Frozen" : "Active"}
-                balanceNear={formatYocto(vault?.balance ?? "0")}
-              />
-            )}
-          </div>
-
-          <div className="space-y-2 rounded-2xl border border-slate-800 bg-obsidian-950/90 p-4 font-mono text-xs">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Seat Account (`token_id`):</span>
-              <span className="font-bold text-gold-300">{tokenId}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Canonical Vault Owner:</span>
-              <span className="text-white">{canonicalOwner}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Rotation Sequence (`seq`):</span>
-              <span className="text-segel-400">#{canonicalSeq}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Vault Status:</span>
-              <span
-                className={
-                  isListed ? "font-bold text-threat-400" : "font-bold text-segel-400"
-                }
-              >
-                {vault?.status || itemInfo?.status || "Idle"}
-              </span>
-            </div>
-            <div className="flex justify-between border-t border-slate-800 pt-2">
-              <span className="text-slate-400">Total Vault Balance:</span>
-              <span className="font-bold text-white">
-                {formatYocto(vault?.balance ?? "0")} NEAR
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Spendable (`withdrawable`):</span>
-              <span className="font-bold text-gold-300">
-                {formatYocto(vault?.withdrawable ?? "0")} NEAR
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Storage Reserve (Locked):</span>
-              <span className="text-slate-300">
-                {formatYocto(vault?.storage_reserve ?? "0")} NEAR
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Unclaimed Member Pool:</span>
-              <span className="font-bold text-segel-400">
-                +{formatYocto(seat?.claimable ?? "0")} NEAR
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Bukti Tanpa Kunci (Keyless Proof) Live Verifier Panel */}
-        <div className="rounded-3xl border border-gold-500/35 bg-obsidian-900/90 p-6 lg:col-span-7">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-gold-500/15 pb-4">
-            <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-gold-400">
-                Sharded NFT Items Draft 1.0.0 · T0–T3 Verification Ladder
-              </span>
-              <h2 className="font-serif text-2xl font-bold text-white">
-                Bukti Tanpa Kunci (Live Keyless Proof Verifier)
-              </h2>
-            </div>
-            {proof?.allVerified ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-segel-500 bg-segel-500/15 px-3 py-1 font-mono text-xs font-bold text-segel-400">
-                <ShieldCheck className="h-4 w-4" />
-                VERIFIED KEYLESS & CONSISTENT
-              </span>
-            ) : proof?.pairStatus === "IndexBehind" ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500 bg-amber-500/15 px-3 py-1 font-mono text-xs font-bold text-amber-300">
-                <AlertTriangle className="h-4 w-4" />
-                TRANSFERRING · INDEX BEHIND
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-600 bg-obsidian-800 px-3 py-1 font-mono text-xs text-slate-300">
-                Pinned Block #{proof?.blockHeight ?? "—"}
-              </span>
-            )}
-          </div>
-
-          <div className="space-y-3">
-            {/* Check 1: T0 Namespace */}
-            <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-800 bg-obsidian-950/80 p-3.5">
-              <div>
-                <p className="font-mono text-xs font-bold text-white">
-                  1. Tier T0 Namespace Check
-                </p>
-                <p className="mt-0.5 font-mono text-[11px] text-slate-400">
-                  {proof?.t0Detail || `Checking ${tokenId} under ${registryId}`}
-                </p>
-              </div>
-              {proof?.t0NamespaceOk ? (
-                <CheckCircle2 className="h-5 w-5 shrink-0 text-segel-400" />
-              ) : (
-                <XCircle className="h-5 w-5 shrink-0 text-threat-400" />
-              )}
-            </div>
-
-            {/* Check 2: T1/T2 Same-Final-Block Pair Check */}
-            <div className="rounded-xl border border-slate-800 bg-obsidian-950/80 p-3.5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-mono text-xs font-bold text-white">
-                    2. Tier T1/T2 Same-Final-Block Pair Check (`pair_check`)
-                  </p>
-                  <p className="mt-0.5 font-mono text-[11px] text-slate-400">
-                    {proof?.pairDetail}
-                  </p>
-                </div>
-                {proof?.pairStatus === "Consistent" ? (
-                  <CheckCircle2 className="h-5 w-5 shrink-0 text-segel-400" />
-                ) : (
-                  <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400" />
-                )}
-              </div>
-
-              {proof?.pairStatus === "IndexBehind" && (
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5">
-                  <span className="text-xs text-amber-200">
-                    Vault rotated to seq #{proof.vaultSeq} while Registry Index is at seq #{proof.registrySeq}.
-                  </span>
-                  <button
-                    type="button"
-                    disabled={isBusy}
-                    onClick={() =>
-                      runAction("Permissionless sync()", () =>
-                        callContractMethod({
-                          receiverId: registryId,
-                          methodName: "sync",
-                          args: { token_id: tokenId },
-                          gas: "100000000000000",
-                          deposit: "0",
-                        })
-                      )
-                    }
-                    className="rounded-lg bg-amber-400 px-3 py-1 font-mono text-xs font-bold text-obsidian-950 hover:bg-amber-300"
-                  >
-                    Heal Index: sync(&ldquo;{tokenId}&rdquo;)
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Check 3: Seat Zero-Key Proof */}
-            <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-800 bg-obsidian-950/80 p-3.5">
-              <div>
-                <p className="font-mono text-xs font-bold text-white">
-                  3. Seat Zero-Key Proof (`view_access_key_list({tokenId})`)
-                </p>
-                <p className="mt-0.5 font-mono text-[11px] text-slate-400">
-                  Access keys on seat sub-account:{" "}
-                  <strong className="text-segel-400">
-                    {proof ? `${proof.seatKeysCount} keys` : "—"}
-                  </strong>{" "}
-                  (Seller cannot keep a backup key because 0 keys exist)
-                </p>
-              </div>
-              {proof?.seatZeroKeysOk ? (
-                <CheckCircle2 className="h-5 w-5 shrink-0 text-segel-400" />
-              ) : (
-                <XCircle className="h-5 w-5 shrink-0 text-slate-500" />
-              )}
-            </div>
-
-            {/* Check 4: Parent Segel Status */}
-            <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-800 bg-obsidian-950/80 p-3.5">
-              <div>
-                <p className="font-mono text-xs font-bold text-white">
-                  4. Tier T3 Parent Segel (`view_access_key_list({registryId})`)
-                </p>
-                <p className="mt-0.5 font-mono text-[11px] text-slate-400">
-                  Parent registry access keys:{" "}
-                  <strong className="text-gold-300">
-                    {proof ? `${proof.parentKeysCount} keys` : "—"}
-                  </strong>{" "}
-                  (Sealed parent cannot redeploy or inject keys into child seats)
-                </p>
-              </div>
-              {proof?.parentSegelOk ? (
-                <CheckCircle2 className="h-5 w-5 shrink-0 text-segel-400" />
-              ) : (
-                <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400" />
-              )}
-            </div>
-
-            {/* Check 5: Vault Code Hash */}
-            <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-800 bg-obsidian-950/80 p-3.5">
-              <div className="min-w-0">
-                <p className="font-mono text-xs font-bold text-white">
-                  5. Immutable Vault Code Hash (`view_account.code_hash`)
-                </p>
-                <p className="mt-0.5 truncate font-mono text-[11px] text-slate-400">
-                  Actual: {proof?.actualCodeHash} · Expected: {proof?.expectedCodeHash}
-                </p>
-              </div>
-              {proof?.vaultCodeHashOk ? (
-                <CheckCircle2 className="h-5 w-5 shrink-0 text-segel-400" />
-              ) : (
-                <XCircle className="h-5 w-5 shrink-0 text-slate-500" />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {actionStatus && (
-        <div className="rounded-2xl border border-gold-500/40 bg-obsidian-800 p-4 font-mono text-xs text-gold-300">
-          {actionStatus}
-        </div>
-      )}
-
-      <KratonDivider label="Vault Money & Ownership Controls" />
-
-      {/* Money & Actions Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Card 1: Permissionless Pool Claim & Sync */}
-        <div className="space-y-4 rounded-2xl border border-gold-500/25 bg-obsidian-800/80 p-5">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-segel-400">
-              Permissionless · Anyone May Call
-            </span>
-            <Coins className="h-4 w-4 text-segel-400" />
-          </div>
-          <h3 className="font-serif text-xl font-bold text-white">
-            Claim Member Pool to Vault
-          </h3>
-          <p className="text-xs text-slate-300">
-            Calls <span className="font-mono text-gold-300">registry.claim({`{ token_id }`})</span>.
-            Follows Golden Rule I7: sends accrued NEAR strictly to{" "}
-            <span className="font-mono text-gold-300">{tokenId}</span>, never to a personal wallet.
+            <ArrowLeft className="h-3 w-3" aria-hidden="true" />
+            Back to wallet
+          </Link>
+          <span className="bracket-label mt-4 block">[ {number} / HISTORY ]</span>
+          <h1 className="mt-2 text-40 font-semibold text-paper">Seat {number}</h1>
+          <p className="mt-2 max-w-[52ch] text-14 leading-relaxed text-paper-muted">
+            Every credit and every handoff, kept with the seat.
           </p>
-
-          <div className="rounded-xl border border-slate-800 bg-obsidian-950 p-3 font-mono text-xs">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Accrued Claimable:</span>
-              <span className="font-bold text-segel-400">
-                {formatYocto(seat?.claimable ?? "0")} NEAR
-              </span>
-            </div>
-            <div className="mt-1 flex justify-between">
-              <span className="text-slate-400">Total Claimed Lifetime:</span>
-              <span className="text-slate-200">
-                {formatYocto(seat?.total_claimed ?? "0")} NEAR
-              </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={() =>
-              runAction(`claim(${tokenId})`, () =>
-                callContractMethod({
-                  receiverId: registryId,
-                  methodName: "claim",
-                  args: { token_id: tokenId },
-                  gas: "30000000000000", // 30 Tgas
-                  deposit: "0",
-                })
-              )
-            }
-            className="w-full rounded-xl bg-gradient-to-r from-segel-500 to-segel-400 py-2.5 text-xs font-bold text-obsidian-950 transition hover:brightness-110 disabled:opacity-50"
-          >
-            Claim Pool Share to Vault (30 Tgas)
-          </button>
-
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={() =>
-              runAction(`sync(${tokenId})`, () =>
-                callContractMethod({
-                  receiverId: registryId,
-                  methodName: "sync",
-                  args: { token_id: tokenId },
-                  gas: "100000000000000",
-                  deposit: "0",
-                })
-              )
-            }
-            className="w-full rounded-xl border border-gold-500/30 bg-obsidian-950 py-2 text-xs font-medium text-gold-300 hover:bg-obsidian-900"
-          >
-            Run Permissionless Index `sync()`
-          </button>
         </div>
-
-        {/* Card 2: Owner Withdraw & Transfer */}
-        <div className="space-y-4 rounded-2xl border border-gold-500/25 bg-obsidian-800/80 p-5">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-gold-400">
-              {isOwner ? "You Are Canonical Owner" : `Owner Only (${canonicalOwner})`}
-            </span>
-            <Send className="h-4 w-4 text-gold-400" />
-          </div>
-          <h3 className="font-serif text-xl font-bold text-white">
-            Withdraw NEAR & Transfer Seat
-          </h3>
-
-          {/* Withdraw Form */}
-          <div className="space-y-2 rounded-xl border border-slate-800 bg-obsidian-950 p-3">
-            <p className="font-mono text-[11px] font-semibold text-gold-300">
-              Direct Call: `{tokenId}::withdraw` (1 yocto)
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                value={withdrawNear}
-                onChange={(e) => setWithdrawNear(e.target.value)}
-                placeholder="Amount (NEAR)"
-                className="rounded-lg border border-slate-700 bg-obsidian-900 px-2.5 py-1.5 font-mono text-xs text-white"
-              />
-              <input
-                type="text"
-                value={withdrawTo}
-                onChange={(e) => setWithdrawTo(e.target.value)}
-                placeholder={accountId || "receiver.testnet"}
-                className="rounded-lg border border-slate-700 bg-obsidian-900 px-2.5 py-1.5 font-mono text-xs text-white"
-              />
-            </div>
-            <button
-              type="button"
-              disabled={isBusy || isListed}
-              onClick={() =>
-                runAction("vault.withdraw", () => {
-                  const amount = parseNearToYocto(withdrawNear);
-                  const args: Record<string, unknown> = { amount };
-                  if (withdrawTo.trim()) args.to = withdrawTo.trim();
-                  return callContractMethod({
-                    receiverId: tokenId,
-                    methodName: "withdraw",
-                    args,
-                    gas: "30000000000000",
-                    deposit: "1",
-                  });
-                })
-              }
-              className="w-full rounded-lg bg-gold-500 py-2 text-xs font-bold text-obsidian-950 hover:bg-gold-400 disabled:opacity-40"
-            >
-              {isListed
-                ? "Blocked While Listed (E_FROZEN)"
-                : `Withdraw ${withdrawNear} NEAR from Vault`}
-            </button>
-          </div>
-
-          {/* Transfer Form */}
-          <div className="space-y-2 rounded-xl border border-slate-800 bg-obsidian-950 p-3">
-            <p className="font-mono text-[11px] font-semibold text-slate-300">
-              Atomic Transfer: `registry.nft_transfer` (1 yocto)
-            </p>
-            <input
-              type="text"
-              value={transferTo}
-              onChange={(e) => setTransferTo(e.target.value)}
-              placeholder="new-owner.testnet"
-              className="w-full rounded-lg border border-slate-700 bg-obsidian-900 px-2.5 py-1.5 font-mono text-xs text-white"
-            />
-            <button
-              type="button"
-              disabled={isBusy || isListed}
-              onClick={() =>
-                runAction("registry.nft_transfer", () =>
-                  callContractMethod({
-                    receiverId: registryId,
-                    methodName: "nft_transfer",
-                    args: {
-                      receiver_id: transferTo.trim(),
-                      token_id: tokenId,
-                    },
-                    gas: "100000000000000",
-                    deposit: "1",
-                  })
-                )
-              }
-              className="w-full rounded-lg border border-gold-500/40 bg-obsidian-800 py-2 text-xs font-semibold text-gold-300 hover:bg-obsidian-700 disabled:opacity-40"
-            >
-              Rotate Seat & Vault Ownership
-            </button>
-          </div>
-        </div>
-
-        {/* Card 3: Safe Sale Listing & Epoch-Bound Delegate */}
-        <div className="space-y-4 rounded-2xl border border-gold-500/25 bg-obsidian-800/80 p-5">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-gold-400">
-              Safe Sale Freeze & Epoch Delegate
-            </span>
-            {isListed ? (
-              <Lock className="h-4 w-4 text-threat-400" />
-            ) : (
-              <Unlock className="h-4 w-4 text-segel-400" />
-            )}
-          </div>
-          <h3 className="font-serif text-xl font-bold text-white">
-            Market Listing & Delegate
-          </h3>
-
-          {/* Safe Sale Listing */}
-          <div className="space-y-2 rounded-xl border border-slate-800 bg-obsidian-950 p-3">
-            <p className="font-mono text-[11px] font-semibold text-gold-300">
-              Safe Sale: Freezes All Outflows (`E_FROZEN`)
-            </p>
-            {!isListed ? (
-              <>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <div>
-                    <label className="block text-[10px] text-slate-400">Price (N)</label>
-                    <input
-                      type="text"
-                      value={listPriceNear}
-                      onChange={(e) => setListPriceNear(e.target.value)}
-                      className="w-full rounded border border-slate-700 bg-obsidian-900 px-2 py-1 font-mono text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400">
-                      Min Bal (N)
-                    </label>
-                    <input
-                      type="text"
-                      value={listMinBalNear}
-                      onChange={(e) => setListMinBalNear(e.target.value)}
-                      className="w-full rounded border border-slate-700 bg-obsidian-900 px-2 py-1 font-mono text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400">TTL (sec)</label>
-                    <input
-                      type="number"
-                      value={listTtlSec}
-                      onChange={(e) => setListTtlSec(e.target.value)}
-                      className="w-full rounded border border-slate-700 bg-obsidian-900 px-2 py-1 font-mono text-xs text-white"
-                    />
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  disabled={isBusy}
-                  onClick={() =>
-                    runAction("registry.list_seat", () =>
-                      callContractMethod({
-                        receiverId: registryId,
-                        methodName: "list_seat",
-                        args: {
-                          token_id: tokenId,
-                          price: parseNearToYocto(listPriceNear),
-                          min_balance: parseNearToYocto(listMinBalNear || "0"),
-                          ttl_sec: Number(listTtlSec),
-                        },
-                        gas: "100000000000000",
-                        deposit: "1",
-                      })
-                    )
-                  }
-                  className="w-full rounded-lg bg-gold-500 py-2 text-xs font-bold text-obsidian-950 hover:bg-gold-400"
-                >
-                  Freeze Vault & List Seat
-                </button>
-              </>
-            ) : (
-              <div className="space-y-2">
-                <p className="font-mono text-xs text-threat-400">
-                  Listed at {formatYocto(vault?.listing?.price ?? seat?.listing?.price ?? "0")} NEAR
-                  (Nonce #{vault?.listing?.nonce ?? seat?.listing?.nonce ?? 1})
-                </p>
-                <button
-                  type="button"
-                  disabled={isBusy}
-                  onClick={() =>
-                    runAction("registry.cancel_listing", () =>
-                      callContractMethod({
-                        receiverId: registryId,
-                        methodName: "cancel_listing",
-                        args: { token_id: tokenId },
-                        gas: "100000000000000",
-                        deposit: "1",
-                      })
-                    )
-                  }
-                  className="w-full rounded-lg border border-threat-500/50 bg-threat-500/15 py-2 text-xs font-bold text-threat-400 hover:bg-threat-500/25"
-                >
-                  Cancel Listing & Unfreeze Vault
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Delegate Controls */}
-          <div className="space-y-2 rounded-xl border border-slate-800 bg-obsidian-950 p-3">
-            <div className="flex items-center justify-between">
-              <p className="font-mono text-[11px] font-semibold text-slate-300">
-                Delegate (Bound to seq #{canonicalSeq}; dies on transfer)
-              </p>
-              <UserCheck className="h-3.5 w-3.5 text-gold-400" />
-            </div>
-            {vault?.delegate ? (
-              <div className="space-y-2 font-mono text-xs">
-                <p className="text-segel-400">
-                  Active: {activeDelegateId} (Remaining:{" "}
-                  {formatYocto(vault.delegate.remaining)} NEAR, seq #{vault.delegate.seq})
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={isBusy}
-                    onClick={() =>
-                      runAction("vault.revoke_delegate", () =>
-                        callContractMethod({
-                          receiverId: tokenId,
-                          methodName: "revoke_delegate",
-                          args: {},
-                          gas: "30000000000000",
-                          deposit: "1",
-                        })
-                      )
-                    }
-                    className="flex-1 rounded-lg border border-threat-500/40 bg-threat-500/10 py-1.5 text-xs text-threat-400"
-                  >
-                    Revoke Delegate
-                  </button>
-                  {isDelegate && (
-                    <button
-                      type="button"
-                      disabled={isBusy || isListed}
-                      onClick={() =>
-                        runAction("vault.delegate_withdraw", () =>
-                          callContractMethod({
-                            receiverId: tokenId,
-                            methodName: "delegate_withdraw",
-                            args: {
-                              amount: parseNearToYocto(delegateWithdrawNear),
-                            },
-                            gas: "30000000000000",
-                            deposit: "0",
-                          })
-                        )
-                      }
-                      className="flex-1 rounded-lg bg-segel-500 py-1.5 text-xs font-bold text-obsidian-950"
-                    >
-                      Delegate Spend ({delegateWithdrawNear}N)
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  value={delegateAccount}
-                  onChange={(e) => setDelegateAccount(e.target.value)}
-                  placeholder="agent.testnet"
-                  className="w-full rounded border border-slate-700 bg-obsidian-900 px-2 py-1 font-mono text-xs text-white"
-                />
-                <div className="grid grid-cols-2 gap-1.5">
-                  <input
-                    type="text"
-                    value={delegateAllowance}
-                    onChange={(e) => setDelegateAllowance(e.target.value)}
-                    placeholder="Allowance (NEAR)"
-                    className="rounded border border-slate-700 bg-obsidian-900 px-2 py-1 font-mono text-xs text-white"
-                  />
-                  <input
-                    type="number"
-                    value={delegateTtlSec}
-                    onChange={(e) => setDelegateTtlSec(e.target.value)}
-                    placeholder="TTL sec"
-                    className="rounded border border-slate-700 bg-obsidian-900 px-2 py-1 font-mono text-xs text-white"
-                  />
-                </div>
-                <button
-                  type="button"
-                  disabled={isBusy || isListed}
-                  onClick={() =>
-                    runAction("vault.set_delegate", () =>
-                      callContractMethod({
-                        receiverId: tokenId,
-                        methodName: "set_delegate",
-                        args: {
-                          account_id: delegateAccount.trim(),
-                          allowance: parseNearToYocto(delegateAllowance),
-                          ttl_sec: Number(delegateTtlSec),
-                        },
-                        gas: "30000000000000",
-                        deposit: "1",
-                      })
-                    )
-                  }
-                  className="w-full rounded-lg border border-gold-500/40 bg-obsidian-800 py-1.5 text-xs font-semibold text-gold-300 hover:bg-obsidian-700 disabled:opacity-40"
-                >
-                  Appoint Epoch-Bound Delegate
-                </button>
-              </>
-            )}
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip tone={demo ? "neutral" : "accent"} dot>
+            {demo ? "Simulated" : "NEAR Testnet"}
+          </Chip>
+          <ProofStamp onClick={() => setProofOpen(true)} />
         </div>
       </div>
 
-      <KratonDivider label="Requirement R3 · Complete On-Chain Seat History & Cumulative Balance" />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Panel className="p-4">
+              <div className="mono-label">Earned</div>
+              <div className="mt-2 font-mono text-24 tabular text-positive">
+                {near(data.earnedYocto, 2)}
+              </div>
+              <div className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                NEAR, all time
+              </div>
+            </Panel>
+            <Panel className="p-4">
+              <div className="mono-label">Paid out</div>
+              <div className="mt-2 font-mono text-24 tabular text-paper">
+                {near(data.paidOutYocto, 2)}
+              </div>
+              <div className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                NEAR, all time
+              </div>
+            </Panel>
+            <Panel className="p-4">
+              <div className="mono-label">Held by</div>
+              <div className="mt-2 font-mono text-24 tabular text-paper">
+                {data.holdersCount}
+              </div>
+              <div className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                {data.holdersCount === 1 ? "person" : "people"}
+              </div>
+            </Panel>
+          </div>
 
-      {/* Seat History View (R3) */}
-      <section className="rounded-3xl border border-gold-500/25 bg-obsidian-800/70 p-6 lg:p-8">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <History className="h-6 w-6 text-gold-400" />
-            <div>
-              <h2 className="font-serif text-2xl font-bold text-white">
-                Seat Provenance, Earnings, Claims & Vault Outflows
-              </h2>
-              <p className="text-xs text-slate-400">
-                Merged live from `registry.get_seat_history(&ldquo;{tokenId}&rdquo;)` and
-                `{tokenId}::get_outflows()` ring buffer
+          <Panel>
+            <div className="px-4 pt-4">
+              <TabsRoot defaultValue="all">
+                <TabsList label="Seat history">
+                  <TabsTrigger value="all" count={data.items.length}>
+                    All
+                  </TabsTrigger>
+                  <TabsTrigger value="earned" count={earnedEntries.length}>
+                    Earned
+                  </TabsTrigger>
+                  <TabsTrigger value="paid" count={paidEntries.length}>
+                    Paid out
+                  </TabsTrigger>
+                  <TabsTrigger value="holders" count={data.holdersCount}>
+                    Holders
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="all" className="pt-4">
+                  {data.items.length === 0 ? (
+                    <EmptyHistory />
+                  ) : (
+                    <div className="space-y-8">
+                      {grouped.map(([month, entries]) => (
+                        <MonthGroup
+                          key={month}
+                          month={month}
+                          entries={entries}
+                          currentOwner={seat.ownerId}
+                          currentAccount={currentAccount}
+                          onSelect={setSelectedEntry}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="earned" className="pt-4">
+                  {earnedEntries.length === 0 ? (
+                    <EmptyHistory />
+                  ) : (
+                    <div className="space-y-8">
+                      {grouped.map(([month, entries]) => {
+                        const filtered = entries.filter(
+                          (entry) =>
+                            entry.kind === "earned" || entry.kind === "credit"
+                        );
+                        if (filtered.length === 0) return null;
+                        return (
+                          <MonthGroup
+                            key={month}
+                            month={month}
+                            entries={filtered}
+                            currentOwner={seat.ownerId}
+                            currentAccount={currentAccount}
+                            onSelect={setSelectedEntry}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="paid" className="pt-4">
+                  {paidEntries.length === 0 ? (
+                    <div className="py-10 text-center">
+                      <p className="text-14 text-paper-muted">
+                        Nothing paid out yet. The money stays in the seat.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-8">
+                      {grouped.map(([month, entries]) => {
+                        const filtered = entries.filter(
+                          (entry) => entry.kind === "paid_out"
+                        );
+                        if (filtered.length === 0) return null;
+                        return (
+                          <MonthGroup
+                            key={month}
+                            month={month}
+                            entries={filtered}
+                            currentOwner={seat.ownerId}
+                            currentAccount={currentAccount}
+                            onSelect={setSelectedEntry}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="holders" className="pt-4">
+                  {data.holders.length === 0 ? (
+                    <p className="py-10 text-center text-14 text-paper-muted">
+                      No holders recorded yet.
+                    </p>
+                  ) : (
+                    <HoldersStrip
+                      holders={data.holders}
+                      currentAccount={currentAccount}
+                    />
+                  )}
+                </TabsContent>
+              </TabsRoot>
+            </div>
+            <div className="border-t border-line px-4 py-3">
+              <p className="flex items-center gap-2 text-12 text-paper-muted">
+                <History className="h-3.5 w-3.5" aria-hidden="true" />
+                History travels with the seat, not with the account.
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-3 font-mono text-xs">
-            <span className="rounded-lg border border-gold-500/30 bg-obsidian-950 px-3 py-1 text-gold-300">
-              Holders: {history.holders.length}
-            </span>
-            <span className="rounded-lg border border-segel-500/30 bg-obsidian-950 px-3 py-1 text-segel-400">
-              Claims: {history.claims.length}
-            </span>
-            <span className="rounded-lg border border-threat-500/30 bg-obsidian-950 px-3 py-1 text-threat-400">
-              Outflows: {outflows.length}
-            </span>
-          </div>
+          </Panel>
         </div>
 
-        {mergedTimeline.length === 0 ? (
-          <div className="rounded-2xl border border-slate-800 bg-obsidian-950/70 p-8 text-center font-mono text-xs text-slate-400">
-            No on-chain history events recorded yet for `{tokenId}`.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {mergedTimeline.map((item, idx) => (
-              <div
-                key={`${item.at_ms}-${idx}`}
-                className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-obsidian-950/85 p-4"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`rounded px-2 py-0.5 font-mono text-[10px] font-bold ${
-                        item.kind === "holder"
-                          ? "bg-gold-500/20 text-gold-300"
-                          : item.kind === "claim"
-                          ? "bg-segel-500/20 text-segel-400"
-                          : item.kind === "earning"
-                          ? "bg-indigo-500/20 text-indigo-300"
-                          : "bg-threat-500/20 text-threat-400"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                    <span className="font-mono text-[11px] text-slate-400">
-                      {formatTimestampMs(item.at_ms)}
-                    </span>
-                  </div>
-                  <p className="font-mono text-sm font-semibold text-white">
-                    {item.title}
-                  </p>
-                  <p className="text-xs text-slate-400">{item.subtitle}</p>
-                </div>
+        <div className="space-y-4">
+          <SeatCard seat={seat} compact />
+          <Panel className="p-4">
+            <div className="mono-label">Holder</div>
+            <div className="mt-2 break-all font-mono text-14 text-paper">
+              {seat.ownerId === currentAccount ? "You" : seat.ownerId}
+            </div>
+            <div className="mt-4 mono-label">Held since</div>
+            <div className="mt-1 font-mono text-14 text-paper">
+              {formatDate(seat.holderSinceMs, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </div>
+            <div className="mt-4 mono-label">Events attended</div>
+            <div className="mt-1 font-mono text-14 tabular text-paper">
+              {seat.eventsAttended}
+            </div>
+          </Panel>
+          <Panel className="p-4">
+            <div className="mono-label">Club</div>
+            <div className="mt-2 break-all font-mono text-12 text-paper-muted">
+              {registryId}
+            </div>
+            <p className="mt-3 text-12 leading-relaxed text-paper-muted">
+              This seat has no keys. Only the club contract can move its money,
+              and only for the current holder.
+            </p>
+          </Panel>
+        </div>
+      </div>
 
-                <div className="text-right font-mono text-xs">
-                  <span className="block text-[10px] text-slate-500">
-                    CUMULATIVE VAULT
-                  </span>
-                  <span className="font-bold text-gold-300">
-                    {formatYocto(item.cumulativeYocto)} NEAR
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <DetailDrawer
+        entry={selectedEntry}
+        seat={seat}
+        currentAccount={currentAccount}
+        open={Boolean(selectedEntry)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedEntry(null);
+        }}
+      />
+
+      <VerifyDrawer
+        open={proofOpen}
+        onOpenChange={setProofOpen}
+        proof={proofQuery.data}
+        loading={proofQuery.isLoading}
+        onRecheck={async () => {
+          await proofQuery.refetch();
+        }}
+      />
+    </div>
+  );
+}
+
+function EmptyHistory() {
+  return (
+    <div className="py-12 text-center">
+      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded border border-line bg-surface-sunken">
+        <History className="h-4 w-4 text-paper-muted" aria-hidden="true" />
+      </div>
+      <p className="mx-auto mt-4 max-w-[36ch] text-14 leading-relaxed text-paper-muted">
+        Nothing here yet. Earnings appear after the first event settles.
+      </p>
     </div>
   );
 }

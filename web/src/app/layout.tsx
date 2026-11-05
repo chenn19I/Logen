@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import "@near-wallet-selector/modal-ui/styles.css";
+import "@/styles/tokens.css";
 import "./globals.css";
 import { NearProvider } from "@/components/NearProvider";
+import { QueryProvider } from "@/components/QueryProvider";
+import { DemoProvider } from "@/lib/demo/DemoProvider";
 import { Navbar } from "@/components/Navbar";
-import { KawungPatternBg } from "@/components/KawungOrnament";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
-  title: "PUSAKA · Tactile Cryptographic Relic — Keyless Membership Vaults on NEAR",
+  title: "Pusaka — The seat that carries its own wallet",
   description:
-    "Keanggotaan yang diwariskan bersama isinya. Zero-access-key NEP-171 membership sub-accounts, O(1) club revenue sharing, and atomic safe secondary market on NEAR.",
+    "A members club where each seat is an NFT that owns its own keyless wallet. Sell the seat and the money, history and access go with it. NEAR Testnet.",
 };
 
 export default function RootLayout({
@@ -26,41 +29,23 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="bg-[#06080D] font-sans text-slate-100 antialiased selection:bg-[#00EC97]/25 selection:text-[#00EC97]">
-        <KawungPatternBg />
+      <body className="bg-ink font-sans text-paper antialiased">
         <NearProvider>
-          <div className="relative z-10 flex min-h-screen flex-col">
-            <Navbar />
-            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
-              {children}
-            </main>
-            <footer className="border-t border-white/[0.06] bg-[#06080D]/90 py-6 text-xs text-slate-400 backdrop-blur-xl">
-              <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="font-extrabold tracking-[-0.04em] text-[#00EC97]">
-                    PUSAKA
-                  </span>
-                  <span className="text-white/20">·</span>
-                  <span>
-                    NEAR Hackathon Track 10 (&ldquo;NFTs That Do Something&rdquo;)
-                  </span>
-                  <span className="text-white/20">·</span>
-                  <span className="font-mono text-slate-300">
-                    sharded-item-1.0.0
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 font-mono text-[11px]">
-                  <span className="text-[#00EC97]">
-                    K1 Zero Keys · K2 Canonical Vault · K3 O(1) Accrual · 80,620 Verified Schedules
-                  </span>
-                </div>
+          <QueryProvider>
+            <DemoProvider>
+              <div className="flex min-h-screen flex-col">
+                <Navbar />
+                <main className="mx-auto w-full max-w-page flex-1 px-4 py-8 sm:px-6 sm:py-10">
+                  {children}
+                </main>
+                <SiteFooter />
               </div>
-            </footer>
-          </div>
+            </DemoProvider>
+          </QueryProvider>
         </NearProvider>
       </body>
     </html>

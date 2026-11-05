@@ -1,26 +1,53 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
-import nacl from "tweetnacl";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
-  Lock,
-  Unlock,
+  ArrowRight,
+  FlaskConical,
+  Loader2,
   ShieldCheck,
-  AlertOctagon,
-  KeyRound,
-  RefreshCw,
-  Terminal,
-  Sparkles,
-  LogOut,
-  CheckCircle2,
+  Wallet,
 } from "lucide-react";
 import { useNear } from "@/components/NearProvider";
-import { BentoCard, SPRING_RELIC } from "@/components/TactileBento";
-import { KratonDivider } from "@/components/KawungOrnament";
-import { motion } from "framer-motion";
-import { signNep413WithSecretKey } from "@/lib/gate/nep413";
+import { useDemo } from "@/lib/demo/DemoProvider";
+import { useAllSeats, useEvents, useSeats } from "@/lib/chain/hooks";
+import type { ClubEvent, Seat } from "@/lib/chain/types";
+import {
+  formatDate,
+  formatTime,
+  near,
+  relativeSeconds,
+  seatLabel,
+  shortAccount,
+} from "@/lib/utils";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Chip";
+import { SeatGlyph } from "@/components/seat/SeatGlyph";
+import { PixelChair } from "@/components/seat/PixelChair";
 
-interface ProtectedLoungeData {
+interface LoungeContent {
+  title: string;
+  subtitle: string;
+  verifiedSeat: string;
+  verifiedOwner: string;
+  boundRotationSeq: number;
+  perks: { code: string; title: string; description: string }[];
+  dispatches: {
+    id: string;
+    date: string;
+    author: string;
+    heading: string;
+    body: string;
+  }[];
+}
+
+interface GateResponse {
   authenticated: boolean;
   mode?: "onchain" | "inspector";
   code?: string;
@@ -41,112 +68,389 @@ interface ProtectedLoungeData {
     vaultOwner: string;
     vaultSeq: number;
   };
-  loungeContent?: {
-    title: string;
-    subtitle: string;
-    verifiedSeat: string;
-    verifiedOwner: string;
-    boundRotationSeq: number;
-    perks: { code: string; title: string; description: string }[];
-    dispatches: {
-      id: string;
-      date: string;
-      author: string;
-      heading: string;
-      body: string;
-    }[];
-  };
+  loungeContent?: LoungeContent;
 }
 
-export default function LoungeGatePage() {
+function doorCode(tokenId: string): string {
+  let hash = 0;
+  for (let index = 0; index < tokenId.length; index += 1) {
+    hash = (hash * 31 + tokenId.charCodeAt(index)) >>> 0;
+  }
+  return `P-${seatLabel(tokenId)}-${String(1000 + (hash % 9000))}`;
+}
+
+function Door({ locked = false }: { locked?: boolean }) {
+  return (
+    <div className="relative h-56 w-40" aria-hidden="true">
+      <span className="absolute -top-5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-[1px] bg-signal" />
+      <span className="absolute -top-8 left-1/2 -translate-x-1/2 font-mono text-[9px] uppercase tracking-label text-paper-muted">
+        {locked ? "Closed" : "07"}
+      </span>
+
+      <div className="absolute inset-x-0 top-0 h-52 border border-line-strong bg-surface-sunken p-2">
+        <div className="flex h-7 items-end gap-1 border-b border-line pb-1">
+          <span className="h-full flex-1 border-x border-line" />
+          <span className="h-full flex-1 border-x border-line" />
+          <span className="h-full flex-1 border-x border-line" />
+        </div>
+
+        <div className="mt-2 grid h-[164px] grid-cols-2 gap-1">
+          <div className="relative border border-line">
+            <span className="absolute inset-2 border border-line/70" />
+            <span className="absolute right-2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-[1px] bg-paper-muted" />
+          </div>
+          <div className="relative border border-line">
+            <span className="absolute inset-2 border border-line/70" />
+            <span className="absolute left-2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-[1px] bg-paper-muted" />
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute -bottom-2 left-1/2 h-2 w-48 -translate-x-1/2 border-x border-b border-line-strong" />
+    </div>
+  );
+}
+
+function Tonight({
+  event,
+  seat,
+}: {
+  event: ClubEvent | null;
+  seat: Seat | null;
+}) {
+  const doorsAt = event ? event.startsAtMs - 30 * 60 * 1000 : null;
+
+  return (
+    <div className="grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+      <div className="py-8 lg:pr-12">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="bracket-label">[ TONIGHT ]</span>
+          {event ? (
+            <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+              {event.sold} / {event.capacity} sold
+            </span>
+          ) : null}
+        </div>
+        <h2 className="mt-4 max-w-[18ch] text-40 font-semibold leading-[1.02] text-paper">
+          {event?.title ?? "The room is quiet."}
+        </h2>
+        {event ? (
+          <>
+            <p className="mt-5 font-mono text-14 text-paper-dim">
+              {formatDate(event.startsAtMs, {
+                weekday: "long",
+                month: "short",
+                day: "numeric",
+              })}{" "}
+              · {formatTime(event.startsAtMs)}
+            </p>
+            <p className="mt-2 max-w-[44ch] text-14 leading-relaxed text-paper-muted">
+              Your seat earns a share of every ticket sold. The room opens
+              thirty minutes before the first frame.
+            </p>
+          </>
+        ) : (
+          <p className="mt-5 max-w-[40ch] text-14 leading-relaxed text-paper-muted">
+            No event is scheduled yet. The room stays open for holders.
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-6 border-t border-line py-8 lg:border-l lg:border-t-0 lg:pl-12">
+        <PixelChair size={116} />
+        <dl className="flex-1 space-y-2 font-mono text-12">
+          <div className="flex items-baseline justify-between gap-4 border-b border-line pb-2">
+            <dt className="uppercase tracking-label text-paper-muted">Doors</dt>
+            <dd className="tabular text-paper">{doorsAt ? formatTime(doorsAt) : "—"}</dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-4 border-b border-line pb-2">
+            <dt className="uppercase tracking-label text-paper-muted">Start</dt>
+            <dd className="tabular text-paper">
+              {event ? formatTime(event.startsAtMs) : "—"}
+            </dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-4">
+            <dt className="uppercase tracking-label text-paper-muted">Ticket</dt>
+            <dd className="tabular text-paper">
+              {event ? `${near(event.ticketPriceYocto, 2)} NEAR` : "—"}
+            </dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-4 pt-1">
+            <dt className="uppercase tracking-label text-paper-muted">Inside</dt>
+            <dd className="text-signal">
+              {seat ? `Seat ${seatLabel(seat.tokenId)}` : "Members' room"}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  );
+}
+
+function GuestList({
+  seats,
+  currentAccount,
+  loading,
+}: {
+  seats: Seat[];
+  currentAccount: string | null;
+  loading: boolean;
+}) {
+  const visible = [...seats]
+    .sort((a, b) => {
+      const aYou = a.ownerId === currentAccount ? 0 : 1;
+      const bYou = b.ownerId === currentAccount ? 0 : 1;
+      return aYou - bYou || a.number - b.number;
+    })
+    .slice(0, 6);
+
+  return (
+    <section className="border-t border-line py-8" aria-labelledby="door-list">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="door-list" className="text-24 font-semibold text-paper">
+          Door list
+        </h2>
+        <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+          {seats.length} seats · six shown
+        </span>
+      </div>
+
+      <div className="mt-5 grid grid-cols-[32px_64px_1fr_auto] items-center gap-3 border-b border-line pb-2 font-mono text-[9px] uppercase tracking-label text-paper-muted sm:grid-cols-[36px_84px_1fr_auto]">
+        <span />
+        <span>Seat</span>
+        <span>Holder</span>
+        <span>State</span>
+      </div>
+
+      {loading ? (
+        <div className="divide-y divide-line" aria-busy="true">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="flex items-center gap-3 py-3">
+              <div className="h-6 w-6 animate-skeleton rounded bg-line" />
+              <div className="h-3 w-16 animate-skeleton rounded bg-line" />
+              <div className="h-3 flex-1 animate-skeleton rounded bg-line" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y divide-line">
+          {visible.map((seat) => {
+            const isYou = seat.ownerId === currentAccount;
+            const away = seat.status === "listed";
+            return (
+              <div
+                key={seat.tokenId}
+                className="grid grid-cols-[32px_64px_1fr_auto] items-center gap-3 py-3 sm:grid-cols-[36px_84px_1fr_auto]"
+              >
+                <SeatGlyph
+                  tokenId={seat.tokenId}
+                  innerDots={seat.innerDots}
+                  size={24}
+                />
+                <span className="font-mono text-12 uppercase tracking-label text-paper-muted">
+                  Seat {seatLabel(seat.tokenId)}
+                </span>
+                <span className="min-w-0 truncate text-14 text-paper-dim">
+                  {isYou ? "You" : shortAccount(seat.ownerId, 26)}
+                </span>
+                <Chip tone={isYou ? "accent" : away ? "caution" : "neutral"}>
+                  {isYou ? "Here" : away ? "Away" : "In"}
+                </Chip>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export default function LoungePage() {
   const {
-    lang,
     accountId,
     registryId,
     openWalletModal,
     signNep413Message,
   } = useNear();
-  const isId = lang === "id";
+  const { demo, demoAccount, chain, simulateHandoff } = useDemo();
+  const currentAccount = demo ? demoAccount : accountId;
 
-  const [gateData, setGateData] = useState<ProtectedLoungeData | null>(null);
-  const [loadingGate, setLoadingGate] = useState<boolean>(true);
+  const seatsQuery = useSeats();
+  const eventsQuery = useEvents();
+  const [enteredSeatId, setEnteredSeatId] = useState<string | null>(null);
+  const allSeatsQuery = useAllSeats(Boolean(enteredSeatId));
+
+  const [demoEntered, setDemoEntered] = useState(false);
+  const [liveGate, setLiveGate] = useState<GateResponse | null>(null);
+  const [locked, setLocked] = useState(false);
+  const [lockReason, setLockReason] = useState<string | null>(null);
   const [authStep, setAuthStep] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [customTokenId, setCustomTokenId] = useState<string>("");
+  const [lastCheckedAt, setLastCheckedAt] = useState<number>(Date.now());
+  const [now, setNow] = useState(Date.now());
+  const hadLiveSession = useRef(false);
 
-  // Judge Inspector Telemetry State
-  const [visualGateMode, setVisualGateMode] = useState<
-    "unlocked" | "revoked" | "lagging"
-  >("unlocked");
-  const [inspectorLog, setInspectorLog] = useState<{
-    nonceHex: string;
-    message: string;
-    recipient: string;
-    publicKeyNear: string;
-    signatureBase64: string;
-    borshHex: string;
-    sha256Hex: string;
-    verifyResponse: Record<string, unknown> | null;
-  } | null>(null);
+  const holderSeat = useMemo(
+    () =>
+      seatsQuery.data?.find((seat) => seat.tokenId === enteredSeatId) ??
+      seatsQuery.data?.[0] ??
+      null,
+    [seatsQuery.data, enteredSeatId]
+  );
 
-  const fetchProtectedContent = useCallback(
-    async (simRotatedSeq?: number, simOwner?: string) => {
-      setLoadingGate(true);
+  const lockedSeat = useMemo(
+    () =>
+      allSeatsQuery.data?.find((seat) => seat.tokenId === enteredSeatId) ?? null,
+    [allSeatsQuery.data, enteredSeatId]
+  );
+
+  const nextEvent = useMemo(() => {
+    const events = eventsQuery.data ?? [];
+    return (
+      events
+        .filter((event) => event.status === "upcoming")
+        .sort((a, b) => a.startsAtMs - b.startsAtMs)[0] ??
+      events[0] ??
+      null
+    );
+  }, [eventsQuery.data]);
+
+  const isHolder = demo
+    ? demoEntered && !locked
+    : Boolean(liveGate?.authenticated) && !locked;
+
+  const content = liveGate?.loungeContent;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!demo) return;
+    if (!demoEntered && seatsQuery.data?.[0]) {
+      setEnteredSeatId(seatsQuery.data[0].tokenId);
+    }
+  }, [demo, demoEntered, seatsQuery.data]);
+
+  useEffect(() => {
+    if (demo) {
+      setLiveGate(null);
+      setLocked(false);
+      setLockReason(null);
+      setAuthError(null);
+      setAuthStep(null);
+      hadLiveSession.current = false;
+    } else {
+      setDemoEntered(false);
+      setLocked(false);
+      setLockReason(null);
+    }
+  }, [demo]);
+
+  const fetchLiveContent = useCallback(
+    async (silent = false) => {
+      if (!silent) setAuthStep("Checking the door.");
       try {
-        const params = new URLSearchParams();
-        if (simRotatedSeq !== undefined) {
-          params.set("simRotatedSeq", String(simRotatedSeq));
+        const res = await fetch("/api/gate/content", { cache: "no-store" });
+        const data = (await res.json()) as GateResponse;
+        if (res.ok && data.authenticated) {
+          hadLiveSession.current = true;
+          setLiveGate(data);
+          if (data.session?.tokenId) setEnteredSeatId(data.session.tokenId);
+          setLastCheckedAt(Date.now());
+          setLocked(false);
+          setLockReason(null);
+          setAuthError(null);
+        } else {
+          setLiveGate(null);
+          if (hadLiveSession.current) {
+            setLocked(true);
+            setLockReason(
+              data.code === "E_SESSION_ROTATED_OUT"
+                ? "This seat now belongs to someone else."
+                : "Only the current holder can enter."
+            );
+            hadLiveSession.current = false;
+          }
         }
-        if (simOwner) {
-          params.set("simOwner", simOwner);
+      } catch (error) {
+        if (!silent) {
+          setAuthError(
+            error instanceof Error ? error.message : "The door did not answer."
+          );
         }
-        const query = params.toString() ? `?${params.toString()}` : "";
-        const res = await fetch(`/api/gate/content${query}`, {
-          cache: "no-store",
-        });
-        const data = (await res.json()) as ProtectedLoungeData;
-        setGateData(data);
-        if (!res.ok && data.error) {
-          setAuthError(`[${data.code || res.status}] ${data.error}`);
-        }
-      } catch (err) {
-        setAuthError(err instanceof Error ? err.message : String(err));
       } finally {
-        setLoadingGate(false);
+        if (!silent) setAuthStep(null);
       }
     },
     []
   );
 
   useEffect(() => {
-    fetchProtectedContent();
-  }, [fetchProtectedContent]);
+    if (!demo) void fetchLiveContent(true);
+  }, [demo, fetchLiveContent]);
 
-  // Live Wallet NEP-413 Login Flow
-  const handleWalletNep413Login = async () => {
+  // The door is checked every five seconds. In demo mode the check is local.
+  useEffect(() => {
+    if (!isHolder) return;
+    const timer = window.setInterval(async () => {
+      if (demo) {
+        if (!enteredSeatId) return;
+        const seat = await chain.getSeat(enteredSeatId);
+        if (!seat || seat.ownerId !== demoAccount) {
+          setLocked(true);
+          setLockReason("This seat now belongs to someone else.");
+        } else {
+          setLastCheckedAt(Date.now());
+        }
+        return;
+      }
+      await fetchLiveContent(true);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [
+    isHolder,
+    demo,
+    enteredSeatId,
+    chain,
+    demoAccount,
+    fetchLiveContent,
+  ]);
+
+  const enterDemo = () => {
+    const seat = seatsQuery.data?.[0];
+    if (!seat) return;
+    setEnteredSeatId(seat.tokenId);
+    setDemoEntered(true);
+    setLocked(false);
+    setLockReason(null);
+    setLastCheckedAt(Date.now());
+  };
+
+  const liveLogin = async () => {
     setAuthError(null);
     if (!accountId) {
       openWalletModal();
       return;
     }
     try {
-      setAuthStep("1/3 Requesting 32-byte nonce from POST /api/gate/challenge...");
-      const chalRes = await fetch("/api/gate/challenge", { method: "POST" });
-      const chal = await chalRes.json();
+      setAuthStep("Asking the club for a nonce.");
+      const challengeRes = await fetch("/api/gate/challenge", { method: "POST" });
+      const challenge = await challengeRes.json();
+      if (!challengeRes.ok) {
+        throw new Error(challenge.error ?? "The club did not issue a nonce.");
+      }
 
-      setAuthStep(
-        "2/3 Signing NEP-413 payload in NEAR Wallet (tag = 2147484061)..."
-      );
+      setAuthStep("Waiting for your signature.");
       const signed = await signNep413Message({
-        message: chal.message,
-        recipient: chal.recipient,
-        nonceBase64: chal.nonceBase64,
+        message: challenge.message,
+        recipient: challenge.recipient,
+        nonceBase64: challenge.nonceBase64,
       });
 
-      setAuthStep(
-        "3/3 Verifying Ed25519 signature + FullAccess key + Same-Final-Block Pair Check..."
-      );
-      const verRes = await fetch("/api/gate/verify", {
+      setAuthStep("Checking the seat against the chain.");
+      const verifyRes = await fetch("/api/gate/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -154,672 +458,326 @@ export default function LoungeGatePage() {
           publicKey: signed.publicKey,
           signature: signed.signature,
           registryId,
-          tokenId: customTokenId.trim() || undefined,
-          challengeToken: chal.challengeToken,
+          challengeToken: challenge.challengeToken,
         }),
       });
-      const verData = await verRes.json();
-      if (!verRes.ok) {
+      const verified = await verifyRes.json();
+      if (!verifyRes.ok) {
         throw new Error(
-          `[${verData.code || verRes.status}] ${
-            verData.error || "Verification rejected"
+          `[${verified.code ?? verifyRes.status}] ${
+            verified.error ?? "Verification rejected"
           }`
         );
       }
-
+      await fetchLiveContent();
+    } catch (error) {
       setAuthStep(null);
-      await fetchProtectedContent();
-    } catch (err) {
-      setAuthStep(null);
-      setAuthError(err instanceof Error ? err.message : String(err));
-    }
-  };
-
-  // Judge Cryptographic Inspector Flow
-  const runInspectorScenario = async (
-    scenario: "happy" | "d5_index_behind" | "not_owner"
-  ) => {
-    setAuthError(null);
-    setAuthStep("Running real NEP-413 Borsh + Ed25519 verification in Inspector...");
-    try {
-      const chalRes = await fetch("/api/gate/challenge", { method: "POST" });
-      const chal = await chalRes.json();
-      const nonceBytes = new Uint8Array(Buffer.from(chal.nonceHex, "hex"));
-
-      // Generate ephemeral Ed25519 keypair and sign real NEP-413 Borsh bytes
-      const kp = nacl.sign.keyPair();
-      const signed = signNep413WithSecretKey(
-        {
-          message: chal.message,
-          nonce: nonceBytes,
-          recipient: chal.recipient,
-          callbackUrl: null,
-        },
-        kp.secretKey
+      setAuthError(
+        error instanceof Error ? error.message : "The signature was not accepted."
       );
-
-      const mockChain =
-        scenario === "happy"
-          ? {
-              enabled: true,
-              tokenId: `s001.${registryId}`,
-              indexOwner: "alice.testnet",
-              indexSeq: 3,
-              vaultOwner: "alice.testnet",
-              vaultSeq: 3,
-            }
-          : scenario === "d5_index_behind"
-          ? {
-              enabled: true,
-              tokenId: `s001.${registryId}`,
-              indexOwner: "alice.testnet",
-              indexSeq: 3,
-              vaultOwner: "bob.testnet",
-              vaultSeq: 4,
-            }
-          : {
-              enabled: true,
-              tokenId: `s001.${registryId}`,
-              indexOwner: "bob.testnet",
-              indexSeq: 4,
-              vaultOwner: "bob.testnet",
-              vaultSeq: 4,
-            };
-
-      const verRes = await fetch("/api/gate/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accountId: "alice.testnet",
-          publicKey: signed.publicKeyNear,
-          signature: signed.signatureBase64,
-          registryId,
-          challengeToken: chal.challengeToken,
-          inspectorMockChain: mockChain,
-        }),
-      });
-      const verData = await verRes.json();
-
-      setInspectorLog({
-        nonceHex: chal.nonceHex,
-        message: chal.message,
-        recipient: chal.recipient,
-        publicKeyNear: signed.publicKeyNear,
-        signatureBase64: signed.signatureBase64,
-        borshHex: signed.serializedHex,
-        sha256Hex: signed.hashHex,
-        verifyResponse: verData,
-      });
-
-      setAuthStep(null);
-      if (!verRes.ok) {
-        setAuthError(`[${verData.code || verRes.status}] ${verData.error}`);
-      } else {
-        await fetchProtectedContent();
-      }
-    } catch (err) {
-      setAuthStep(null);
-      setAuthError(err instanceof Error ? err.message : String(err));
     }
   };
 
-  const handleLogout = async () => {
+  const logout = async () => {
+    if (demo) {
+      setDemoEntered(false);
+      setLocked(false);
+      setLockReason(null);
+      return;
+    }
     await fetch("/api/gate/content", { method: "DELETE" });
-    setGateData({ authenticated: false });
-    setAuthError(null);
+    hadLiveSession.current = false;
+    setLiveGate(null);
+    setLocked(false);
+    setLockReason(null);
   };
+
+  const sellDemoSeat = async () => {
+    if (!enteredSeatId) return;
+    await simulateHandoff(enteredSeatId);
+    setLocked(true);
+    setLockReason("This seat now belongs to someone else.");
+  };
+
+  const checkedSeconds = Math.max(
+    0,
+    Math.floor((now - lastCheckedAt) / 1000)
+  );
+
+  if (!isHolder) {
+    const showLocked = locked;
+    const nextSeat = seatsQuery.data?.[0] ?? null;
+
+    return (
+      <section className="terminal-grid overflow-hidden rounded border border-line bg-surface">
+        <div className="grid lg:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)]">
+          <div className="px-6 py-10 sm:px-10 sm:py-14 lg:px-12 lg:py-16">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="bracket-label">
+                [ LOUNGE / {showLocked ? "LOCKED" : "CLOSED"} ]
+              </span>
+              {showLocked ? (
+                <Chip tone="caution" dot>
+                  Seat changed hands
+                </Chip>
+              ) : null}
+            </div>
+
+            <h1 className="mt-6 max-w-[11ch] text-40 font-semibold leading-[0.98] tracking-[-0.035em] text-paper sm:text-72">
+              {showLocked
+                ? "This seat now belongs to someone else."
+                : "Only the current holder can enter."}
+            </h1>
+            <p className="mt-5 max-w-[40ch] font-mono text-14 leading-relaxed text-paper-muted">
+              {showLocked
+                ? "The door closed the moment the seat changed hands. The new holder has the key now."
+                : "The door reads the seat, not the name on the list. Sign once to prove it is yours."}
+            </p>
+
+            {authStep ? (
+              <p
+                className="mt-6 flex items-center gap-2 font-mono text-12 text-paper-muted"
+                role="status"
+              >
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                {authStep}
+              </p>
+            ) : null}
+
+            {authError ? (
+              <div className="mt-6 max-w-[46ch] rounded border border-[rgba(255,107,94,0.35)] bg-danger-soft px-4 py-3">
+                <p className="text-12 text-danger" role="alert">
+                  That did not go through. Nothing moved.
+                </p>
+                <p className="mt-1 break-all font-mono text-[10px] leading-relaxed text-danger">
+                  {authError}
+                </p>
+              </div>
+            ) : null}
+
+            <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+              {demo ? (
+                <Button size="lg" onClick={enterDemo} disabled={!nextSeat}>
+                  {nextSeat
+                    ? `Enter with seat ${seatLabel(nextSeat.tokenId)}`
+                    : "No demo seat left"}
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              ) : accountId ? (
+                <Button size="lg" onClick={liveLogin}>
+                  Sign to enter
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              ) : (
+                <Button size="lg" onClick={openWalletModal}>
+                  <Wallet className="h-4 w-4" aria-hidden="true" />
+                  Connect wallet
+                </Button>
+              )}
+              <LinkButton href="/market" variant="secondary" size="lg">
+                Browse market
+              </LinkButton>
+            </div>
+
+            <div className="mt-10 flex items-center gap-2 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+              <ShieldCheck
+                className="h-3.5 w-3.5 text-positive"
+                aria-hidden="true"
+              />
+              No keys. Only the current holder.
+            </div>
+
+            <dl className="mt-10 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-5 sm:grid-cols-3">
+              <div>
+                <dt className="mono-label">Door</dt>
+                <dd className="mt-1 font-mono text-12 text-paper">
+                  {showLocked ? "Closed" : "Waiting"}
+                </dd>
+              </div>
+              <div>
+                <dt className="mono-label">Check</dt>
+                <dd className="mt-1 font-mono text-12 text-paper">
+                  Every 5 seconds
+                </dd>
+              </div>
+              <div>
+                <dt className="mono-label">Seat</dt>
+                <dd className="mt-1 font-mono text-12 text-paper">
+                  {enteredSeatId ? seatLabel(enteredSeatId) : "—"}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <aside className="flex flex-col border-t border-line lg:border-l lg:border-t-0">
+            <div className="flex items-center justify-between border-b border-line px-6 py-4">
+              <span className="mono-label">The door</span>
+              <span className="font-mono text-[9px] uppercase tracking-label text-paper-muted">
+                North entrance
+              </span>
+            </div>
+
+            <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+              <Door locked={showLocked} />
+
+              <div className="mt-10 w-full max-w-[280px] border-t border-line pt-4">
+                {showLocked && lockedSeat ? (
+                  <>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="mono-label">Seat {seatLabel(lockedSeat.tokenId)}</span>
+                      <span className="font-mono text-[10px] uppercase tracking-label text-caution">
+                        Sold
+                      </span>
+                    </div>
+                    <p className="mt-2 break-all font-mono text-12 text-paper">
+                      {lockedSeat.ownerId}
+                    </p>
+                    <p className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                      Current holder
+                    </p>
+                  </>
+                ) : nextEvent ? (
+                  <>
+                    <p className="text-16 leading-snug text-paper">
+                      {nextEvent.title}
+                    </p>
+                    <p className="mt-1 font-mono text-12 text-paper-muted">
+                      {formatDate(nextEvent.startsAtMs, {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      })}{" "}
+                      · {formatTime(nextEvent.startsAtMs)}
+                    </p>
+                    <p className="mt-3 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                      {nextEvent.sold} / {nextEvent.capacity} sold
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-14 leading-relaxed text-paper-muted">
+                    No event is scheduled yet.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-line px-6 py-4">
+              <div className="flex items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-label">
+                <span className="text-paper-muted">Door code</span>
+                <span className="text-paper-muted">— — —</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-label">
+                <span className="text-paper-muted">Holder</span>
+                <span className={showLocked ? "text-caution" : "text-paper-muted"}>
+                  {showLocked ? "Changed" : "Not checked"}
+                </span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="rounded-3xl border border-gold-500/30 bg-obsidian-800/85 p-6 lg:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
-            <span className="font-mono text-xs uppercase tracking-widest text-gold-400">
-              {isId
-                ? "Syarat Track R2 · Tanda Tangan NEP-413 + Pair Check T2 di Blok Final yang Sama"
-                : "Track Requirement R2 · NEP-413 + Same-Final-Block T2 Pair Check"}
-            </span>
-            <h1 className="font-serif text-3xl font-bold text-white sm:text-4xl">
-              {isId
-                ? "Pendopo Agung · Ruang Eksklusif Pemegang Kursi"
-                : "Pendopo Agung · Holder-Only Gated Lounge"}
+    <div>
+      <header className="pb-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="bracket-label">[ LOUNGE / OPEN ]</span>
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className="font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 hover:text-paper"
+          >
+            Lock the room
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <h1 className="max-w-[12ch] text-40 font-semibold leading-[0.98] tracking-[-0.035em] text-paper sm:text-72">
+              The room is yours.
             </h1>
-            <p className="max-w-2xl text-xs leading-relaxed text-slate-300">
-              {isId ? (
-                <>
-                  Membuktikan kepemilikan kursi lewat tanda tangan off-chain{" "}
-                  <span className="font-mono text-gold-300">NEP-413</span>, memeriksa
-                  kunci <span className="font-mono">FullAccess</span> aktif di blockchain,
-                  dan memeriksa ulang{" "}
-                  <span className="font-mono text-segel-400">vault.nft_item_info</span>{" "}
-                  pada blok final terbaru di <strong className="text-white">setiap permintaan HTTP</strong>{" "}
-                  sehingga mantan pemilik otomatis terkunci keluar detik itu juga saat
-                  kursinya berpindah tangan.
-                </>
-              ) : (
-                <>
-                  Authenticates seat holders via off-chain{" "}
-                  <span className="font-mono text-gold-300">NEP-413</span> Borsh signatures (
-                  <span className="font-mono">tag = 2^31 + 413</span>), verifies active{" "}
-                  <span className="font-mono">FullAccess</span> key ownership on-chain, and
-                  re-verifies <span className="font-mono text-segel-400">vault.nft_item_info</span>{" "}
-                  at the latest final block on <strong className="text-white">every single HTTP request</strong>{" "}
-                  so a former owner is locked out the very block their seat rotates.
-                </>
-              )}
+            <p className="mt-4 max-w-[44ch] font-mono text-14 leading-relaxed text-paper-muted">
+              {holderSeat
+                ? `Seat ${seatLabel(holderSeat.tokenId)} is on the door list. Show the code below.`
+                : "Your seat is on the door list. Show the code below."}
             </p>
           </div>
-
-          {gateData?.authenticated ? (
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-segel-500 bg-segel-500/15 px-3.5 py-1.5 font-mono text-xs font-bold text-segel-400">
-                <Unlock className="h-4 w-4" />
-                GATE UNLOCKED · SEQ #{gateData.session?.rotationSeq}
-              </span>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="inline-flex items-center gap-1 rounded-xl border border-slate-700 bg-obsidian-900 px-3 py-1.5 text-xs text-slate-300 hover:text-threat-400"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                End Session
-              </button>
+          <div className="lg:text-right">
+            <div className="mono-label">Door code</div>
+            <div className="mt-2 font-mono text-40 tabular text-signal">
+              {doorCode(enteredSeatId ?? holderSeat?.tokenId ?? "s007")}
             </div>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-threat-500/50 bg-threat-500/15 px-3.5 py-1.5 font-mono text-xs font-bold text-threat-400">
-              <Lock className="h-4 w-4" />
-              GATE LOCKED · FAIL-CLOSED
-            </span>
-          )}
+            <div className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+              Show this at the door
+            </div>
+          </div>
         </div>
+      </header>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-y border-line py-3">
+        <p
+          className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-label text-positive"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-positive" aria-hidden="true" />
+          Verified holder, checked {relativeSeconds(checkedSeconds)}
+        </p>
+        <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+          {holderSeat ? `Seat ${seatLabel(holderSeat.tokenId)}` : "Seat"} ·{" "}
+          {currentAccount ? shortAccount(currentAccount, 28) : "—"}
+        </p>
       </div>
 
-      {/* Real-Time Visual Gate Simulator (NEP-413 + Pair Check Portal) */}
-      <BentoCard
-        variant={
-          visualGateMode === "unlocked"
-            ? "jade"
-            : visualGateMode === "lagging"
-            ? "frozen"
-            : "blocked"
-        }
-        className="p-6 lg:p-8"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
-          <div>
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#00EC97]">
-              REAL-TIME REACTIVE PORTAL · NEP-413 + PAIR CHECK
-            </span>
-            <h2 className="mt-1 text-2xl font-extrabold text-white">
-              {isId
-                ? "Simulasi Visual Gerbang Anggota (2-Layer Gate)"
-                : "Two-Layer Cryptographic Gate Visualizer"}
-            </h2>
-          </div>
+      <Tonight event={nextEvent} seat={holderSeat} />
 
-          <div className="flex flex-wrap gap-2">
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.97 }}
-              transition={SPRING_RELIC}
-              onClick={() => {
-                setVisualGateMode("unlocked");
-                runInspectorScenario("happy");
-              }}
-              className={`rounded-xl px-3.5 py-2 font-mono text-xs font-bold transition ${
-                visualGateMode === "unlocked"
-                  ? "bg-[#00EC97] text-[#06080D] shadow-jade-sm"
-                  : "border border-white/10 bg-[#06080D] text-slate-300"
-              }`}
-            >
-              {isId ? "1. Pemilik Sah (Terbuka)" : "1. Valid Holder (Open)"}
-            </motion.button>
+      <GuestList
+        seats={allSeatsQuery.data ?? []}
+        currentAccount={currentAccount}
+        loading={allSeatsQuery.isLoading}
+      />
 
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.97 }}
-              transition={SPRING_RELIC}
-              onClick={() => {
-                setVisualGateMode("revoked");
-                fetchProtectedContent(4, "bob.testnet");
-              }}
-              className={`rounded-xl px-3.5 py-2 font-mono text-xs font-bold transition ${
-                visualGateMode === "revoked"
-                  ? "bg-[#EF4444] text-white shadow-blocked"
-                  : "border border-white/10 bg-[#06080D] text-slate-300"
-              }`}
-            >
-              {isId
-                ? "2. Mantan Pemilik (Terkunci)"
-                : "2. Former Owner (Locked)"}
-            </motion.button>
-
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.97 }}
-              transition={SPRING_RELIC}
-              onClick={() => {
-                setVisualGateMode("lagging");
-                runInspectorScenario("d5_index_behind");
-              }}
-              className={`rounded-xl px-3.5 py-2 font-mono text-xs font-bold transition ${
-                visualGateMode === "lagging"
-                  ? "bg-[#F59E0B] text-[#06080D] shadow-frozen"
-                  : "border border-white/10 bg-[#06080D] text-slate-300"
-              }`}
-            >
-              {isId
-                ? "3. Index Belum Sinkron (Gate Closed)"
-                : "3. Index Lagging (Gate Closed)"}
-            </motion.button>
-          </div>
+      <section className="grid gap-6 border-t border-line py-6 lg:grid-cols-[150px_1fr]">
+        <h2 className="mono-label">Notice</h2>
+        <div>
+          <p className="max-w-[56ch] text-14 leading-relaxed text-paper-dim">
+            {content?.dispatches?.[0]?.body ??
+              "The rooftop is heated. The bar runs until 23:00. Bring the seat, not a ticket."}
+          </p>
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            {content?.dispatches?.[0]
+              ? `${content.dispatches[0].author} · ${content.dispatches[0].date}`
+              : "The club"}
+          </p>
         </div>
-
-        {/* Animated Vault Portal Visualization */}
-        <div className="mt-6 grid gap-6 lg:grid-cols-12 lg:items-center">
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#06080D]/90 p-6 lg:col-span-5">
-            <motion.div
-              key={visualGateMode}
-              initial={{ scale: 0.9, opacity: 0.6 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={SPRING_RELIC}
-              className={`flex h-28 w-28 items-center justify-center rounded-full border-2 ${
-                visualGateMode === "unlocked"
-                  ? "border-[#00EC97] bg-[#00EC97]/15 shadow-[0_0_50px_rgba(0,236,151,0.45)]"
-                  : visualGateMode === "lagging"
-                  ? "border-[#F59E0B] bg-[#F59E0B]/15 shadow-[0_0_40px_rgba(245,158,11,0.3)]"
-                  : "border-[#EF4444] bg-[#EF4444]/15 shadow-[0_0_45px_rgba(239,68,68,0.4)]"
-              }`}
-            >
-              {visualGateMode === "unlocked" ? (
-                <Unlock className="h-12 w-12 text-[#00EC97]" />
-              ) : (
-                <Lock
-                  className={`h-12 w-12 ${
-                    visualGateMode === "lagging"
-                      ? "text-[#FBBF24]"
-                      : "text-[#F87171]"
-                  }`}
-                />
-              )}
-            </motion.div>
-
-            <span
-              className={`mt-4 font-mono text-xs font-extrabold uppercase tracking-wider ${
-                visualGateMode === "unlocked"
-                  ? "text-[#00EC97]"
-                  : visualGateMode === "lagging"
-                  ? "text-[#FBBF24]"
-                  : "text-[#F87171]"
-              }`}
-            >
-              {visualGateMode === "unlocked"
-                ? "PORTAL UNLOCKED · EMERALD ACCESS"
-                : visualGateMode === "lagging"
-                ? "TRANSFERRING / GATE CLOSED"
-                : "ACCESS REVOKED · SEQ MISMATCH"}
-            </span>
-          </div>
-
-          <div className="space-y-3 lg:col-span-7">
-            {visualGateMode === "unlocked" && (
-              <>
-                <h3 className="text-xl font-bold text-[#00EC97]">
-                  {isId
-                    ? "Pintu Terbuka — Pemegang Sah Terverifikasi di Blok Final"
-                    : "Portal Open — Canonical Holder Verified at Final Block"}
-                </h3>
-                <p className="text-xs leading-relaxed text-slate-300">
-                  {isId
-                    ? "Tanda tangan NEP-413 cocok dengan FullAccess key aktif, dan pembacaan blok final yang sama membuktikan nft_item_info.rotation_seq (#3) == nft_token.seq (#3)."
-                    : "NEP-413 signature matches an active FullAccess key, and same-final-block RPC confirms nft_item_info.rotation_seq (#3) == nft_token.seq (#3)."}
-                </p>
-              </>
-            )}
-
-            {visualGateMode === "revoked" && (
-              <>
-                <h3 className="text-xl font-bold text-[#F87171]">
-                  {isId
-                    ? "Terkunci Reaktif — Mantan Pemilik Ditolak (Ketidakcocokan rotation_seq)"
-                    : "Reactive Lockout — Former Owner Rejected on rotation_seq Mismatch"}
-                </h3>
-                <p className="text-xs leading-relaxed text-slate-300">
-                  {isId
-                    ? "Sesi cookie milik pemilik lama masih terikat pada rotation_seq #3, sedangkan vault di blockchain sudah berpindah ke pemilik baru pada rotation_seq #4. Gerbang langsung menutup akses (HTTP 403)."
-                    : "Former owner's session cookie is bound to rotation_seq #3, while the on-chain vault has rotated to rotation_seq #4. Gate immediately locks with HTTP 403."}
-                </p>
-              </>
-            )}
-
-            {visualGateMode === "lagging" && (
-              <>
-                <h3 className="text-xl font-bold text-[#FBBF24]">
-                  {isId
-                    ? "Transferring / Gate Closed — Index Belum Sinkron dengan Vault"
-                    : "Transferring / Gate Closed — Registry Index Lagging Behind Vault"}
-                </h3>
-                <p className="text-xs leading-relaxed text-slate-300">
-                  {isId
-                    ? "Vault sudah berpindah ke rotation_seq #4 namun index registry masih di #3 (mis. callback kehabisan gas). Gerbang menutup akses secara aman (Fail-Closed) sampai sync() dipanggil."
-                    : "Vault is already at rotation_seq #4 while registry index is at #3. Gate fails closed until permissionless sync() reconciles the index."}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVisualGateMode("unlocked");
-                    runInspectorScenario("happy");
-                  }}
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#00EC97] px-4 py-2 font-mono text-xs font-extrabold text-[#06080D] shadow-jade-sm"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  {isId
-                    ? "Jalankan sync(token_id) & Buka Gerbang →"
-                    : "Execute sync(token_id) & Heal Index →"}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </BentoCard>
-
-      {/* Status / Error Banner */}
-      {authStep && (
-        <div className="flex items-center gap-3 rounded-2xl border border-gold-500/40 bg-obsidian-800 p-4 font-mono text-xs text-gold-300">
-          <RefreshCw className="h-4 w-4 animate-spin text-gold-400" />
-          {authStep}
-        </div>
-      )}
-
-      {authError && (
-        <div className="flex items-start gap-3 rounded-2xl border border-threat-500/50 bg-threat-500/10 p-4 font-mono text-xs text-threat-400">
-          <AlertOctagon className="h-5 w-5 shrink-0 text-threat-400" />
-          <div>
-            <p className="font-bold">Gate Rejection (Fail-Closed Security):</p>
-            <p className="mt-1">{authError}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content: Locked vs Unlocked */}
-      {gateData?.authenticated && gateData.loungeContent ? (
-        <section className="space-y-6 rounded-3xl border border-segel-500/40 bg-gradient-to-br from-obsidian-800/95 via-obsidian-900 to-obsidian-950 p-6 shadow-2xl lg:p-8">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-segel-500/20 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-gold-400" />
-                <span className="font-mono text-xs uppercase tracking-widest text-segel-400">
-                  Verified Holder Session ({gateData.mode?.toUpperCase()})
-                </span>
-              </div>
-              <h2 className="mt-1 font-serif text-3xl font-bold text-white">
-                {gateData.loungeContent.title}
-              </h2>
-              <p className="text-xs text-slate-300">
-                Seat:{" "}
-                <strong className="font-mono text-gold-300">
-                  {gateData.loungeContent.verifiedSeat}
-                </strong>{" "}
-                · Canonical Owner:{" "}
-                <strong className="font-mono text-white">
-                  {gateData.loungeContent.verifiedOwner}
-                </strong>{" "}
-                · Bound Epoch:{" "}
-                <strong className="font-mono text-segel-400">
-                  rotation_seq #{gateData.loungeContent.boundRotationSeq}
-                </strong>
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fetchProtectedContent()}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-segel-500/40 bg-segel-500/10 px-3.5 py-2 font-mono text-xs text-segel-400 hover:bg-segel-500/20"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Re-Verify Session at Latest Block
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  fetchProtectedContent(
-                    (gateData.session?.rotationSeq ?? 0) + 1,
-                    "bob.testnet"
-                  )
-                }
-                className="inline-flex items-center gap-1.5 rounded-xl border border-threat-500/50 bg-threat-500/15 px-3.5 py-2 font-mono text-xs font-bold text-threat-400 hover:bg-threat-500/25"
-              >
-                Simulate Transfer (`rotation_seq + 1` → Threat D1)
-              </button>
-            </div>
-          </div>
-
-          {/* Holder Perks */}
-          <div className="grid gap-4 md:grid-cols-3">
-            {gateData.loungeContent.perks.map((perk) => (
-              <div
-                key={perk.code}
-                className="rounded-2xl border border-gold-500/30 bg-obsidian-950/90 p-4"
-              >
-                <span className="rounded border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 font-mono text-[10px] text-gold-300">
-                  {perk.code}
-                </span>
-                <h3 className="mt-2 font-serif text-lg font-bold text-white">
-                  {perk.title}
-                </h3>
-                <p className="mt-1 text-xs leading-relaxed text-slate-300">
-                  {perk.description}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Inner Sanctum Dispatches */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {gateData.loungeContent.dispatches.map((d) => (
-              <div
-                key={d.id}
-                className="rounded-2xl border border-slate-800 bg-obsidian-950/80 p-5"
-              >
-                <div className="flex items-center justify-between font-mono text-[11px] text-slate-400">
-                  <span>
-                    {d.id} · {d.author}
-                  </span>
-                  <span>{d.date}</span>
-                </div>
-                <h4 className="mt-2 font-serif text-xl font-bold text-gold-300">
-                  {d.heading}
-                </h4>
-                <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                  {d.body}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : (
-        <section className="grid gap-6 lg:grid-cols-12">
-          {/* Wallet NEP-413 Sign-In Card */}
-          <div className="space-y-4 rounded-3xl border border-gold-500/30 bg-obsidian-800/90 p-6 lg:col-span-6">
-            <div className="flex items-center gap-2 text-gold-400">
-              <KeyRound className="h-5 w-5" />
-              <span className="font-mono text-xs uppercase tracking-widest">
-                Live NEAR Testnet Authentication
-              </span>
-            </div>
-            <h2 className="font-serif text-2xl font-bold text-white">
-              Sign In with Connected NEAR Wallet (NEP-413)
-            </h2>
-            <p className="text-xs leading-relaxed text-slate-300">
-              Signs an off-chain <span className="font-mono text-gold-300">NEP-413</span>{" "}
-              challenge (0 gas). The server checks your signing key via{" "}
-              <span className="font-mono">view_access_key</span> and runs the{" "}
-              <span className="font-mono">T2 Pair Check</span> against{" "}
-              <span className="font-mono text-gold-300">{registryId}</span> and your seat
-              vault at the same final block.
-            </p>
-
-            <div>
-              <label className="mb-1 block text-xs text-slate-400">
-                Optional Specific Seat ID (leave blank to auto-detect via `nft_tokens_for_owner`)
-              </label>
-              <input
-                type="text"
-                value={customTokenId}
-                onChange={(e) => setCustomTokenId(e.target.value)}
-                placeholder={`s001.${registryId}`}
-                className="w-full rounded-xl border border-gold-500/30 bg-obsidian-950 px-3 py-2 font-mono text-xs text-white"
-              />
-            </div>
-
-            <button
-              type="button"
-              disabled={loadingGate}
-              onClick={handleWalletNep413Login}
-              className="w-full rounded-xl bg-gradient-to-r from-gold-500 to-gold-400 py-3 text-xs font-bold text-obsidian-950 shadow-[0_0_25px_rgba(212,166,74,0.25)] transition hover:brightness-110"
-            >
-              {accountId
-                ? `Sign NEP-413 Challenge as ${accountId}`
-                : "Connect NEAR Wallet to Sign NEP-413 Challenge"}
-            </button>
-          </div>
-
-          {/* Gate Threat Protection Summary */}
-          <div className="space-y-3 rounded-3xl border border-slate-800 bg-obsidian-900/90 p-6 lg:col-span-6">
-            <div className="flex items-center gap-2 text-segel-400">
-              <ShieldCheck className="h-5 w-5" />
-              <span className="font-mono text-xs uppercase tracking-widest">
-                Gate Security Guarantees (D1–D5)
-              </span>
-            </div>
-            <h3 className="font-serif text-2xl font-bold text-white">
-              Why Former Owners Cannot Keep Lounge Access
-            </h3>
-            <ul className="space-y-2.5 text-xs text-slate-300">
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-segel-400" />
-                <span>
-                  <strong>Borsh Tag Prefix (`2147484061`):</strong> Prevents signing
-                  a valid NEAR transaction disguised as an off-chain login message.
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-segel-400" />
-                <span>
-                  <strong>Same-Final-Block T2 Pair Check (Defeats D5):</strong> Queries
-                  both `registry` and `vault` at the exact same final `block_id`. If
-                  `vault.rotation_seq &gt; index.seq`, the gate fails closed (`E_PAIR_INDEX_BEHIND`).
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-segel-400" />
-                <span>
-                  <strong>Per-Request Re-Verification (Defeats D1):</strong> Every
-                  `GET /api/gate/content` re-checks `vault.rotation_seq == session.rotationSeq`.
-                  Selling or transferring your seat revokes your cookie in the very next block.
-                </span>
-              </li>
-            </ul>
-          </div>
-        </section>
-      )}
-
-      <KratonDivider label="Interactive Demo / Judge Cryptographic Inspector" />
-
-      {/* Judge Cryptographic Inspector Panel */}
-      <section className="rounded-3xl border border-gold-500/35 bg-obsidian-900/95 p-6 lg:p-8">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Terminal className="h-6 w-6 text-gold-400" />
-            <div>
-              <h2 className="font-serif text-2xl font-bold text-white">
-                Judge NEP-413 & Session Revocation Inspector
-              </h2>
-              <p className="text-xs text-slate-400">
-                Test real Borsh NEP-413 serialization (`tag = 2147484061`), Ed25519
-                verification, D5 stale-index fail-closed, and D1 instant session
-                revocation on transfer right in your browser.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => runInspectorScenario("happy")}
-              className="rounded-xl bg-segel-500 px-3.5 py-2 font-mono text-xs font-bold text-obsidian-950 hover:bg-segel-400"
-            >
-              1. Test Valid Holder Sign-In (`seq=3`)
-            </button>
-            <button
-              type="button"
-              onClick={() => runInspectorScenario("d5_index_behind")}
-              className="rounded-xl border border-amber-500/50 bg-amber-500/15 px-3.5 py-2 font-mono text-xs font-bold text-amber-300 hover:bg-amber-500/25"
-            >
-              2. Test Threat D5 (`vault.seq=4 &gt; index.seq=3`)
-            </button>
-            <button
-              type="button"
-              onClick={() => fetchProtectedContent(4, "bob.testnet")}
-              className="rounded-xl border border-threat-500/50 bg-threat-500/15 px-3.5 py-2 font-mono text-xs font-bold text-threat-400 hover:bg-threat-500/25"
-            >
-              3. Test Threat D1 (`rotation_seq` Advances 3 → 4)
-            </button>
-          </div>
-        </div>
-
-        {inspectorLog ? (
-          <div className="grid gap-4 lg:grid-cols-2 font-mono text-xs">
-            <div className="space-y-2 rounded-2xl border border-slate-800 bg-obsidian-950 p-4">
-              <p className="font-bold text-gold-300">
-                NEP-413 Borsh Payload & Ed25519 Signature
-              </p>
-              <div className="space-y-1 text-[11px]">
-                <p className="text-slate-400">
-                  Tag Prefix (u32 LE):{" "}
-                  <span className="text-white">2147484061 (0x9d010080)</span>
-                </p>
-                <p className="text-slate-400">
-                  Recipient:{" "}
-                  <span className="text-white">{inspectorLog.recipient}</span>
-                </p>
-                <p className="truncate text-slate-400">
-                  Nonce (32B hex):{" "}
-                  <span className="text-gold-300">{inspectorLog.nonceHex}</span>
-                </p>
-                <p className="truncate text-slate-400">
-                  Signer Public Key:{" "}
-                  <span className="text-segel-400">{inspectorLog.publicKeyNear}</span>
-                </p>
-                <p className="truncate text-slate-400">
-                  SHA-256 Digest:{" "}
-                  <span className="text-white">{inspectorLog.sha256Hex}</span>
-                </p>
-                <p className="break-all text-slate-400">
-                  Borsh Bytes (hex):{" "}
-                  <span className="text-slate-300">{inspectorLog.borshHex}</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2 rounded-2xl border border-slate-800 bg-obsidian-950 p-4">
-              <p className="font-bold text-segel-400">
-                Server Verification & Pair Check Response
-              </p>
-              <pre className="max-h-48 overflow-auto text-[11px] text-slate-200">
-                {JSON.stringify(inspectorLog.verifyResponse, null, 2)}
-              </pre>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-slate-800 bg-obsidian-950 p-6 text-center font-mono text-xs text-slate-400">
-            Click any of the 3 buttons above to inspect live NEP-413 Borsh bytes,
-            Ed25519 signature verification, and same-final-block Pair Check outcomes.
-          </div>
-        )}
       </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line py-4">
+        <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+          Door list read from the chain every 5 seconds
+        </p>
+        <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+          {demo ? "Simulated data. Not on chain." : "NEAR Testnet"}
+        </p>
+      </div>
+
+      {demo ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line py-4">
+          <p className="font-mono text-[10px] uppercase tracking-label text-caution">
+            Demo control
+          </p>
+          <button
+            type="button"
+            onClick={() => void sellDemoSeat()}
+            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 hover:text-caution"
+          >
+            <FlaskConical className="h-3 w-3" aria-hidden="true" />
+            Sell this seat and lock the room
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
