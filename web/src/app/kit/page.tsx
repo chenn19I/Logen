@@ -17,7 +17,9 @@ import { Chip } from "@/components/ui/Chip";
 import { Field } from "@/components/ui/Field";
 import { Switch } from "@/components/ui/Switch";
 import { Panel } from "@/components/ui/Panel";
+import { LogenMascot } from "@/components/brand/LogenMascot";
 import { SeatCard } from "@/components/seat/SeatCard";
+import { SeatArtwork } from "@/components/seat/SeatArtwork";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
 import { PixelChair } from "@/components/seat/PixelChair";
 import { ProofStamp } from "@/components/seat/ProofStamp";
@@ -41,6 +43,17 @@ const DEMO_SEAT: Seat = {
   innerDots: 6,
   cooldownUntilMs: null,
   privateBuyer: null,
+};
+
+const PORTRAIT_SEAT: Seat = {
+  ...DEMO_SEAT,
+  tokenId: "blue-cube.logen.testnet",
+  number: 8,
+  name: "The Blue Cube",
+  description:
+    "A seat for the one who keeps the cube lit. Minted with a portrait instead of a number.",
+  imageUrl: "/logen-mascot.png",
+  handle: "blue-cube",
 };
 
 const DEMO_PROOF: ProofSnapshot = {
@@ -430,6 +443,51 @@ export default function KitPage() {
               <Chip tone="neutral" icon={<Plus className="h-3 w-3" aria-hidden="true" />}>
                 Scalable
               </Chip>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section label="12 / Mascot" title="Logen, keeper of the seat.">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-center">
+          <LogenMascot size={380} priority className="w-full" />
+          <div className="max-w-[44ch]">
+            <p className="text-14 leading-relaxed text-paper-dim">
+              The pixel wizard is the club&apos;s face: a wide navy hat, cyan goggles,
+              a white beard, and a staff holding a glowing blue cube. The portrait
+              floats a few pixels and the cube breathes. Both stop when the visitor
+              prefers reduced motion.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Chip tone="accent" dot>
+                Mascot
+              </Chip>
+              <Chip tone="neutral">Pixel art</Chip>
+              <Chip tone="neutral">7s float</Chip>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section label="13 / Portrait" title="A seat can have a face.">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] lg:items-start">
+          <SeatCard seat={PORTRAIT_SEAT} />
+          <div className="space-y-4">
+            <div className="max-w-[44ch]">
+              <p className="text-14 leading-relaxed text-paper-dim">
+                Uploaded portraits sit in the seat card, the market listing and the
+                seat page. The artwork is display art: the live NFT keeps its dynamic
+                Logen SVG on chain, while this browser remembers the image.
+              </p>
+            </div>
+            <SeatArtwork
+              seat={PORTRAIT_SEAT}
+              className="aspect-[16/9] w-full max-w-[420px]"
+              showLabel
+            />
+            <div className="flex flex-wrap gap-2">
+              <Chip tone="positive">Demo: in memory</Chip>
+              <Chip tone="caution">Live: local display layer</Chip>
             </div>
           </div>
         </div>

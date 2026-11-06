@@ -3,6 +3,7 @@ import {
   type ChainPort,
   type ClubEvent,
   type HistoryEntry,
+  type MintSeatInput,
   type ProofSnapshot,
   type Seat,
   type SeatHistory,
@@ -620,6 +621,70 @@ export class MockChain implements ChainPort {
     });
     this.emit();
     return updated;
+  }
+
+  async mintSeat(input: MintSeatInput): Promise<Seat> {
+    const ownerId = input.ownerId ?? DEMO_ACCOUNT;
+    const handle = input.handle?.trim().toLowerCase() || null;
+    const number =
+      Math.max(0, ...Array.from(this.seats.values()).map((seat) => seat.number)) + 1;
+    const tokenId = handle ? `${handle}.logen.testnet` : tokenIdFor(number);
+    if (this.seats.has(tokenId)) {
+      throw new Error("That handle is already taken");
+    }
+
+    const now = Date.now();
+    const seat: Seat = {
+      tokenId,
+      number,
+      ownerId,
+      balanceYocto: "0",
+      withdrawableYocto: "0",
+      status: "active",
+      listedPriceYocto: null,
+      holderSinceMs: now,
+      holdersCount: 1,
+      earnedYocto: "0",
+      paidOutYocto: "0",
+      eventsAttended: 0,
+      innerDots: 1,
+      cooldownUntilMs: null,
+      privateBuyer: null,
+      name: input.name?.trim() || `Seat ${String(number).padStart(2, "0")}`,
+      description: input.description?.trim() || null,
+      imageUrl: input.imageUrl ?? null,
+      handle,
+    };
+
+    this.seats.set(tokenId, seat);
+    this.histories.set(tokenId, [
+      {
+        id: `${tokenId}-mint-${now}`,
+        atMs: now,
+        kind: "holder",
+        label: "Seat minted",
+        detail: input.imageUrl
+          ? "Minted with a custom portrait"
+          : `Minted by ${ownerId}`,
+        amountYocto: null,
+        holderId: ownerId,
+        holderSeq: 0,
+        txHash: null,
+      },
+    ]);
+    this.holders.set(tokenId, [
+      {
+        ownerId,
+        sinceMs: now,
+        untilMs: null,
+        seq: 0,
+        via: "mint",
+        priceYocto: null,
+      },
+    ]);
+
+    this.emit();
+    return seat;
   }
 
   async simulateHandoff(tokenId = tokenIdFor(7)): Promise<Seat | null> {

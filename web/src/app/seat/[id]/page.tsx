@@ -43,6 +43,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/Tabs";
 import { SeatCard } from "@/components/seat/SeatCard";
+import { SeatArtwork } from "@/components/seat/SeatArtwork";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
 import { ProofStamp } from "@/components/seat/ProofStamp";
 import { VerifyDrawer } from "@/components/seat/VerifyDrawer";
@@ -395,7 +396,9 @@ export default function SeatHistoryPage() {
             Back to wallet
           </Link>
           <span className="bracket-label mt-4 block">[ {number} / HISTORY ]</span>
-          <h1 className="mt-2 text-40 font-semibold text-paper">Seat {number}</h1>
+          <h1 className="mt-2 text-40 font-semibold text-paper">
+            {seat.name?.trim() || `Seat ${number}`}
+          </h1>
           <p className="mt-2 max-w-[52ch] text-14 leading-relaxed text-paper-muted">
             Every credit and every handoff, kept with the seat.
           </p>
@@ -556,7 +559,24 @@ export default function SeatHistoryPage() {
         </div>
 
         <div className="space-y-4">
+          {seat.imageUrl ? (
+            <Panel className="overflow-hidden">
+              <SeatArtwork
+                seat={seat}
+                className="aspect-[4/5] w-full rounded-none border-0"
+                showLabel
+              />
+            </Panel>
+          ) : null}
           <SeatCard seat={seat} compact />
+          {seat.description ? (
+            <Panel className="p-4">
+              <div className="mono-label">The story</div>
+              <p className="mt-2 text-14 leading-relaxed text-paper-dim">
+                {seat.description}
+              </p>
+            </Panel>
+          ) : null}
           <Panel className="p-4">
             <div className="mono-label">Holder</div>
             <div className="mt-2 break-all font-mono text-14 text-paper">

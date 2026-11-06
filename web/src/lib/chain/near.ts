@@ -15,6 +15,7 @@ import type {
   SeatView,
   VaultStateView,
 } from "@/lib/near/types";
+import { getPortrait } from "@/lib/portraits";
 import {
   type ChainPort,
   type ClubEvent,
@@ -59,6 +60,7 @@ function mapSeat(
     BigInt(seat?.total_claimed || "0") + BigInt(seat?.claimable || "0")
   ).toString();
   const numberFromId = Number((tokenId.split(".")[0] || "").replace(/\D/g, "")) || 0;
+  const portrait = getPortrait(tokenId);
   return {
     tokenId,
     number: seat?.number || numberFromId || 1,
@@ -75,6 +77,10 @@ function mapSeat(
     innerDots: dotsFor(earned, seat?.holders_count || 1),
     cooldownUntilMs: null,
     privateBuyer: null,
+    name: portrait?.name || (seat?.handle ? `Seat ${seat.number} · ${seat.handle}` : null),
+    description: portrait?.description ?? null,
+    imageUrl: portrait?.dataUrl ?? null,
+    handle: seat?.handle ?? null,
   };
 }
 

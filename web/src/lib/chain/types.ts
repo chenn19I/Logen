@@ -17,6 +17,22 @@ export interface Seat {
   innerDots: number;
   cooldownUntilMs?: number | null;
   privateBuyer?: string | null;
+  /** Optional display name chosen at mint time. */
+  name?: string | null;
+  /** Optional short story chosen at mint time. */
+  description?: string | null;
+  /** Uploaded portrait. Demo seats keep it in memory; live seats keep it locally. */
+  imageUrl?: string | null;
+  /** Custom sub-account handle, when the seat was minted with one. */
+  handle?: string | null;
+}
+
+export interface MintSeatInput {
+  name?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
+  handle?: string | null;
+  ownerId?: string;
 }
 
 export type HistoryKind = "earned" | "paid_out" | "holder" | "credit";

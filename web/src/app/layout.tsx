@@ -8,10 +8,42 @@ import { DemoProvider } from "@/lib/demo/DemoProvider";
 import { Navbar } from "@/components/Navbar";
 import { SiteFooter } from "@/components/SiteFooter";
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://logen-roan.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Logen — The seat that carries its own wallet",
   description:
-    "A members club where each seat is an NFT that owns its own keyless wallet. Sell the seat and the money, history and access go with it. NEAR Testnet.",
+    "A members club where each seat is an NFT that owns its own keyless wallet. Mint a seat with your own artwork, sell it, and the money, history and access go with it. NEAR Testnet.",
+  applicationName: "Logen",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
+  openGraph: {
+    type: "website",
+    title: "Logen — The seat that carries its own wallet",
+    description:
+      "Mint a membership seat with your own portrait. The seat is an NFT and a keyless NEAR wallet. Sell it and everything inside goes with it.",
+    url: siteUrl,
+    siteName: "Logen",
+    images: [
+      {
+        url: "/logen-mascot.png",
+        width: 1254,
+        height: 1254,
+        alt: "Logen, the pixel-art cybernetic wizard mascot.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Logen — The seat that carries its own wallet",
+    description:
+      "Mint a membership seat with your own portrait. The seat is an NFT and a keyless NEAR wallet.",
+    images: ["/logen-mascot.png"],
+  },
 };
 
 export default function RootLayout({

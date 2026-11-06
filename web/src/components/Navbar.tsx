@@ -22,6 +22,7 @@ const links = [
   { href: "/", label: "Wallet" },
   { href: "/lounge", label: "Lounge" },
   { href: "/market", label: "Market" },
+  { href: "/mint", label: "Mint" },
   { href: "/lab", label: "Attack Lab" },
 ];
 

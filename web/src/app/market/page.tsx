@@ -19,6 +19,7 @@ import { near, nearValue, seatLabel, shortAccount } from "@/lib/utils";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Panel } from "@/components/ui/Panel";
+import { SeatArtwork } from "@/components/seat/SeatArtwork";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
 import { ConfirmationSheet } from "@/components/seat/ConfirmationSheet";
 import { HandoffOverlay } from "@/components/seat/Handoff";
@@ -75,7 +76,15 @@ function ListingCard({
       </div>
 
       <div className="flex items-center gap-4 px-4 py-5">
-        <SeatGlyph tokenId={listing.tokenId} innerDots={listing.seat.innerDots} size={64} />
+        {listing.seat.imageUrl ? (
+          <SeatArtwork
+            seat={listing.seat}
+            className="h-20 w-20 shrink-0"
+            showLabel={false}
+          />
+        ) : (
+          <SeatGlyph tokenId={listing.tokenId} innerDots={listing.seat.innerDots} size={64} />
+        )}
         <div className="min-w-0">
           <div className="mono-label">Asking</div>
           <div className="mt-1 font-mono text-24 tabular text-paper">
@@ -85,6 +94,9 @@ function ListingCard({
             </span>
           </div>
           <div className="mt-1 truncate font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            {listing.seat.name ? (
+              <span className="text-paper-dim">{listing.seat.name} · </span>
+            ) : null}
             from {isMine ? "you" : shortAccount(listing.seller, 22)}
           </div>
         </div>

@@ -143,6 +143,20 @@ async function main() {
     };
 
     const shot = async (name) => {
+      // Walk the page once so scroll-triggered reveals are settled before the
+      // full-page capture. Then return to the top for a stable sticky layout.
+      await cdp.evaluate(`(async () => {
+        const step = Math.max(240, Math.round(window.innerHeight * 0.7));
+        const height = document.documentElement.scrollHeight;
+        for (let y = 0; y < height; y += step) {
+          window.scrollTo(0, y);
+          await new Promise((resolve) => setTimeout(resolve, 110));
+        }
+        window.scrollTo(0, height);
+        await new Promise((resolve) => setTimeout(resolve, 260));
+        window.scrollTo(0, 0);
+        await new Promise((resolve) => setTimeout(resolve, 320));
+      })()`);
       const metrics = await cdp.send("Page.getLayoutMetrics");
       const size = metrics.cssContentSize ?? metrics.contentSize;
       const result = await cdp.send("Page.captureScreenshot", {
@@ -198,6 +212,71 @@ async function main() {
       const sheet = await shot(`lab-sheet-${width}`);
 
       return { files: [before, after, sheet], tried, errors: errors.slice(0, 20) };
+    }
+
+    if (scenario === "landing") {
+      await nav("http://localhost:3000/?demo=0");
+      await waitForText(cdp, "Sell the seat.");
+      await sleep(1200);
+      const file = await shot(`landing-${width}`);
+      return { files: [file], errors: errors.slice(0, 20) };
+    }
+
+    if (scenario === "mint") {
+      const files = [];
+      await nav("http://localhost:3000/mint?demo=1");
+      await waitForText(cdp, "Give a seat a face.");
+      await sleep(700);
+      files.push(await shot(`mint-empty-${width}`));
+
+      const dropped = await cdp.evaluate(`(async () => {
+        const response = await fetch("/logen-mascot.png");
+        const blob = await response.blob();
+        const file = new File([blob], "logen-mascot.png", { type: blob.type || "image/png" });
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        const zone = document.querySelector(".dropzone");
+        if (!zone) return { ok: false, reason: "no dropzone" };
+        zone.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+        return { ok: true, bytes: file.size };
+      })()`);
+
+      const ready = await waitForText(cdp, "PORTRAIT SET", 20000);
+      await sleep(500);
+
+      const filled = await cdp.evaluate(`(() => {
+        const setValue = (selector, value) => {
+          const el = document.querySelector(selector);
+          if (!el) return false;
+          const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
+          setter.call(el, value);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          return true;
+        };
+        return {
+          name: setValue('input[placeholder="The Blue Cube"]', "The Blue Cube"),
+          handle: setValue('input[placeholder="blue-cube"]', "blue-cube"),
+          story: setValue('textarea[placeholder="Why this seat exists, in one or two lines."]', "A portrait seat for the keeper of the cube."),
+        };
+      })()`);
+      await sleep(500);
+      files.push(await shot(`mint-filled-${width}`));
+
+      const minted = await clickText(cdp, "Mint this seat", "button");
+      const success = await waitForText(cdp, "Seat minted.", 20000);
+      await sleep(900);
+      files.push(await shot(`mint-success-${width}`));
+
+      return { files, dropped, ready, filled, minted, success, errors: errors.slice(0, 20) };
+    }
+
+    if (scenario === "seat") {
+      await nav("http://localhost:3000/seat/s007.logen.testnet?demo=1");
+      await waitForText(cdp, "Every credit and every handoff");
+      await sleep(700);
+      const file = await shot(`seat-${width}`);
+      return { files: [file], errors: errors.slice(0, 20) };
     }
 
     if (scenario === "pages") {

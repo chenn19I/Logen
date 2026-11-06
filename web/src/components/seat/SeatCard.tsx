@@ -6,6 +6,7 @@ import { Check, CornerDownLeft, KeyRound, RotateCcw, ShieldCheck } from "lucide-
 import type { Seat } from "@/lib/chain/types";
 import { cn, formatDate, near, seatLabel, shortAccount } from "@/lib/utils";
 import { Chip } from "@/components/ui/Chip";
+import { SeatArtwork } from "./SeatArtwork";
 import { SeatGlyph } from "./SeatGlyph";
 
 function statusChip(seat: Seat) {
@@ -111,7 +112,11 @@ export function SeatCard({
           className
         )}
       >
-        <SeatGlyph tokenId={seat.tokenId} innerDots={seat.innerDots} size={40} />
+        {seat.imageUrl ? (
+          <SeatArtwork seat={seat} className="h-10 w-10 shrink-0" />
+        ) : (
+          <SeatGlyph tokenId={seat.tokenId} innerDots={seat.innerDots} size={40} />
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-12 uppercase tracking-label text-paper-muted">
@@ -134,16 +139,41 @@ export function SeatCard({
         {statusChip(seat)}
       </div>
 
-      <div className="mt-6 flex items-start justify-between gap-4">
-        <SeatGlyph tokenId={seat.tokenId} innerDots={seat.innerDots} size={92} ping />
-        <div className="text-right">
-          <div className="mono-label">Seat</div>
-          <div className="font-mono text-40 leading-none text-paper tabular">{number}</div>
-          <div className="mt-2 font-mono text-12 uppercase tracking-label text-paper-muted">
-            Logen club
+      {seat.imageUrl ? (
+        <div className="mt-4 flex min-h-0 flex-1 items-stretch gap-4">
+          <SeatArtwork seat={seat} className="min-h-0 min-w-0 flex-1" showLabel />
+          <div className="flex w-[84px] shrink-0 flex-col items-end justify-between">
+            <div className="text-right">
+              <div className="mono-label">Seat</div>
+              <div className="font-mono text-40 leading-none text-paper tabular">
+                {number}
+              </div>
+              <div className="mt-2 line-clamp-2 font-mono text-[10px] uppercase leading-relaxed tracking-label text-paper-muted">
+                {seat.name || "Logen club"}
+              </div>
+            </div>
+            <SeatGlyph
+              tokenId={seat.tokenId}
+              innerDots={seat.innerDots}
+              size={52}
+              ping
+            />
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="mt-6 flex items-start justify-between gap-4">
+          <SeatGlyph tokenId={seat.tokenId} innerDots={seat.innerDots} size={92} ping />
+          <div className="text-right">
+            <div className="mono-label">Seat</div>
+            <div className="font-mono text-40 leading-none text-paper tabular">
+              {number}
+            </div>
+            <div className="mt-2 font-mono text-12 uppercase tracking-label text-paper-muted">
+              Logen club
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 border-t border-line pt-4">
         <div className="flex items-end justify-between gap-4">
@@ -202,7 +232,7 @@ export function SeatCard({
   return (
     <div className={cn("w-full", className)}>
       <div
-        className="group relative block w-full cursor-pointer rounded border border-line bg-surface text-left transition-colors duration-200 ease-calm hover:border-line-strong"
+        className="card-lift group relative block w-full cursor-pointer rounded border border-line bg-surface text-left hover:border-line-strong"
         onClick={flip}
         style={{ perspective: 1200 }}
         data-seat-card={id}

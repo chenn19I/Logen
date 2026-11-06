@@ -22,6 +22,8 @@ import {
 } from "../gate/pairCheck";
 import { signHmacToken, verifyHmacToken } from "../gate/session";
 import { createSimulatorPresets, THREAT_MODEL_A1_A12 } from "../near/sim";
+import { MockChain } from "../chain/mock";
+import { DEMO_ACCOUNT } from "../chain/types";
 
 describe("yoctoNEAR BigInt formatter & revenue split", () => {
   it("formats whole and fractional yoctoNEAR values accurately without floating point loss", () => {
@@ -188,5 +190,49 @@ describe("Threat Model A1-A12 & Simulator Presets", () => {
     expect(THREAT_MODEL_A1_A12).toHaveLength(12);
     const presets = createSimulatorPresets();
     expect(presets.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("MockChain mint with a portrait", () => {
+  it("creates a custom-handle seat with its portrait, history and holder", async () => {
+    const chain = new MockChain();
+    const before = await chain.getSeats(null);
+
+    const seat = await chain.mintSeat({
+      ownerId: DEMO_ACCOUNT,
+      name: "The Blue Cube",
+      description: "A seat for the keeper of the cube.",
+      imageUrl: "data:image/webp;base64,AAAA",
+      handle: "blue-cube",
+    });
+
+    expect(seat.tokenId).toBe("blue-cube.logen.testnet");
+    expect(seat.ownerId).toBe(DEMO_ACCOUNT);
+    expect(seat.name).toBe("The Blue Cube");
+    expect(seat.description).toBe("A seat for the keeper of the cube.");
+    expect(seat.imageUrl).toBe("data:image/webp;base64,AAAA");
+    expect(seat.handle).toBe("blue-cube");
+    expect(seat.status).toBe("active");
+    expect(seat.balanceYocto).toBe("0");
+    expect(seat.number).toBe(Math.max(...before.map((item) => item.number)) + 1);
+
+    const history = await chain.getHistory(seat.tokenId);
+    expect(history.items[0]?.label).toBe("Seat minted");
+    expect(history.holdersCount).toBe(1);
+    expect(history.holders[0]?.ownerId).toBe(DEMO_ACCOUNT);
+
+    const after = await chain.getSeats(DEMO_ACCOUNT);
+    expect(after.some((item) => item.tokenId === seat.tokenId)).toBe(true);
+  });
+
+  it("rejects a handle that is already taken and clears mints on reset", async () => {
+    const chain = new MockChain();
+    await chain.mintSeat({ handle: "blue-cube" });
+    await expect(chain.mintSeat({ handle: "blue-cube" })).rejects.toThrow(
+      "That handle is already taken"
+    );
+
+    await chain.reset();
+    expect(await chain.getSeat("blue-cube.logen.testnet")).toBeNull();
   });
 });

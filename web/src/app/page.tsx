@@ -10,9 +10,11 @@ import {
   ChevronRight,
   CircleAlert,
   FlaskConical,
+  ImagePlus,
   Lock,
   RefreshCw,
   ShieldCheck,
+  Sparkles,
   Tag,
   Ticket,
   UserRound,
@@ -35,6 +37,8 @@ import {
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Panel } from "@/components/ui/Panel";
+import { Reveal } from "@/components/ui/Reveal";
+import { LogenMascot } from "@/components/brand/LogenMascot";
 import { SeatCard } from "@/components/seat/SeatCard";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
 import { PixelChair } from "@/components/seat/PixelChair";
@@ -48,84 +52,148 @@ function ConnectScreen() {
   const { openWalletModal } = useNear();
   const { setDemo } = useDemo();
 
+  const moves = [
+    {
+      number: "01",
+      title: "Upload a portrait",
+      copy: "A face for the seat. PNG, JPEG or WebP, up to 8 MB.",
+      icon: ImagePlus,
+    },
+    {
+      number: "02",
+      title: "Mint the seat",
+      copy: "An NFT and a keyless NEAR wallet in one move.",
+      icon: Sparkles,
+    },
+    {
+      number: "03",
+      title: "Hold the wallet",
+      copy: "The money, history and access travel with the seat.",
+      icon: ShieldCheck,
+    },
+  ];
+
   return (
-    <section className="terminal-grid relative overflow-hidden rounded border border-line bg-surface">
-      <div className="grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-14">
-        <div>
-          <span className="bracket-label">[ 01 / SEAT ]</span>
-          <h1 className="mt-6 max-w-[12ch] text-40 font-semibold leading-[0.98] tracking-[-0.035em] text-paper sm:text-72">
-            Sell the seat.
-            <br />
-            <span className="text-signal">The wallet goes with it.</span>
-          </h1>
-          <p className="mt-6 max-w-[48ch] font-mono text-14 leading-[1.8] text-paper-dim">
-            A membership NFT that owns its own keyless wallet.
-            <br />
-            Hold the seat, hold the money. Built on NEAR.
-          </p>
-          <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-            <Button size="lg" onClick={openWalletModal} className="w-full sm:w-auto">
-              Connect wallet
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <p className="max-w-[34ch] text-12 leading-relaxed text-paper-muted">
-              Signing proves you hold a seat. No transaction, no fee.
+    <div className="space-y-6">
+      <section className="terminal-grid relative overflow-hidden rounded border border-line bg-surface">
+        <div className="grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-14">
+          <div>
+            <span className="bracket-label">[ 01 / SEAT ]</span>
+            <h1 className="mt-6 max-w-[12ch] text-40 font-semibold leading-[0.98] tracking-[-0.035em] text-paper sm:text-72">
+              Sell the seat.
+              <br />
+              <span className="text-signal">The wallet goes with it.</span>
+            </h1>
+            <p className="mt-6 max-w-[48ch] font-mono text-14 leading-[1.8] text-paper-dim">
+              A membership NFT that owns its own keyless wallet.
+              <br />
+              Mint it with your own portrait. Hold the seat, hold the money.
             </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setDemo(true)}
-            className="mt-6 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 transition-colors hover:text-paper"
-          >
-            Preview with demo data
-            <ChevronRight className="h-3 w-3" aria-hidden="true" />
-          </button>
+            <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+              <Button size="lg" onClick={openWalletModal} className="w-full sm:w-auto">
+                Connect wallet
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Button>
+              <LinkButton
+                href="/mint"
+                variant="secondary"
+                size="lg"
+                className="w-full sm:w-auto"
+              >
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                Mint a seat
+              </LinkButton>
+            </div>
+            <p className="mt-3 max-w-[42ch] text-12 leading-relaxed text-paper-muted">
+              Signing proves you hold a seat. No transaction, no fee. Minting is free
+              in demo.
+            </p>
+            <button
+              type="button"
+              onClick={() => setDemo(true)}
+              className="mt-5 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 transition-colors hover:text-paper"
+            >
+              Preview with demo data
+              <ChevronRight className="h-3 w-3" aria-hidden="true" />
+            </button>
 
-          <div className="mt-10">
-            <div className="flex flex-wrap items-center gap-2" aria-hidden="true">
-              {[2, 3, 4, 5, 6, 7].map((dots, index) => (
-                <SeatGlyph
-                  key={dots}
-                  tokenId={`s00${index + 1}.logen.testnet`}
-                  innerDots={dots}
-                  size={38}
+            <div className="mt-9">
+              <div className="flex flex-wrap items-center gap-2" aria-hidden="true">
+                {[2, 3, 4, 5, 6, 7].map((dots, index) => (
+                  <SeatGlyph
+                    key={dots}
+                    tokenId={`s00${index + 1}.logen.testnet`}
+                    innerDots={dots}
+                    size={38}
+                  />
+                ))}
+              </div>
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                12 seats. Each one a wallet.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-center lg:justify-end">
+            <div className="w-full max-w-[430px]">
+              <div className="rounded border border-line bg-ink p-3">
+                <LogenMascot
+                  size={398}
+                  priority
+                  caption="Logen / Keeper of the seat"
+                  className="w-full"
                 />
-              ))}
-            </div>
-            <p className="mt-3 font-mono text-[10px] uppercase tracking-label text-paper-muted">
-              12 seats. Each one a wallet.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex justify-center lg:justify-end">
-          <div className="w-full max-w-[420px]">
-            <div className="flex justify-center rounded border border-line bg-ink px-6 py-8">
-              <PixelChair size={280} />
-            </div>
-            <div className="mt-4 border border-line bg-ink px-4 py-2 text-center font-mono text-[11px] uppercase tracking-label text-paper-dim">
-              Seat 07 · Inside · Logen
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2 border border-line bg-ink px-3 py-2 font-mono text-[10px] uppercase tracking-label text-paper-dim">
+                <span>Seat 07 · Inside · Logen</span>
+                <span className="inline-flex items-center gap-1.5 text-signal">
+                  <span className="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden="true" />
+                  Mascot online
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-6 py-3 sm:px-10 lg:px-14">
-        <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
-          Membership seats · Event revenue · Safe resale
-        </p>
-        <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
-          No keys. Ever.
-        </p>
-      </div>
-      <div className="border-t border-line px-6 py-3 sm:px-10 lg:px-14">
-        <p className="flex items-center gap-2 text-12 text-paper-muted">
-          <ShieldCheck className="h-3.5 w-3.5 text-positive" aria-hidden="true" />
-          This seat has no keys. Only the club contract can move its money, and only for
-          the current holder.
-        </p>
-      </div>
-    </section>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-6 py-3 sm:px-10 lg:px-14">
+          <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            Membership seats · Event revenue · Safe resale
+          </p>
+          <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            No keys. Ever.
+          </p>
+        </div>
+        <div className="border-t border-line px-6 py-3 sm:px-10 lg:px-14">
+          <p className="flex items-center gap-2 text-12 text-paper-muted">
+            <ShieldCheck className="h-3.5 w-3.5 text-positive" aria-hidden="true" />
+            This seat has no keys. Only the club contract can move its money, and only for
+            the current holder.
+          </p>
+        </div>
+      </section>
+
+      <Reveal>
+        <section className="grid gap-px overflow-hidden rounded border border-line bg-line sm:grid-cols-3">
+          {moves.map((move) => {
+            const Icon = move.icon;
+            return (
+              <div key={move.number} className="bg-surface p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono text-[10px] uppercase tracking-label text-signal">
+                    {move.number}
+                  </span>
+                  <Icon className="h-4 w-4 text-paper-muted" aria-hidden="true" />
+                </div>
+                <h2 className="mt-3 text-16 font-medium text-paper">{move.title}</h2>
+                <p className="mt-1 text-12 leading-relaxed text-paper-muted">
+                  {move.copy}
+                </p>
+              </div>
+            );
+          })}
+        </section>
+      </Reveal>
+    </div>
   );
 }
 
@@ -137,12 +205,18 @@ function SeatEmptyState() {
       </div>
       <h1 className="mt-5 text-24 font-semibold text-paper">No seat in this wallet.</h1>
       <p className="mx-auto mt-2 max-w-[42ch] text-14 leading-relaxed text-paper-muted">
-        Seats are minted by the club operator. You can buy one on the market, and its
-        wallet comes with it.
+        Mint one with your own portrait, or buy a listed seat. Either way, the seat
+        carries its own wallet, money and history.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
-        <LinkButton href="/market">Browse market</LinkButton>
-        <LinkButton href="/lounge" variant="secondary">
+        <LinkButton href="/mint">
+          <Sparkles className="h-4 w-4" aria-hidden="true" />
+          Mint a seat
+        </LinkButton>
+        <LinkButton href="/market" variant="secondary">
+          Browse market
+        </LinkButton>
+        <LinkButton href="/lounge" variant="ghost">
           Visit the lounge
         </LinkButton>
       </div>
@@ -470,10 +544,14 @@ export default function SeatWalletPage() {
             the seat.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Chip tone="neutral" dot>
             {demo ? "Simulated" : "NEAR Testnet"}
           </Chip>
+          <LinkButton href="/mint" variant="secondary" size="sm">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+            Mint a seat
+          </LinkButton>
           <button
             type="button"
             onClick={() => {

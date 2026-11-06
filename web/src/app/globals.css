@@ -318,6 +318,137 @@
   animation: skeleton-pulse 1.6s ease-in-out infinite;
 }
 
+/* Page and section entrances. Quiet, short, and never in the way. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-enter var(--dur-3) var(--ease) both;
+}
+
+/* Mascot portrait: a slow float, a breathing cube glow, and a few sparks. */
+@keyframes mascot-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.06);
+  }
+  50% {
+    transform: translate3d(0, -9px, 0) scale(1.06);
+  }
+}
+
+@keyframes mascot-aura {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes mascot-cube {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes mascot-spark {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(5px) scale(0.6);
+  }
+  40%,
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1);
+  }
+}
+
+.mascot-float {
+  animation: mascot-float 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+.mascot-aura {
+  background:
+    radial-gradient(circle at 30% 22%, rgba(77, 232, 255, 0.24), transparent 42%),
+    radial-gradient(circle at 62% 58%, rgba(59, 155, 255, 0.16), transparent 55%);
+  animation: mascot-aura 5.5s ease-in-out infinite;
+}
+
+.mascot-cube-glow {
+  background: radial-gradient(circle, rgba(77, 232, 255, 0.62), rgba(59, 155, 255, 0.2) 45%, transparent 72%);
+  filter: blur(12px);
+  animation: mascot-cube 4.2s ease-in-out infinite;
+}
+
+.mascot-spark {
+  border-radius: 1px;
+  box-shadow: 0 0 10px currentColor;
+  animation: mascot-spark 3.4s ease-in-out infinite;
+}
+
+.mascot-spark-2 {
+  animation-delay: 0.9s;
+}
+
+.mascot-spark-3 {
+  animation-delay: 1.7s;
+}
+
+.mascot-spark-4 {
+  animation-delay: 2.4s;
+}
+
+/* A card that lifts a hair on hover, for market and seat surfaces. */
+.card-lift {
+  transition:
+    transform var(--dur-2) var(--ease),
+    border-color var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease);
+}
+
+.card-lift:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
+}
+
+/* The mint dropzone gets a dashed edge that turns blue while a file is over it. */
+.dropzone {
+  background:
+    linear-gradient(180deg, rgba(236, 232, 216, 0.02), transparent 60%),
+    var(--surface-sunken);
+  border: 1px dashed var(--line-strong);
+  transition:
+    border-color var(--dur-2) var(--ease),
+    background-color var(--dur-2) var(--ease);
+}
+
+.dropzone[data-dragging="true"],
+.dropzone:hover {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -325,8 +456,17 @@
 
   .animate-dot-ping,
   .animate-stamp-in,
-  .animate-skeleton {
+  .animate-skeleton,
+  .page-enter,
+  .mascot-float,
+  .mascot-aura,
+  .mascot-cube-glow,
+  .mascot-spark {
     animation: none;
+  }
+
+  .card-lift:hover {
+    transform: none;
   }
 
   *,
