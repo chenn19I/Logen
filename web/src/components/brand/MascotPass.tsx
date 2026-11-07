@@ -1,24 +1,83 @@
+"use client";
+
+import React, { useRef, useState } from "react";
 import { LogenMascot } from "@/components/brand/LogenMascot";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
 import { cn } from "@/lib/utils";
 
+export interface MascotPassProps {
+  className?: string;
+  seatNumber?: string;
+  tokenId?: string;
+  balance?: string;
+  holderLabel?: string;
+  innerDots?: number;
+}
+
 /**
- * The seat pass: the mascot framed as a physical club credential, not as a
- * picture in a card. It is a preview of the product, so the numbers are the
- * same seat data the wallet screen shows.
+ * The seat pass: the mascot framed as a physical club credential with subtle
+ * 3D perspective tilt and live seat readout.
  */
-export function MascotPass({ className }: { className?: string }) {
+export function MascotPass({
+  className,
+  seatNumber = "07",
+  tokenId = "s007.logen.testnet",
+  balance = "3.20",
+  holderLabel = "Keeper 07",
+  innerDots = 7,
+}: MascotPassProps) {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0, gx: 50, gy: 30, active: false });
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = cardRef.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const rect = el.getBoundingClientRect();
+    const nx = (e.clientX - rect.left) / rect.width; // 0..1
+    const ny = (e.clientY - rect.top) / rect.height; // 0..1
+    const ry = (nx - 0.5) * 9;
+    const rx = (0.5 - ny) * 8;
+    setTilt({
+      rx,
+      ry,
+      gx: Math.round(nx * 100),
+      gy: Math.round(ny * 100),
+      active: true,
+    });
+  };
+
+  const handlePointerLeave = () => {
+    setTilt({ rx: 0, ry: 0, gx: 50, gy: 30, active: false });
+  };
+
   return (
-    <div className={cn("w-full", className)}>
+    <div
+      className={cn("w-full", className)}
+      style={{ perspective: "1100px" }}
+    >
       <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-label text-paper-muted">
-        <span>Member pass / 001</span>
+        <span>Member pass / {seatNumber}</span>
         <span className="inline-flex items-center gap-1.5 text-positive">
           <span className="h-1 w-1 rounded-full bg-positive" aria-hidden="true" />
           Live on testnet
         </span>
       </div>
 
-      <div className="relative mt-2 overflow-hidden rounded border border-line bg-[#05070d]">
+      <div
+        ref={cardRef}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        style={{
+          transform: tilt.active
+            ? `rotateX(${tilt.rx.toFixed(2)}deg) rotateY(${tilt.ry.toFixed(2)}deg) translateZ(0)`
+            : "rotateX(0deg) rotateY(0deg) translateZ(0)",
+          transition: tilt.active
+            ? "transform 90ms ease-out"
+            : "transform 420ms cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+        className="relative mt-2 overflow-hidden rounded border border-line bg-[#05070d] will-change-transform"
+      >
         <LogenMascot
           size={430}
           aspectRatio="4 / 5"
@@ -26,6 +85,16 @@ export function MascotPass({ className }: { className?: string }) {
           caption={null}
           className="w-full !rounded-none !border-0"
           imageClassName="object-cover object-[50%_44%]"
+        />
+
+        {/* Subtle interactive specular sheen */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 transition-opacity duration-300"
+          style={{
+            opacity: tilt.active ? 1 : 0,
+            background: `radial-gradient(280px circle at ${tilt.gx}% ${tilt.gy}%, rgba(77, 232, 255, 0.14), rgba(236, 232, 216, 0.04) 45%, transparent 72%)`,
+          }}
         />
 
         <span
@@ -51,12 +120,12 @@ export function MascotPass({ className }: { className?: string }) {
               Logen
             </div>
             <div className="mt-1.5 font-mono text-[8px] uppercase tracking-label text-paper-muted">
-              Members club / est. 2026
+              {tokenId}
             </div>
           </div>
           <div className="text-right font-mono text-[8px] uppercase leading-relaxed tracking-label text-paper-muted">
-            <div className="text-[#4de8ff]">Keeper 07</div>
-            <div>Est. 2026</div>
+            <div className="text-[#4de8ff]">{holderLabel}</div>
+            <div>0 Access Keys</div>
           </div>
         </div>
 
@@ -64,14 +133,14 @@ export function MascotPass({ className }: { className?: string }) {
           <div className="flex items-end justify-between gap-4">
             <div className="flex items-end gap-3">
               <span aria-hidden="true">
-                <SeatGlyph tokenId="s007.logen.testnet" innerDots={7} size={38} />
+                <SeatGlyph tokenId={tokenId} innerDots={innerDots} size={38} />
               </span>
               <div>
                 <div className="font-mono text-[8px] uppercase tracking-label text-paper-muted">
                   Seat no.
                 </div>
-                <div className="mt-1 font-mono text-[52px] leading-[0.72] tracking-[-0.05em] text-paper tabular">
-                  07
+                <div className="mt-1 font-mono text-[52px] leading-[0.72] tracking-[-0.05em] text-paper tabular transition-all duration-150">
+                  {seatNumber}
                 </div>
               </div>
             </div>
@@ -79,8 +148,8 @@ export function MascotPass({ className }: { className?: string }) {
               <div className="font-mono text-[8px] uppercase tracking-label text-paper-muted">
                 Inside
               </div>
-              <div className="mt-1 font-mono text-[20px] leading-none text-positive tabular">
-                3.20
+              <div className="mt-1 font-mono text-[20px] leading-none text-positive tabular transition-all duration-150">
+                {balance}
               </div>
               <div className="mt-1 font-mono text-[8px] uppercase tracking-label text-paper-muted">
                 NEAR / 0 keys
