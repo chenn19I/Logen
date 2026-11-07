@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Pause, Play, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type FieldMode = "sphere" | "cube" | "torus";
+type FieldMode = "seat" | "cube" | "prism";
 
 interface Point3D {
   x: number;
@@ -13,113 +13,271 @@ interface Point3D {
   charIndex: number;
   letter: string;
   i: number;
+  accent?: boolean;
 }
 
-const PHRASES = ["KEYLESSVAULT", "SEAT==WALLET", "ZEROKEYS0007"] as const;
+const PHRASES = ["SEAT==WALLET", "KEYLESSVAULT", "ZEROKEYS0007"] as const;
 const GLYPHS = "LOGEN0123456789·+✦▣◈:/=-";
+const ACCENT_GLYPHS = "✦◈▣+07=$";
 
 function buildPoints(count: number, mode: FieldMode): Point3D[] {
   const phrase =
-    mode === "sphere"
+    mode === "seat"
       ? PHRASES[0]
       : mode === "cube"
         ? PHRASES[1]
         : PHRASES[2];
 
-  if (mode === "cube") {
-    const side = Math.max(6, Math.round(Math.cbrt(count)));
-    const pts: Point3D[] = [];
-    let idx = 0;
-    for (let ix = 0; ix < side; ix += 1) {
-      for (let iy = 0; iy < side; iy += 1) {
-        for (let iz = 0; iz < side; iz += 1) {
-          // Focus points on the outer shell and core diagonals of the vault cube
-          const isSurface =
-            ix === 0 ||
-            ix === side - 1 ||
-            iy === 0 ||
-            iy === side - 1 ||
-            iz === 0 ||
-            iz === side - 1;
-          const isCore =
-            Math.abs(ix - (side - 1) / 2) <= 1.2 &&
-            Math.abs(iy - (side - 1) / 2) <= 1.2 &&
-            Math.abs(iz - (side - 1) / 2) <= 1.2;
-          if (!isSurface && !isCore && (ix + iy + iz) % 2 !== 0) continue;
+  const pts: Point3D[] = [];
+  let idx = 0;
 
-          const nx = (ix / (side - 1)) * 2 - 1;
-          const ny = (iy / (side - 1)) * 2 - 1;
-          const nz = (iz / (side - 1)) * 2 - 1;
-          const scale = 0.72;
-          const letter =
-            idx % 3 === 0
-              ? phrase[idx % phrase.length]
-              : GLYPHS[idx % GLYPHS.length];
-          pts.push({
-            x: nx * scale,
-            y: ny * scale,
-            z: nz * scale,
-            charIndex: idx % phrase.length,
-            letter,
-            i: idx,
-          });
-          idx += 1;
-        }
-      }
-    }
-    return pts;
-  }
-
-  if (mode === "torus") {
-    const pts: Point3D[] = [];
-    const majorRings = 36;
-    const minorSteps = Math.max(12, Math.floor(count / majorRings));
-    const R = 0.68;
-    const r = 0.3;
-    let idx = 0;
-    for (let u = 0; u < majorRings; u += 1) {
-      const theta = (u / majorRings) * Math.PI * 2;
-      for (let v = 0; v < minorSteps; v += 1) {
-        const phi = (v / minorSteps) * Math.PI * 2 + u * 0.12;
-        const x = (R + r * Math.cos(phi)) * Math.cos(theta);
-        const z = (R + r * Math.cos(phi)) * Math.sin(theta);
-        const y = r * Math.sin(phi) * 1.15;
-        const letter =
-          idx % 2 === 0
-            ? phrase[idx % phrase.length]
-            : GLYPHS[idx % GLYPHS.length];
-        pts.push({
-          x,
-          y,
-          z,
-          charIndex: idx % phrase.length,
-          letter,
-          i: idx,
-        });
-        idx += 1;
-      }
-    }
-    return pts;
-  }
-
-  // Default: Fibonacci sphere (inspired by nearhackathon.com)
-  return Array.from({ length: count }, (_, idx) => {
-    const y = 1 - (idx / (count - 1)) * 2;
-    const radius = Math.sqrt(Math.max(0, 1 - y * y));
-    const theta = 2.399963229728653 * idx;
-    const letter =
-      idx % 2 === 0
+  const pushPoint = (x: number, y: number, z: number, accent = false) => {
+    const letter = accent
+      ? idx % 2 === 0
+        ? phrase[idx % phrase.length]
+        : ACCENT_GLYPHS[idx % ACCENT_GLYPHS.length]
+      : idx % 3 === 0
         ? phrase[idx % phrase.length]
         : GLYPHS[idx % GLYPHS.length];
-    return {
-      x: Math.cos(theta) * radius,
+    pts.push({
+      x,
       y,
-      z: Math.sin(theta) * radius,
+      z,
       charIndex: idx % phrase.length,
       letter,
       i: idx,
-    };
-  });
+      accent,
+    });
+    idx += 1;
+  };
+
+  if (mode === "seat") {
+    // 1. High-back Club Throne backrest (with wingback side bolsters)
+    const bxSteps = 13;
+    const bySteps = 14;
+    for (let ix = 0; ix < bxSteps; ix += 1) {
+      const nx = (ix / (bxSteps - 1)) * 2 - 1; // -1..1
+      const x = nx * 0.52;
+      for (let iy = 0; iy < bySteps; iy += 1) {
+        const uy = iy / (bySteps - 1); // 0 (top) .. 1 (seat join)
+        const y = -0.82 + uy * 0.92; // -0.82 .. +0.10
+        const isEdge =
+          ix === 0 || ix === bxSteps - 1 || iy === 0 || iy === bySteps - 1;
+        // Front & back face of backrest
+        for (const z of [-0.46, -0.32]) {
+          if (isEdge || (ix + iy) % 2 === 0) {
+            pushPoint(x, y, z, false);
+          }
+        }
+        // Wingback upper bolsters projecting slightly forward
+        if ((ix === 0 || ix === bxSteps - 1) && uy < 0.55) {
+          pushPoint(x, y, -0.20, false);
+        }
+      }
+    }
+
+    // 2. Plush Seat Cushion (horizontal slab)
+    const sxSteps = 13;
+    const szSteps = 12;
+    for (let ix = 0; ix < sxSteps; ix += 1) {
+      const x = ((ix / (sxSteps - 1)) * 2 - 1) * 0.5;
+      for (let iz = 0; iz < szSteps; iz += 1) {
+        const z = -0.34 + (iz / (szSteps - 1)) * 0.84; // -0.34 .. +0.50
+        const isEdge =
+          ix === 0 || ix === sxSteps - 1 || iz === 0 || iz === szSteps - 1;
+        for (const y of [0.1, 0.26]) {
+          if (isEdge || (ix + iz) % 2 === 0) {
+            pushPoint(x, y, z, false);
+          }
+        }
+      }
+    }
+
+    // 3. Left & Right Club Armrests
+    const armYSteps = 6;
+    const armZSteps = 11;
+    for (const side of [-1, 1]) {
+      for (const xOffset of [0.48, 0.62]) {
+        const x = side * xOffset;
+        for (let iy = 0; iy < armYSteps; iy += 1) {
+          const y = -0.22 + (iy / (armYSteps - 1)) * 0.46; // -0.22 .. +0.24
+          for (let iz = 0; iz < armZSteps; iz += 1) {
+            const z = -0.36 + (iz / (armZSteps - 1)) * 0.86;
+            const isArmBorder =
+              iy === 0 ||
+              iy === armYSteps - 1 ||
+              iz === 0 ||
+              iz === armZSteps - 1;
+            if (isArmBorder && (iy + iz) % 2 === 0) {
+              pushPoint(x, y, z, false);
+            }
+          }
+        }
+      }
+    }
+
+    // 4. Four structural legs + isometric base stretcher rails
+    const legCorners: Array<[number, number]> = [
+      [-0.48, -0.34],
+      [0.48, -0.34],
+      [-0.48, 0.46],
+      [0.48, 0.46],
+    ];
+    for (const [lx, lz] of legCorners) {
+      for (let s = 0; s < 9; s += 1) {
+        const y = 0.28 + (s / 8) * 0.54; // 0.28 .. 0.82
+        pushPoint(lx, y, lz, false);
+        pushPoint(lx * 0.92, y, lz * 0.92, false);
+      }
+    }
+    // Base perimeter rails connecting the legs
+    for (let s = 0; s < 15; s += 1) {
+      const t = (s / 14) * 2 - 1;
+      pushPoint(t * 0.48, 0.76, 0.46, false);
+      pushPoint(t * 0.48, 0.76, -0.34, false);
+      pushPoint(-0.48, 0.76, -0.34 + ((t + 1) / 2) * 0.8, false);
+      pushPoint(0.48, 0.76, -0.34 + ((t + 1) / 2) * 0.8, false);
+    }
+
+    // 5. Floating Keyless Vault Cube suspended above the seat cushion (Signal Accent)
+    const vSteps = 5;
+    for (let ix = 0; ix < vSteps; ix += 1) {
+      for (let iy = 0; iy < vSteps; iy += 1) {
+        for (let iz = 0; iz < vSteps; iz += 1) {
+          const isShell =
+            ix === 0 ||
+            ix === vSteps - 1 ||
+            iy === 0 ||
+            iy === vSteps - 1 ||
+            iz === 0 ||
+            iz === vSteps - 1;
+          if (!isShell) continue;
+          const vx = ((ix / (vSteps - 1)) * 2 - 1) * 0.2;
+          const vy = -0.32 + ((iy / (vSteps - 1)) * 2 - 1) * 0.18;
+          const vz = 0.08 + ((iz / (vSteps - 1)) * 2 - 1) * 0.2;
+          pushPoint(vx, vy, vz, true);
+        }
+      }
+    }
+
+    return pts;
+  }
+
+  if (mode === "cube") {
+    // 4D Tesseract Vault: Outer NFT Shell + Inner Keyless Vault Core + 8 Hypercube Struts
+    const outerSide = Math.max(7, Math.round(Math.cbrt(count * 0.65)));
+    const outerScale = 0.76;
+    const innerScale = 0.36;
+
+    // Outer Cube Shell (edges & lattice faces)
+    for (let ix = 0; ix < outerSide; ix += 1) {
+      for (let iy = 0; iy < outerSide; iy += 1) {
+        for (let iz = 0; iz < outerSide; iz += 1) {
+          const onX = ix === 0 || ix === outerSide - 1;
+          const onY = iy === 0 || iy === outerSide - 1;
+          const onZ = iz === 0 || iz === outerSide - 1;
+          const boundaryCount = (onX ? 1 : 0) + (onY ? 1 : 0) + (onZ ? 1 : 0);
+          if (boundaryCount === 0) continue;
+          // Keep all 12 wireframe edges and a clean lattice on faces
+          if (boundaryCount === 1 && (ix + iy + iz) % 2 !== 0) continue;
+
+          const nx = (ix / (outerSide - 1)) * 2 - 1;
+          const ny = (iy / (outerSide - 1)) * 2 - 1;
+          const nz = (iz / (outerSide - 1)) * 2 - 1;
+          pushPoint(nx * outerScale, ny * outerScale, nz * outerScale, false);
+        }
+      }
+    }
+
+    // Inner Keyless Vault Core (Signal Accent)
+    const innerSide = 5;
+    for (let ix = 0; ix < innerSide; ix += 1) {
+      for (let iy = 0; iy < innerSide; iy += 1) {
+        for (let iz = 0; iz < innerSide; iz += 1) {
+          const isSurface =
+            ix === 0 ||
+            ix === innerSide - 1 ||
+            iy === 0 ||
+            iy === innerSide - 1 ||
+            iz === 0 ||
+            iz === innerSide - 1;
+          if (!isSurface) continue;
+          const nx = (ix / (innerSide - 1)) * 2 - 1;
+          const ny = (iy / (innerSide - 1)) * 2 - 1;
+          const nz = (iz / (innerSide - 1)) * 2 - 1;
+          pushPoint(nx * innerScale, ny * innerScale, nz * innerScale, true);
+        }
+      }
+    }
+
+    // 8 Diagonal 4D Tesseract Struts connecting inner & outer vertices
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          for (let step = 1; step <= 7; step += 1) {
+            const u = step / 8;
+            const s = innerScale + (outerScale - innerScale) * u;
+            pushPoint(sx * s, sy * s, sz * s, true);
+          }
+        }
+      }
+    }
+
+    return pts;
+  }
+
+  // "prism": Octahedral Bipyramid Crystal Obelisk + Square Ledger Orbit
+  const layers = 23;
+  for (let ly = 0; ly < layers; ly += 1) {
+    const ny = (ly / (layers - 1)) * 2 - 1; // -1 (top apex) .. +1 (bottom apex)
+    const y = ny * 0.86;
+    const span = (1 - Math.abs(ny)) * 0.72;
+    const perSide = Math.max(2, Math.round(span * 16));
+
+    // 4 diamond edges at height y: (span, 0) -> (0, span) -> (-span, 0) -> (0, -span)
+    const corners: Array<[number, number]> = [
+      [span, 0],
+      [0, span],
+      [-span, 0],
+      [0, -span],
+    ];
+    for (let c = 0; c < 4; c += 1) {
+      const [x0, z0] = corners[c];
+      const [x1, z1] = corners[(c + 1) % 4];
+      for (let s = 0; s < perSide; s += 1) {
+        const u = s / perSide;
+        const x = x0 + (x1 - x0) * u;
+        const z = z0 + (z1 - z0) * u;
+        const isRidge = s === 0 || Math.abs(ny) < 0.06;
+        pushPoint(x, y, z, isRidge);
+      }
+    }
+    // Central vertical zero-key spine
+    pushPoint(0, y, 0, true);
+  }
+
+  // Tilted square orbital ledger frame around the crystal
+  const orbitSteps = 22;
+  const orbitScale = 0.82;
+  const orbitCorners: Array<[number, number]> = [
+    [-orbitScale, -orbitScale],
+    [orbitScale, -orbitScale],
+    [orbitScale, orbitScale],
+    [-orbitScale, orbitScale],
+  ];
+  for (let c = 0; c < 4; c += 1) {
+    const [x0, z0] = orbitCorners[c];
+    const [x1, z1] = orbitCorners[(c + 1) % 4];
+    for (let s = 0; s < orbitSteps; s += 1) {
+      const u = s / orbitSteps;
+      const x = x0 + (x1 - x0) * u;
+      const z = z0 + (z1 - z0) * u;
+      const y = (x - z) * 0.22;
+      pushPoint(x, y, z, s % 4 === 0);
+    }
+  }
+
+  return pts;
 }
 
 function getLayout(width: number, height: number) {
@@ -137,7 +295,7 @@ function getLayout(width: number, height: number) {
 export function AsciiVaultField({
   className,
   compact = false,
-  initialMode = "sphere",
+  initialMode = "seat",
 }: {
   className?: string;
   compact?: boolean;
@@ -188,7 +346,7 @@ export function AsciiVaultField({
 
     const points = buildPoints(pointCount, mode);
     const targetPhrase =
-      mode === "sphere"
+      mode === "seat"
         ? PHRASES[0]
         : mode === "cube"
           ? PHRASES[1]
@@ -207,13 +365,16 @@ export function AsciiVaultField({
       z: 0,
       letter: p.letter,
       i: p.i,
+      accent: Boolean(p.accent),
     }));
     const sorted = [...projected];
 
     // Offscreen glyph cache for crisp 60fps rendering
     const spriteCanvas = document.createElement("canvas");
     const spriteCtx = spriteCanvas.getContext("2d");
-    const uniqueChars = Array.from(new Set([...targetPhrase, ...GLYPHS]));
+    const uniqueChars = Array.from(
+      new Set([...targetPhrase, ...GLYPHS, ...ACCENT_GLYPHS])
+    );
     const charToCol = new Map<string, number>();
     uniqueChars.forEach((ch, idx) => charToCol.set(ch, idx));
 
@@ -262,35 +423,78 @@ export function AsciiVaultField({
       const bottomEdge = height - 16;
 
       const ptr = pointerRef.current;
-      const yaw = t * 0.16 + ptr.x * 0.65;
-      const pitch = 0.22 + ptr.y * 0.42 + Math.sin(t * 0.35) * 0.06;
+      const yaw =
+        mode === "seat"
+          ? -0.34 + Math.sin(t * 0.38) * 0.58 + ptr.x * 0.85
+          : t * 0.2 + ptr.x * 0.72;
+      const pitch = 0.28 + ptr.y * 0.38 + Math.sin(t * 0.35) * 0.05;
 
       const cosY = Math.cos(yaw);
       const sinY = Math.sin(yaw);
       const cosP = Math.cos(pitch);
       const sinP = Math.sin(pitch);
 
+      const project3D = (x3: number, y3: number, z3: number) => {
+        const rx = x3 * cosY + z3 * sinY;
+        const rz = z3 * cosY - x3 * sinY;
+        const ry = y3 * cosP + rz * sinP;
+        const depthZ = rz * cosP - y3 * sinP;
+        const perspective = 2.85 / (2.85 - 0.42 * depthZ);
+        return {
+          x: cx + rx * radius * perspective,
+          y: cy + ry * radius * perspective,
+          z: depthZ,
+        };
+      };
+
       for (let i = 0; i < points.length; i += 1) {
         const src = points[i];
         const dst = projected[i];
-        const rx = src.x * cosY + src.z * sinY;
-        const rz = src.z * cosY - src.x * sinY;
-        const ry = src.y * cosP - rz * sinP;
-        const depthZ = src.y * sinP + rz * cosP;
-        const perspective = 2.85 / (2.85 - 0.42 * depthZ);
-        dst.x = cx + rx * radius * perspective;
-        dst.y = cy + ry * radius * perspective;
-        dst.z = depthZ;
+        const p = project3D(src.x, src.y, src.z);
+        dst.x = p.x;
+        dst.y = p.y;
+        dst.z = p.z;
       }
 
       sorted.sort((a, b) => a.z - b.z);
 
-      // Draw subtle equatorial & meridian ASCII ring hairlines
+      // Draw 3D isometric vault pedestal & architectural frame (no circle/sphere)
       ctx.save();
-      ctx.strokeStyle = "rgba(236, 232, 216, 0.06)";
+      const baseCorners = [
+        project3D(-0.86, 0.86, -0.86),
+        project3D(0.86, 0.86, -0.86),
+        project3D(0.86, 0.86, 0.86),
+        project3D(-0.86, 0.86, 0.86),
+      ];
+      const topCorners = [
+        project3D(-0.68, -0.86, -0.68),
+        project3D(0.68, -0.86, -0.68),
+        project3D(0.68, -0.86, 0.68),
+        project3D(-0.68, -0.86, 0.68),
+      ];
+      ctx.strokeStyle = "rgba(236, 232, 216, 0.08)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(cx, cy, radius * 1.04, 0, Math.PI * 2);
+      for (let c = 0; c < 4; c += 1) {
+        const b0 = baseCorners[c];
+        const b1 = baseCorners[(c + 1) % 4];
+        ctx.moveTo(b0.x, b0.y);
+        ctx.lineTo(b1.x, b1.y);
+      }
+      // Pedestal cross-diagonals
+      ctx.moveTo(baseCorners[0].x, baseCorners[0].y);
+      ctx.lineTo(baseCorners[2].x, baseCorners[2].y);
+      ctx.moveTo(baseCorners[1].x, baseCorners[1].y);
+      ctx.lineTo(baseCorners[3].x, baseCorners[3].y);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(59, 155, 255, 0.09)";
+      ctx.setLineDash([3, 5]);
+      ctx.beginPath();
+      for (let c = 0; c < 4; c += 1) {
+        ctx.moveTo(baseCorners[c].x, baseCorners[c].y);
+        ctx.lineTo(topCorners[c].x, topCorners[c].y);
+      }
       ctx.stroke();
       ctx.restore();
 
@@ -313,13 +517,20 @@ export function AsciiVaultField({
 
         const alpha = Math.min(
           1,
-          0.08 + (pt.z + 1) * 0.28 + proximity * 0.55 + pulseWave * 0.5
+          (pt.accent ? 0.24 : 0.09) +
+            (pt.z + 1) * (pt.accent ? 0.36 : 0.28) +
+            proximity * 0.55 +
+            pulseWave * 0.5
         );
         ctx.globalAlpha = alpha;
 
         const depthLevel = Math.min(3, Math.max(0, Math.round((pt.z + 1) * 1.5)));
         const palette =
-          pulseWave > 0.18 ? 2 : proximity > 0.15 ? 1 : 0;
+          pulseWave > 0.18
+            ? 2
+            : proximity > 0.15 || pt.accent
+              ? 1
+              : 0;
         const row = palette * 4 + depthLevel;
         const col = charToCol.get(pt.letter) ?? 0;
 
@@ -338,7 +549,7 @@ export function AsciiVaultField({
 
       ctx.globalAlpha = 1;
 
-      // Target-lock leader lines & character extraction readout (like nearhackathon.com)
+      // Target-lock leader lines & character extraction readout
       const cycle = t % 16;
       const charIdx = Math.min(phraseLen - 1, Math.floor(cycle / 1.05));
       const charPhase = (cycle % 1.05) / 1.05;
@@ -583,7 +794,7 @@ export function AsciiVaultField({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {(["sphere", "cube", "torus"] as const).map((item) => (
+          {(["seat", "cube", "prism"] as const).map((item) => (
             <button
               key={item}
               type="button"
@@ -640,11 +851,11 @@ export function AsciiVaultField({
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface px-3.5 py-2 font-mono text-[9px] uppercase tracking-label text-paper-muted">
         <span className="inline-flex items-center gap-1.5">
           <Sparkles className="h-3 w-3 text-signal" aria-hidden="true" />
-          {mode === "sphere"
-            ? "Topology: Fibonacci Vault Sphere · 0 Access Keys"
+          {mode === "seat"
+            ? "Topology: 3D Club Seat Throne + Floating Keyless Vault"
             : mode === "cube"
-              ? "Topology: Sub-Account Vault Cube · s007.logen.testnet"
-              : "Topology: Atomic Handoff Torus · rotation_seq"}
+              ? "Topology: 4D Tesseract Vault Cube · s007.logen.testnet"
+              : "Topology: Octahedral Crystal Obelisk · rotation_seq"}
         </span>
         <span className="text-positive">NEP-171 + NEP-413 VERIFIED</span>
       </div>
