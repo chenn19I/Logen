@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   LogOut,
   RotateCcw,
@@ -48,7 +49,7 @@ export function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-ink">
+    <header className="sticky top-0 z-40 border-b border-line bg-ink/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-page items-center justify-between gap-4 px-4 sm:px-6">
         <Link
           href="/"
@@ -83,7 +84,12 @@ export function Navbar() {
               >
                 {item.label}
                 {active ? (
-                  <span className="absolute inset-x-0 bottom-0 h-px bg-signal" aria-hidden="true" />
+                  <motion.span
+                    layoutId="nav-active-line"
+                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                    className="absolute inset-x-0 bottom-0 h-px bg-signal"
+                    aria-hidden="true"
+                  />
                 ) : null}
               </Link>
             );
