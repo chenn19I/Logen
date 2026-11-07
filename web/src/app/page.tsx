@@ -51,9 +51,26 @@ import { AsciiVaultField } from "@/components/ascii/AsciiVaultField";
 import { AsciiArchitectureFlow } from "@/components/ascii/AsciiArchitectureFlow";
 import { PixelMatrixReadout } from "@/components/ascii/PixelMatrixReadout";
 
+const PREVIEW_ROLL = [
+  { num: "01", tokenId: "s001.logen.testnet", balance: "2.46", holder: "bob.testnet", dots: 4 },
+  { num: "02", tokenId: "s002.logen.testnet", balance: "2.80", holder: "sari.testnet", dots: 5 },
+  { num: "03", tokenId: "s003.logen.testnet", balance: "1.95", holder: "listed · 1.5 N", dots: 3 },
+  { num: "04", tokenId: "s004.logen.testnet", balance: "3.10", holder: "dharma.testnet", dots: 6 },
+  { num: "05", tokenId: "s005.logen.testnet", balance: "2.64", holder: "wira.testnet", dots: 4 },
+  { num: "06", tokenId: "s006.logen.testnet", balance: "3.45", holder: "nila.testnet", dots: 8 },
+  { num: "07", tokenId: "s007.logen.testnet", balance: "3.20", holder: "Keeper 07", dots: 7 },
+  { num: "08", tokenId: "s008.logen.testnet", balance: "2.30", holder: "raya.testnet", dots: 5 },
+  { num: "09", tokenId: "s009.logen.testnet", balance: "2.90", holder: "kavi.testnet", dots: 6 },
+  { num: "10", tokenId: "s010.logen.testnet", balance: "4.12", holder: "bayu.testnet", dots: 8 },
+  { num: "11", tokenId: "s011.logen.testnet", balance: "2.50", holder: "tara.testnet", dots: 4 },
+  { num: "12", tokenId: "s012.logen.testnet", balance: "3.05", holder: "seno.testnet", dots: 7 },
+] as const;
+
 function ConnectScreen() {
   const { openWalletModal } = useNear();
   const { setDemo } = useDemo();
+  const [activeRollIdx, setActiveRollIdx] = useState(6);
+  const activePreview = PREVIEW_ROLL[activeRollIdx] ?? PREVIEW_ROLL[6];
 
   const moves = [
     {
@@ -119,19 +136,39 @@ function ConnectScreen() {
             </button>
 
             <div className="mt-9">
-              <div className="flex flex-wrap items-center gap-0.5 sm:gap-1" aria-hidden="true">
-                {Array.from({ length: 12 }, (_, index) => (
-                  <SeatGlyph
-                    key={index}
-                    tokenId={`s${String(index + 1).padStart(3, "0")}.logen.testnet`}
-                    innerDots={2 + (index % 7)}
-                    size={22}
-                  />
-                ))}
+              <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Preview club seats">
+                {PREVIEW_ROLL.map((seatItem, index) => {
+                  const selected = index === activeRollIdx;
+                  return (
+                    <button
+                      key={seatItem.tokenId}
+                      type="button"
+                      onMouseEnter={() => setActiveRollIdx(index)}
+                      onFocus={() => setActiveRollIdx(index)}
+                      onClick={() => setActiveRollIdx(index)}
+                      aria-label={`Preview seat ${seatItem.num} (${seatItem.balance} NEAR inside)`}
+                      aria-pressed={selected}
+                      className={`rounded p-0.5 transition-transform duration-150 ${
+                        selected
+                          ? "-translate-y-0.5 ring-1 ring-signal bg-signal-soft"
+                          : "opacity-75 hover:-translate-y-0.5 hover:opacity-100"
+                      }`}
+                    >
+                      <SeatGlyph
+                        tokenId={seatItem.tokenId}
+                        innerDots={seatItem.dots}
+                        size={22}
+                      />
+                    </button>
+                  );
+                })}
               </div>
-              <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
-                  12 seats. Each one a wallet.
+                  12 seats. Each one a wallet ·{" "}
+                  <span className="text-paper-dim">
+                    #{activePreview.num} ({activePreview.balance} NEAR)
+                  </span>
                 </p>
                 <Link
                   href="/seats"
@@ -145,7 +182,14 @@ function ConnectScreen() {
           </div>
 
           <div className="flex min-w-0 justify-center lg:justify-end">
-            <MascotPass className="max-w-[430px]" />
+            <MascotPass
+              className="max-w-[430px]"
+              seatNumber={activePreview.num}
+              tokenId={activePreview.tokenId}
+              balance={activePreview.balance}
+              holderLabel={activePreview.holder}
+              innerDots={activePreview.dots}
+            />
           </div>
         </div>
       </section>
