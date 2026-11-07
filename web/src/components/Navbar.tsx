@@ -53,9 +53,10 @@ export function Navbar() {
         <Link
           href="/"
           className="flex min-w-0 items-center gap-3 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
-          aria-label="Logen home"
         >
-          <SeatGlyph tokenId="logen-club" innerDots={6} size={26} />
+          <span aria-hidden="true">
+            <SeatGlyph tokenId="logen-club" innerDots={6} size={26} />
+          </span>
           <span className="flex items-baseline gap-2">
             <span className="font-display text-16 font-semibold uppercase tracking-[0.06em] text-paper">
               Logen
@@ -149,7 +150,7 @@ export function Navbar() {
       </div>
 
       <div className="flex overflow-x-auto border-t border-line px-4 no-scrollbar lg:hidden">
-        <nav className="mx-auto flex w-full max-w-page items-center gap-6" aria-label="Main mobile">
+        <nav className="mx-auto flex w-full max-w-page items-center gap-4 sm:gap-6" aria-label="Main mobile">
           {navLinks.map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -158,7 +159,7 @@ export function Navbar() {
                 key={item.label}
                 href={item.href}
                 className={cn(
-                  "shrink-0 border-b border-transparent py-3 font-mono text-[11px] uppercase tracking-label",
+                  "shrink-0 border-b border-transparent py-3 font-mono text-[10px] uppercase tracking-label sm:text-[11px]",
                   active
                     ? "border-signal text-paper"
                     : "text-paper-muted hover:text-paper"

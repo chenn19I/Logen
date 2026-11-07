@@ -21,7 +21,7 @@ import {
 import { pairCheck, SHARDED_ITEM_SPEC, verifyDirectSubaccount } from "../gate/pairCheck";
 
 export const DEFAULT_REGISTRY_ID =
-  process.env.NEXT_PUBLIC_REGISTRY_ID || "pusaka-c10747.testnet";
+  process.env.NEXT_PUBLIC_REGISTRY_ID || "logen-84b273.testnet";
 export const PRIMARY_RPC_URL =
   process.env.NEXT_PUBLIC_RPC_URL || "https://test.rpc.fastnear.com";
 export const FALLBACK_RPC_URL =

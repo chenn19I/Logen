@@ -7,17 +7,17 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded border font-medium transition-colors duration-120 ease-calm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:opacity-45 disabled:pointer-events-none select-none";
+  "inline-flex items-center justify-center gap-2 rounded border font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-120 ease-calm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:opacity-45 disabled:pointer-events-none select-none";
 
 const variants: Record<Variant, string> = {
   primary:
-    "border-signal bg-signal text-[#08111c] hover:bg-[var(--accent-strong)] active:bg-signal",
+    "border-signal bg-signal text-[#08111c] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] hover:bg-[var(--accent-strong)] active:translate-y-px",
   secondary:
-    "border-line bg-transparent text-paper hover:border-line-strong hover:bg-[var(--surface-raised)]",
+    "border-line bg-transparent text-paper hover:border-line-strong hover:bg-[var(--surface-raised)] active:translate-y-px",
   ghost:
-    "border-transparent bg-transparent text-paper-dim hover:bg-[var(--surface-raised)] hover:text-paper",
+    "border-transparent bg-transparent text-paper-dim hover:bg-[var(--surface-raised)] hover:text-paper active:translate-y-px",
   danger:
-    "border-danger bg-danger-soft text-danger hover:bg-[rgba(255,107,94,0.18)]",
+    "border-danger bg-danger-soft text-danger hover:bg-[rgba(255,107,94,0.18)] active:translate-y-px",
 };
 
 const sizes: Record<Size, string> = {

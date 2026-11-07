@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
  */
 export function LogenMascot({
   size = 420,
+  aspectRatio = "1 / 1",
   className,
   imageClassName,
   priority = false,
@@ -16,6 +17,7 @@ export function LogenMascot({
   showSparks = true,
 }: {
   size?: number;
+  aspectRatio?: string;
   className?: string;
   imageClassName?: string;
   priority?: boolean;
@@ -28,7 +30,7 @@ export function LogenMascot({
         "mascot-frame relative isolate overflow-hidden rounded border border-line bg-[#05070d]",
         className
       )}
-      style={{ width: size, maxWidth: "100%", aspectRatio: "1 / 1" }}
+      style={{ width: size, maxWidth: "100%", aspectRatio }}
     >
       <div className="mascot-aura pointer-events-none absolute inset-0" aria-hidden="true" />
       <div className="mascot-cube-glow pointer-events-none absolute left-[14%] top-[6%] h-[38%] w-[38%] rounded-full" aria-hidden="true" />
@@ -68,7 +70,7 @@ export function LogenMascot({
           <span className="font-mono text-[10px] uppercase tracking-label text-[#4de8ff]">
             {caption}
           </span>
-          <span className="font-mono text-[9px] uppercase tracking-label text-paper-muted">
+          <span className="hidden font-mono text-[9px] uppercase tracking-label text-paper-muted sm:inline">
             Pixel · 2026
           </span>
         </div>

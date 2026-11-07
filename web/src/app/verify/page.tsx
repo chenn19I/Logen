@@ -241,7 +241,7 @@ export default function VerifyPage() {
                   >
                     {row.value}
                   </div>
-                  <p className="mt-1 max-w-[68ch] text-12 leading-relaxed text-paper-muted">
+                  <p className="mt-1 max-w-[68ch] break-words text-12 leading-relaxed text-paper-muted">
                     {row.detail}
                   </p>
                 </div>

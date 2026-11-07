@@ -67,6 +67,15 @@ const NearContext = createContext<NearContextValue | null>(null);
 
 const TLA_GAS_100 = "100000000000000";
 
+// Registries from earlier deployments. A returning browser may still hold one
+// of these in localStorage; silently move it to the current registry instead of
+// querying an account that no longer serves the club.
+const LEGACY_REGISTRY_IDS = new Set([
+  "logen.testnet",
+  "pusaka.testnet",
+  "pusaka-c10747.testnet",
+]);
+
 export function NearProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Language>("id");
   const [registryId, setRegistryIdState] = useState<string>(DEFAULT_REGISTRY_ID);
@@ -91,13 +100,13 @@ export function NearProvider({ children }: { children: React.ReactNode }) {
       setLangState(savedLang);
     }
     const params = new URLSearchParams(window.location.search);
-    const fromQuery = params.get("registry");
-    const saved = window.localStorage.getItem("logen_registry_id");
-    if (fromQuery && fromQuery.trim()) {
-      setRegistryIdState(fromQuery.trim());
-      window.localStorage.setItem("logen_registry_id", fromQuery.trim());
-    } else if (saved && saved.trim() && saved.trim() !== "logen.testnet") {
-      setRegistryIdState(saved.trim());
+    const fromQuery = params.get("registry")?.trim();
+    const saved = window.localStorage.getItem("logen_registry_id")?.trim();
+    if (fromQuery) {
+      setRegistryIdState(fromQuery);
+      window.localStorage.setItem("logen_registry_id", fromQuery);
+    } else if (saved && !LEGACY_REGISTRY_IDS.has(saved)) {
+      setRegistryIdState(saved);
     } else {
       setRegistryIdState(DEFAULT_REGISTRY_ID);
       window.localStorage.setItem("logen_registry_id", DEFAULT_REGISTRY_ID);

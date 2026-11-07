@@ -1,10 +1,10 @@
 {
   "network": "testnet",
-  "registry_id": "pusaka-c10747.testnet",
-  "seat_id": "s001.pusaka-c10747.testnet",
-  "vault_code_hash": "DFuv6MrVh9yz62uvRxYbZhAEewiWeqUKdYvb3kPLmwSg",
-  "registry_code_hash": "HnMPZdTuyDZmGLd7ZHBbvutM9dQ2ZLmVHBxuzHw8zbeU",
-  "generated_at": "2026-11-05T08:02:47.537Z",
+  "registry_id": "logen-84b273.testnet",
+  "seat_id": "s001.logen-84b273.testnet",
+  "vault_code_hash": "4MMm6JjN8YiGcx11EJoNejVZGeZEpeGXU4Ak32FhZUk3",
+  "registry_code_hash": "FPpB17WxWJMdyW4ncP4F33n6FjFd18Livp7t6BgsHCem",
+  "generated_at": "2026-11-07T00:00:00.000Z",
   "interleavings_explored": 80620,
   "results": [
     {
@@ -15,7 +15,7 @@
       "outcome": "BLOCKED",
       "error_code": "E_ONLY_REGISTRY",
       "test_name": "attack_a1_direct_v_rotate_bypass_blocked",
-      "tx_hash": "A4JQKpkswwho4k84m66PMSWrGtX3Hmo2da4aiyurUgTq"
+      "tx_hash": "Bg83YveB8zfR8BX3a3wWwhj5nHNCYJg3f17foQEGVEmD"
     },
     {
       "id": "A2",
@@ -25,7 +25,7 @@
       "outcome": "BLOCKED",
       "error_code": "E_FROZEN",
       "test_name": "attack_a2_seller_withdraw_while_listed_blocked",
-      "tx_hash": "9mq2Yod1M652vNKTHNHEpBzZ6iKjYpcU4GSnesDvoqFi"
+      "tx_hash": "DBMspUx7JVngxcWehcD7vpykceDQzio4YFeLCmyho35Y"
     },
     {
       "id": "A3",
@@ -35,7 +35,7 @@
       "outcome": "BLOCKED",
       "error_code": "E_NONCE_MISMATCH",
       "test_name": "attack_a3_bait_and_switch_relist_blocked_by_nonce",
-      "tx_hash": "Fy3E1eUtNyvTAQdku4CE8HySZd46v3Sf4fy26DXzy5TY"
+      "tx_hash": "9BDFsU6Pr5qE7zdZpAnygBN3FbKkKX64w7MStsFKyuAd"
     },
     {
       "id": "A4",
@@ -75,7 +75,7 @@
       "outcome": "BLOCKED",
       "error_code": "E_NOT_OWNER",
       "test_name": "attack_a7_former_owner_withdraw_after_transfer_blocked",
-      "tx_hash": "27UqeoVoe6FYnMb8AbL73M64mMppZqY7Nepb8jZgBaP9"
+      "tx_hash": "3iaXLz8P3VWyE8rYpMdFsFXBhLX1SZ5NKRhLG45WbGHL"
     },
     {
       "id": "A8",

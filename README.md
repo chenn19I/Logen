@@ -402,20 +402,21 @@ Every threat in [`docs/THREAT_MODEL.md`](./docs/THREAT_MODEL.md) maps to an inva
 
 ## Web application
 
-Next.js 16 App Router UI in `web/`. It runs against the testnet deployment by default.
+Next.js 16 App Router UI in `web/`. It runs against the testnet deployment by default. A demo switch swaps the chain adapter for an in-memory club, so every flow can be exercised without a wallet or a transaction.
 
 | Route | Purpose |
 | --- | --- |
 | `/` | **Seat Wallet**: View seat balance & withdrawable NEAR, sweep accrued member pool share, claim sale proceeds or refunds from personal pull ledgers, open 5-row on-chain proof drawer (`VerifyDrawer`), withdraw funds, list/delist seat (with optional private OTC buyer), or simulate live sale handoff (`HandoffOverlay`). |
 | `/events` | **Club Events & Ticket Pool (Track Requirement R1 & R3)**: Live upcoming/settled events, automatic member discount via `ticket_price_for`, instant 40% Member Pool / 50% Kas Klub / 10% Organizer revenue split on `buy_ticket`, ticket balance, and organizer event scheduling. |
 | `/market` | **Safe Secondary Market**: Browse listed seats with inside-balance vs. asking-price comparison bars (`CompareBar`), private OTC reservation badges, and atomic `buy_seat` settlement. |
-| `/seats` | **Seat Directory & Minting**: Complete list of keyless seat sub-accounts, direct account ID inspector, and permissionless seat minting (`mint_seat`) with optional custom `<handle>.<registry>`. |
+| `/mint` | **Mint Studio**: Drag-and-drop a portrait (PNG/JPEG/WebP, resized to 1200px), name the seat, choose an optional handle, preview the card, then mint in demo or live on NEAR Testnet. Live mints call `mint_seat` with the exact `seat_price` deposit and link to the explorer. |
+| `/seats` | **Seat Directory**: Searchable, filterable roll of every seat with inside balance, all-time earnings, holder and status; links to each seat's history and to the Mint Studio. |
 | `/lounge` | **Holder-Only Lounge (Track Requirement R2)**: Gated by NEP-413 challenge signature + single-use replay protection + RPC `FullAccess` check + per-request same-final-block T2 pair check (`/api/gate/{challenge,verify,content}`). |
 | `/treasury` | **Club Treasury & Pull Ledgers**: Complete club economics inspection (O(1) member pool accumulator `acc`, Kas Klub treasury owed/released, organizer owed/released, 5% secondary royalty feed, and permissionless `release_*` execution). |
 | `/seat/[id]` | **Per-Seat History (Track Requirement R3)**: Monthly ledger of **All**, **Earned** (event pool shares), **Paid out** (vault outflows), and **Holders** (ownership timeline with `rotation_seq` & acquisition type). |
 | `/verify` | **On-Chain Proof Verifier**: Interactive 5-row verification table checking `Access keys (0)`, `Pinned code hash`, `Same-block identity pair-check`, `Canonical holder`, and `Registry seal status`. |
 | `/lab` | **Interactive Attack Lab & Interleaving Workbench**: Inspect all 12 seller & gate exploit scenarios (`A1–A12`), execute preset or custom receipt interleavings in real time, and view cross-contract logs. |
-| `/kit` | Design system specimens, tokens, controls, glyphs, pixel chair, and state primitives. |
+| `/kit` | Design system specimens: tokens, type, controls, glyphs, pixel chair, mascot portrait, uploaded-portrait card and state primitives. |
 
 **How the `/lounge` gate works**
 
@@ -423,6 +424,39 @@ Next.js 16 App Router UI in `web/`. It runs against the testnet deployment by de
 2. The wallet signs the challenge with NEP-413.
 3. `/api/gate/verify` checks the Ed25519 signature, consumes the nonce (replay protection) and confirms through RPC that the signing key is a `FullAccess` key of the claimed account. It then issues a session cookie bound to `{ accountId, tokenId, rotationSeq }`.
 4. Every `/api/gate/content` request reads `registry.nft_token` and `vault.nft_item_info` at the **same `final` block** and returns `403` if the owner or `rotation_seq` changed, or if the two disagree. A missing or invalid session returns `401`. The gate fails closed while the index lags the vault.
+
+### Mint Studio: upload → seat NFT
+
+`/mint` is the member-facing mint flow. It works in two modes:
+
+- **Demo** (`?demo=1` or the DEMO switch): `MockChain.mintSeat` creates a seat in memory with the uploaded portrait, name, story and handle. Nothing is sent on chain; reset demo clears it.
+- **Live** (demo off, wallet connected): the page calls `registry.mint_seat({ receiver_id, handle })` with a deposit exactly equal to `config.seat_price` (2.2 NEAR on the current testnet deployment) and 220 Tgas. The contract creates `<handle>.<registry>` as a keyless sub-account, deploys the pinned vault code, and registers the NFT. The page waits for the index, opens the success sheet, and offers an explorer link.
+
+Portrait storage is intentionally honest: the uploaded image is compressed to WebP, capped at 1200px, and kept in the browser (`localStorage` for live seats, in-memory for demo). The NFT's on-chain `metadata.media` remains the dynamic Logen SVG generated by the contract. The uploaded portrait is a display layer for this browser; it is not written on chain, because `mint_seat` has no media argument and the contract's metadata is generated from seat state. The mint sheet says so before and after the transaction.
+
+Handle rules match the contract: 2–20 lowercase `[a-z0-9-]` characters, no leading or trailing hyphen, and no `s<digits>` prefix (reserved for numbered seats). A live mint requires a handle so the new token id is known immediately; demo mints can leave it blank and receive the next numbered seat.
+
+### Design, mascot and motion
+
+- **Favicon**: `web/src/app/icon.svg` is the Logen dotted seat glyph. `layout.tsx` also wires OpenGraph/Twitter metadata and uses the mascot portrait as the social image.
+- **Mascot**: `web/public/logen-mascot.png` is the original pixel-art wizard. `LogenMascot` frames it with a float, aura, cube glow and sparks; `mix-blend-screen` lets the dark portrait sit on the terminal background.
+- **Hero pass**: `MascotPass` turns the mascot into a physical member credential — corner marks, an oversized seat number, the balance inside and a three-cell network/wallet/access strip — so the landing page previews the product instead of showing a portrait in a card. The 12-glyph roll links to `/seats`.
+- **Footer**: club and system link columns, the "No keys. Ever." line and an oversized, low-contrast LOGEN watermark close every page.
+- **Motion**: `Reveal` and `app/template.tsx` provide one-time section and page entrances; `card-lift`, the mint dropzone and the preview scanlines add small affordances. Every animation is disabled or reduced under `prefers-reduced-motion: reduce`.
+- The palette, Geist/Geist Mono type, hairline borders and single blue accent are unchanged. The mascot and uploaded portraits are the only new brand assets.
+
+### Screenshots
+
+`web/screenshots/` is generated with `node scripts/capture.mjs <scenario> <width> <height>`:
+
+- `landing-{390,768,1280}.png` — connect screen, member pass, 12-seat glyph roll and the three-step strip
+- `mint-{empty,filled,success}-{390,768,1280}.png` — Mint Studio, portrait drop, preview and success sheet
+- `home-{390,768,1280}.png`, `market-{390,768,1280}.png`, `seats-{390,768,1280}.png` — wallet, market and the full seat directory
+- `seat-{390,768,1280}.png`, `verify-{390,768,1280}.png`, `kit-1280.png` — seat history, proof verifier and design specimens
+- `market-sheet-*` and `handoff-*` — buy confirmation and post-purchase handoff overlays
+- `lounge-{closed,open,locked}-{390,768,1280}.png` and `lab-*` — responsive Lounge and Attack Lab states
+
+Checked routes score 100 for accessibility, best practices and SEO in Lighthouse. Keyboard focus is visible, the buy sheet traps Tab and closes on Escape, and `prefers-reduced-motion: reduce` disables the mascot, glyph, skeleton and page transitions.
 
 ---
 
@@ -462,9 +496,9 @@ logen/
     ├── screenshots/          # Captured desktop & mobile UI states across all routes
     ├── scripts/capture.mjs   # Automated screenshot capture script
     └── src/
-        ├── app/              # App Router pages (/, /lounge, /market, /seat/[id], /verify, /lab, /events, /seats, /treasury, /kit)
-        ├── components/       # Seat cards, glyphs, proof drawer, confirmation sheets, handoff overlay & primitive UI
-        └── lib/              # Chain hooks, DemoProvider, NEP-413 verifier, T2 pair-check, NEAR RPC client & Vitest suite
+        ├── app/              # App Router pages (/, /mint, /lounge, /market, /seat/[id], /verify, /lab, /events, /seats, /treasury, /kit)
+        ├── components/       # Seat cards, glyphs, mascot, uploaded portraits, proof drawer, sheets, handoff overlay & primitives
+        └── lib/              # Chain hooks, DemoProvider, image/portrait stores, NEP-413 verifier, T2 pair-check, RPC client & Vitest suite
 ```
 
 ### Compiled artifacts

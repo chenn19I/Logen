@@ -38,7 +38,7 @@ import { Button, LinkButton } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Panel } from "@/components/ui/Panel";
 import { Reveal } from "@/components/ui/Reveal";
-import { LogenMascot } from "@/components/brand/LogenMascot";
+import { MascotPass } from "@/components/brand/MascotPass";
 import { SeatCard } from "@/components/seat/SeatCard";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
 import { PixelChair } from "@/components/seat/PixelChair";
@@ -47,6 +47,10 @@ import { ProofStamp } from "@/components/seat/ProofStamp";
 import { VerifyDrawer } from "@/components/seat/VerifyDrawer";
 import { ConfirmationSheet } from "@/components/seat/ConfirmationSheet";
 import { HandoffOverlay, type HandoffMode } from "@/components/seat/Handoff";
+import { AsciiVaultField } from "@/components/ascii/AsciiVaultField";
+import { SignalTape } from "@/components/ascii/SignalTape";
+import { AsciiArchitectureFlow } from "@/components/ascii/AsciiArchitectureFlow";
+import { PixelMatrixReadout } from "@/components/ascii/PixelMatrixReadout";
 
 function ConnectScreen() {
   const { openWalletModal } = useNear();
@@ -77,7 +81,7 @@ function ConnectScreen() {
     <div className="space-y-6">
       <section className="terminal-grid relative overflow-hidden rounded border border-line bg-surface">
         <div className="grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-14">
-          <div>
+          <div className="min-w-0">
             <span className="bracket-label">[ 01 / SEAT ]</span>
             <h1 className="mt-6 max-w-[12ch] text-40 font-semibold leading-[0.98] tracking-[-0.035em] text-paper sm:text-72">
               Sell the seat.
@@ -118,40 +122,33 @@ function ConnectScreen() {
             </button>
 
             <div className="mt-9">
-              <div className="flex flex-wrap items-center gap-2" aria-hidden="true">
-                {[2, 3, 4, 5, 6, 7].map((dots, index) => (
+              <div className="flex flex-wrap items-center gap-0.5 sm:gap-1" aria-hidden="true">
+                {Array.from({ length: 12 }, (_, index) => (
                   <SeatGlyph
-                    key={dots}
-                    tokenId={`s00${index + 1}.logen.testnet`}
-                    innerDots={dots}
-                    size={38}
+                    key={index}
+                    tokenId={`s${String(index + 1).padStart(3, "0")}.logen.testnet`}
+                    innerDots={2 + (index % 7)}
+                    size={22}
                   />
                 ))}
               </div>
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-label text-paper-muted">
-                12 seats. Each one a wallet.
-              </p>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                  12 seats. Each one a wallet.
+                </p>
+                <Link
+                  href="/seats"
+                  className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 transition-colors hover:text-paper"
+                >
+                  Open the roll
+                  <ArrowRight className="h-3 w-3" aria-hidden="true" />
+                </Link>
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-center lg:justify-end">
-            <div className="w-full max-w-[430px]">
-              <div className="rounded border border-line bg-ink p-3">
-                <LogenMascot
-                  size={398}
-                  priority
-                  caption="Logen / Keeper of the seat"
-                  className="w-full"
-                />
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-2 border border-line bg-ink px-3 py-2 font-mono text-[10px] uppercase tracking-label text-paper-dim">
-                <span>Seat 07 · Inside · Logen</span>
-                <span className="inline-flex items-center gap-1.5 text-signal">
-                  <span className="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden="true" />
-                  Mascot online
-                </span>
-              </div>
-            </div>
+          <div className="flex min-w-0 justify-center lg:justify-end">
+            <MascotPass className="max-w-[430px]" />
           </div>
         </div>
 
@@ -159,30 +156,32 @@ function ConnectScreen() {
           <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
             Membership seats · Event revenue · Safe resale
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+          <p className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-positive">
+            <span className="h-1 w-1 rounded-full bg-positive" aria-hidden="true" />
             No keys. Ever.
           </p>
         </div>
-        <div className="border-t border-line px-6 py-3 sm:px-10 lg:px-14">
-          <p className="flex items-center gap-2 text-12 text-paper-muted">
-            <ShieldCheck className="h-3.5 w-3.5 text-positive" aria-hidden="true" />
-            This seat has no keys. Only the club contract can move its money, and only for
-            the current holder.
-          </p>
-        </div>
       </section>
+
+      <SignalTape />
 
       <Reveal>
         <section className="grid gap-px overflow-hidden rounded border border-line bg-line sm:grid-cols-3">
           {moves.map((move) => {
             const Icon = move.icon;
             return (
-              <div key={move.number} className="bg-surface p-4 sm:p-5">
+              <div
+                key={move.number}
+                className="group bg-surface p-4 transition-colors hover:bg-surface-raised sm:p-5"
+              >
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-mono text-[10px] uppercase tracking-label text-signal">
-                    {move.number}
+                    [ {move.number} / STEP ]
                   </span>
-                  <Icon className="h-4 w-4 text-paper-muted" aria-hidden="true" />
+                  <Icon
+                    className="h-4 w-4 text-paper-muted transition-colors group-hover:text-signal"
+                    aria-hidden="true"
+                  />
                 </div>
                 <h2 className="mt-3 text-16 font-medium text-paper">{move.title}</h2>
                 <p className="mt-1 text-12 leading-relaxed text-paper-muted">
@@ -192,6 +191,74 @@ function ConnectScreen() {
             );
           })}
         </section>
+      </Reveal>
+
+      <Reveal delay={0.04}>
+        <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
+          <AsciiVaultField />
+
+          <Panel className="flex flex-col justify-between p-5 sm:p-6">
+            <div>
+              <span className="bracket-label">[ 02 / TELEMETRY ]</span>
+              <h2 className="mt-3 text-24 font-semibold text-paper">
+                An NFT that acts as a sovereign vault.
+              </h2>
+              <p className="mt-2 text-14 leading-relaxed text-paper-muted">
+                Every seat is a dedicated NEAR sub-account with zero access keys.
+                Revenue from club events flows in automatically via an O(1) accumulator,
+                and selling the NFT transfers the entire vault atomically.
+              </p>
+
+              <div className="mt-6 grid grid-cols-3 gap-3 border-y border-line py-4">
+                <div>
+                  <div className="mono-label">Access keys</div>
+                  <div className="mt-2">
+                    <PixelMatrixReadout value="00" size="sm" tone="positive" label="0 access keys" />
+                  </div>
+                  <div className="mt-1 font-mono text-[9px] uppercase tracking-label text-paper-muted">
+                    Keyless lock
+                  </div>
+                </div>
+                <div>
+                  <div className="mono-label">Pool split</div>
+                  <div className="mt-2">
+                    <PixelMatrixReadout value="40" size="sm" tone="signal" label="40 percent pool split" />
+                  </div>
+                  <div className="mt-1 font-mono text-[9px] uppercase tracking-label text-paper-muted">
+                    % to holders
+                  </div>
+                </div>
+                <div>
+                  <div className="mono-label">Defense</div>
+                  <div className="mt-2">
+                    <PixelMatrixReadout value="12" size="sm" tone="paper" label="12 of 12 attacks blocked" />
+                  </div>
+                  <div className="mt-1 font-mono text-[9px] uppercase tracking-label text-paper-muted">
+                    / 12 blocked
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-2.5">
+              <div className="mono-label">Interactive verification</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <LinkButton href="/lab" variant="secondary" size="sm" className="justify-between">
+                  <span>Try Attack Lab (12 tests)</span>
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </LinkButton>
+                <LinkButton href="/lounge" variant="secondary" size="sm" className="justify-between">
+                  <span>Test NEP-413 Lounge Gate</span>
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </LinkButton>
+              </div>
+            </div>
+          </Panel>
+        </section>
+      </Reveal>
+
+      <Reveal delay={0.08}>
+        <AsciiArchitectureFlow />
       </Reveal>
     </div>
   );
@@ -746,8 +813,16 @@ export default function SeatWalletPage() {
               )}
             </div>
           </Panel>
+
+          <AsciiVaultField compact initialMode="cube" />
         </div>
       </div>
+
+      <SignalTape />
+
+      <Reveal>
+        <AsciiArchitectureFlow />
+      </Reveal>
 
       <VerifyDrawer
         open={proofOpen}

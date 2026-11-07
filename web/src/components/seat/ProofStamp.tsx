@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export function ProofStamp({
   onClick,
   className,
-  label = "Open proof",
+  label = "Keyless, open proof",
 }: {
   onClick: () => void;
   className?: string;

@@ -26,6 +26,9 @@ import { ProofStamp } from "@/components/seat/ProofStamp";
 import { VerifyDrawer } from "@/components/seat/VerifyDrawer";
 import { ConfirmationSheet } from "@/components/seat/ConfirmationSheet";
 import { HandoffOverlay, type HandoffMode } from "@/components/seat/Handoff";
+import { AsciiVaultField } from "@/components/ascii/AsciiVaultField";
+import { PixelMatrixReadout } from "@/components/ascii/PixelMatrixReadout";
+import { SignalTape } from "@/components/ascii/SignalTape";
 
 const DEMO_SEAT: Seat = {
   tokenId: "s007.logen.testnet",
@@ -488,6 +491,31 @@ export default function KitPage() {
             <div className="flex flex-wrap gap-2">
               <Chip tone="positive">Demo: in memory</Chip>
               <Chip tone="caution">Live: local display layer</Chip>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section label="14 / ASCII & Matrix" title="Interactive 3D ASCII field and 5x7 dot-matrix readouts.">
+        <div className="space-y-6">
+          <SignalTape />
+          <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+            <AsciiVaultField compact />
+            <div className="space-y-4">
+              <p className="max-w-[42ch] text-14 leading-relaxed text-paper-dim">
+                Pre-rendered glyph sprites on a 60fps canvas with pointer-tracking tilt,
+                target-lock leader lines, and 5x7 dot-matrix SVG readouts.
+              </p>
+              <div className="flex flex-wrap items-center gap-6 border-y border-line py-4">
+                <div>
+                  <div className="mono-label mb-2">Balance readout</div>
+                  <PixelMatrixReadout value="3.20 NEAR" size="sm" tone="positive" />
+                </div>
+                <div>
+                  <div className="mono-label mb-2">Door code</div>
+                  <PixelMatrixReadout value="P-07-4812" size="sm" tone="signal" />
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -9,7 +9,8 @@ import {
   ArrowRight,
   Check,
   CircleAlert,
-  ImagePlus,
+  Copy,
+  ExternalLink,
   Loader2,
   Lock,
   Sparkles,
@@ -22,6 +23,7 @@ import { useDemo } from "@/lib/demo/DemoProvider";
 import { useAllSeats } from "@/lib/chain/hooks";
 import type { ChainPort, Seat } from "@/lib/chain/types";
 import { fileToSeatArtwork, type SeatArtwork } from "@/lib/image";
+import { EXPLORER_URL } from "@/lib/near/rpc";
 import { savePortrait } from "@/lib/portraits";
 import { near, seatLabel } from "@/lib/utils";
 import { Button, LinkButton } from "@/components/ui/Button";
@@ -83,10 +85,21 @@ function MintSuccessDialog({
   onMintAnother: () => void;
 }) {
   const reduced = useReducedMotion();
+  const [copied, setCopied] = useState(false);
   if (!result) return null;
   const { seat, live, portraitSaved } = result;
   const title = seat.handle ? seat.tokenId : `Seat ${seatLabel(seat.tokenId)}`;
   const label = seat.handle ? seat.tokenId : `Seat ${seatLabel(seat.tokenId)}`;
+
+  const copyTokenId = async () => {
+    try {
+      await navigator.clipboard.writeText(seat.tokenId);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Clipboard access can be blocked. The token id stays visible either way.
+    }
+  };
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -158,6 +171,27 @@ function MintSuccessDialog({
               </dd>
             </div>
             <div className="flex items-center justify-between gap-4 py-3">
+              <dt className="mono-label">Token</dt>
+              <dd className="flex min-w-0 items-center gap-2">
+                <span className="truncate font-mono text-12 text-paper">
+                  {seat.tokenId}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void copyTokenId()}
+                  className="inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 py-1 font-mono text-[9px] uppercase tracking-label text-paper-muted transition-colors hover:border-line-strong hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+                  aria-label={copied ? "Token id copied" : "Copy token id"}
+                >
+                  {copied ? (
+                    <Check className="h-3 w-3" aria-hidden="true" />
+                  ) : (
+                    <Copy className="h-3 w-3" aria-hidden="true" />
+                  )}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-4 py-3">
               <dt className="mono-label">Wallet</dt>
               <dd className="font-mono text-12 text-positive">Keyless · 0 keys</dd>
             </div>
@@ -178,10 +212,21 @@ function MintSuccessDialog({
               Demo mint. Nothing was sent on chain. Reset demo clears this seat.
             </p>
           ) : (
-            <p className="mt-4 text-12 leading-relaxed text-paper-muted">
-              The live NFT keeps its dynamic Logen SVG on chain. Your uploaded portrait
-              is a local display layer for this browser.
-            </p>
+            <div className="mt-4 space-y-2">
+              <p className="text-12 leading-relaxed text-paper-muted">
+                The live NFT keeps its dynamic Logen SVG on chain. Your uploaded portrait
+                is a local display layer for this browser.
+              </p>
+              <a
+                href={`${EXPLORER_URL}/address/${seat.tokenId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 hover:text-paper"
+              >
+                View on explorer
+                <ExternalLink className="h-3 w-3" aria-hidden="true" />
+              </a>
+            </div>
           )}
 
           <div className="mt-5 flex flex-col gap-2">
@@ -260,6 +305,7 @@ export default function MintPage() {
   const [pending, setPending] = useState(false);
   const [liveStage, setLiveStage] = useState<"idle" | "signing" | "waiting">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [mintError, setMintError] = useState<string | null>(null);
   const [minted, setMinted] = useState<MintedResult | null>(null);
   const [successOpen, setSuccessOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -291,6 +337,7 @@ export default function MintPage() {
   const acceptFile = async (file: File | null | undefined) => {
     if (!file) return;
     setError(null);
+    setMintError(null);
     setReading(true);
     try {
       const nextArtwork = await fileToSeatArtwork(file);
@@ -320,27 +367,28 @@ export default function MintPage() {
     setDescription("");
     setHandle("");
     setError(null);
+    setMintError(null);
     setMinted(null);
     setSuccessOpen(false);
   };
 
   const mint = async () => {
-    setError(null);
+    setMintError(null);
     if (!artwork) {
-      setError("Upload a portrait first.");
+      setMintError("Upload a portrait first.");
       return;
     }
     if (handleError) {
-      setError(handleError);
+      setMintError(handleError);
       return;
     }
     if (!demo && !accountId) {
       openWalletModal();
-      setError("Connect a wallet to mint on chain.");
+      setMintError("Connect a wallet to mint on chain.");
       return;
     }
     if (!demo && !handle.trim()) {
-      setError("Choose a handle for a live seat.");
+      setMintError("Choose a handle for a live seat.");
       return;
     }
 
@@ -419,7 +467,7 @@ export default function MintPage() {
         setSuccessOpen(true);
       }
     } catch (nextError) {
-      setError(
+      setMintError(
         nextError instanceof Error
           ? nextError.message
           : "The mint did not go through. Nothing changed."
@@ -667,7 +715,7 @@ export default function MintPage() {
                 </Chip>
               </div>
               <div className="p-4">
-                <div className="relative aspect-[4/5] overflow-hidden rounded border border-line bg-ink-deep">
+                <div className="preview-scanlines relative aspect-[4/5] overflow-hidden rounded border border-line bg-ink-deep">
                   {artwork ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
@@ -677,9 +725,12 @@ export default function MintPage() {
                     />
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-                      <span className="flex h-14 w-14 items-center justify-center rounded border border-line bg-surface text-paper-muted">
-                        <ImagePlus className="h-6 w-6" aria-hidden="true" />
-                      </span>
+                      <LogenMascot
+                        size={148}
+                        caption={null}
+                        showSparks={false}
+                        className="border-0 bg-transparent opacity-90"
+                      />
                       <div>
                         <p className="text-14 text-paper">Your portrait here</p>
                         <p className="mt-1 text-12 leading-relaxed text-paper-muted">
@@ -740,10 +791,20 @@ export default function MintPage() {
                   </p>
                 </div>
 
+                {mintError ? (
+                  <p
+                    role="alert"
+                    className="mt-3 flex items-start gap-2 rounded border border-[rgba(255,107,94,0.35)] bg-danger-soft px-3 py-2 text-12 leading-relaxed text-danger"
+                  >
+                    <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    {mintError}
+                  </p>
+                ) : null}
+
                 <Button
                   size="lg"
                   fullWidth
-                  className="mt-3"
+                  className="mt-3 hidden lg:inline-flex"
                   onClick={() => void mint()}
                   loading={pending}
                   disabled={!canMint}
@@ -751,6 +812,43 @@ export default function MintPage() {
                   {!pending ? <Sparkles className="h-4 w-4" aria-hidden="true" /> : null}
                   {stageLabel}
                 </Button>
+                {pending && !demo ? (
+                  <div className="mt-3 grid grid-cols-2 gap-2" aria-live="polite">
+                    {[
+                      { key: "signing", label: "01 · Approve" },
+                      { key: "waiting", label: "02 · Chain" },
+                    ].map((step, index) => {
+                      const current =
+                        liveStage === "signing" ? 0 : liveStage === "waiting" ? 1 : -1;
+                      const done = index < current;
+                      const active = index === current;
+                      return (
+                        <div
+                          key={step.key}
+                          className={`flex items-center gap-2 rounded border px-2.5 py-2 font-mono text-[10px] uppercase tracking-label ${
+                            done
+                              ? "border-[rgba(123,216,143,0.35)] bg-positive-soft text-positive"
+                              : active
+                                ? "border-[rgba(59,155,255,0.45)] bg-signal-soft text-signal-strong"
+                                : "border-line bg-surface-sunken text-paper-muted"
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              done
+                                ? "bg-positive"
+                                : active
+                                  ? "animate-dot-ping bg-signal"
+                                  : "bg-line-strong"
+                            }`}
+                            aria-hidden="true"
+                          />
+                          {step.label}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 {!demo && !accountId ? (
                   <Button
                     variant="secondary"
@@ -769,6 +867,26 @@ export default function MintPage() {
                 </p>
               </div>
             </Panel>
+          </Reveal>
+
+          <Reveal delay={0.1} className="lg:hidden">
+            <div className="space-y-2">
+              <Button
+                size="lg"
+                fullWidth
+                onClick={() => void mint()}
+                loading={pending}
+                disabled={!canMint}
+              >
+                {!pending ? <Sparkles className="h-4 w-4" aria-hidden="true" /> : null}
+                {stageLabel}
+              </Button>
+              <p className="text-center text-12 leading-relaxed text-paper-muted">
+                {demo
+                  ? "No wallet, no fee. Reset demo clears the seat."
+                  : "The seat and its keyless wallet are created in one transaction."}
+              </p>
+            </div>
           </Reveal>
 
           <Reveal delay={0.12}>

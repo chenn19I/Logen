@@ -30,6 +30,8 @@ import { Button, LinkButton } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
 import { PixelChair } from "@/components/seat/PixelChair";
+import { AsciiStageVisualizer } from "@/components/ascii/AsciiDoorScanner";
+import { PixelMatrixReadout } from "@/components/ascii/PixelMatrixReadout";
 
 interface LoungeContent {
   title: string;
@@ -620,7 +622,13 @@ export default function LoungePage() {
             <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
               <Door locked={showLocked} />
 
-              <div className="mt-10 w-full max-w-[280px] border-t border-line pt-4">
+              <AsciiStageVisualizer
+                state={showLocked ? "locked" : "closed"}
+                seatLabel={enteredSeatId ? seatLabel(enteredSeatId) : "07"}
+                className="mt-8 w-full max-w-[280px]"
+              />
+
+              <div className="mt-6 w-full max-w-[280px] border-t border-line pt-4">
                 {showLocked && lockedSeat ? (
                   <>
                     <div className="flex items-baseline justify-between gap-3">
@@ -709,12 +717,25 @@ export default function LoungePage() {
             <div className="mt-2 font-mono text-40 tabular text-signal">
               {doorCode(enteredSeatId ?? holderSeat?.tokenId ?? "s007")}
             </div>
-            <div className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            <div className="mt-2 flex lg:justify-end">
+              <PixelMatrixReadout
+                value={doorCode(enteredSeatId ?? holderSeat?.tokenId ?? "s007")}
+                size="sm"
+                tone="signal"
+              />
+            </div>
+            <div className="mt-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted">
               Show this at the door
             </div>
           </div>
         </div>
       </header>
+
+      <AsciiStageVisualizer
+        state="open"
+        seatLabel={holderSeat ? seatLabel(holderSeat.tokenId) : "07"}
+        className="mb-6"
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-y border-line py-3">
         <p

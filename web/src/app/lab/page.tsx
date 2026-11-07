@@ -5,7 +5,10 @@ import {
   ArrowUpRight,
   Check,
   ExternalLink,
+  Play,
   RotateCcw,
+  ShieldCheck,
+  Terminal,
 } from "lucide-react";
 import {
   THREAT_MODEL_A1_A12,
@@ -16,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Sheet } from "@/components/ui/Sheet";
+import { PixelMatrixReadout } from "@/components/ascii/PixelMatrixReadout";
 
 interface ReportResult {
   id: string;
@@ -135,6 +139,7 @@ export default function AttackLabPage() {
   const [reportError, setReportError] = useState(false);
   const [tried, setTried] = useState<Set<string>>(new Set());
   const [runningId, setRunningId] = useState<string | null>(null);
+  const [runningAll, setRunningAll] = useState(false);
   const [selected, setSelected] = useState<ThreatScenario | null>(null);
   const [announcement, setAnnouncement] = useState("");
 
@@ -188,7 +193,22 @@ export default function AttackLabPage() {
 
   const reset = () => {
     setTried(new Set());
+    setRunningId(null);
+    setRunningAll(false);
     setAnnouncement("Attack lab reset. No tests tried.");
+  };
+
+  const runAll = async () => {
+    if (runningId || runningAll) return;
+    setRunningAll(true);
+    for (const scenario of THREAT_MODEL_A1_A12) {
+      setRunningId(scenario.id);
+      await new Promise((resolve) => window.setTimeout(resolve, 140));
+      setTried((current) => new Set(current).add(scenario.id));
+    }
+    setRunningId(null);
+    setRunningAll(false);
+    setAnnouncement("All 12 attack vectors blocked.");
   };
 
   return (
@@ -211,12 +231,67 @@ export default function AttackLabPage() {
             <div className="mt-1 font-mono text-40 tabular text-positive">
               {tried.size} <span className="text-24 text-paper-muted">/ 12</span>
             </div>
-            <div className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            <div className="mt-2 flex lg:justify-end">
+              <PixelMatrixReadout
+                value={`${String(tried.size).padStart(2, "0")}/12`}
+                size="sm"
+                tone={tried.size === 12 ? "positive" : "signal"}
+              />
+            </div>
+            <div className="mt-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted">
               {reportError ? "Report unavailable" : "Live report"}
             </div>
           </div>
         </div>
       </header>
+
+      {/* Interactive ASCII Threat Defense Matrix */}
+      <div className="overflow-hidden rounded border border-line bg-ink-deep">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-4 py-2.5">
+          <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-label text-paper-dim">
+            <Terminal className="h-3.5 w-3.5 text-signal" aria-hidden="true" />
+            [ ASCII DEFENSE MATRIX · A1–A12 INVARIANTS ]
+          </span>
+          <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-positive">
+            <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+            {tried.size === 12
+              ? "ALL 12 VECTORS VERIFIED BLOCKED"
+              : `${12 - tried.size} VECTORS READY TO TEST`}
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-px bg-line sm:grid-cols-6 lg:grid-cols-12">
+          {THREAT_MODEL_A1_A12.map((scenario) => {
+            const isBlocked = tried.has(scenario.id);
+            const isRunning = runningId === scenario.id;
+            return (
+              <button
+                key={scenario.id}
+                type="button"
+                onClick={() => {
+                  if (isBlocked) setSelected(scenario);
+                  else tryAttack(scenario);
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center bg-ink-deep px-2 py-3 font-mono transition-colors hover:bg-surface",
+                  isBlocked
+                    ? "text-positive"
+                    : isRunning
+                      ? "text-caution"
+                      : "text-paper-muted"
+                )}
+                title={`${scenario.id}: ${PLAIN_TITLES[scenario.id] ?? scenario.title}`}
+              >
+                <span className="text-[10px] uppercase tracking-label">
+                  {scenario.id}
+                </span>
+                <span className="mt-1 text-12">
+                  {isRunning ? "[···]" : isBlocked ? "[BLK]" : "[ · ]"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-y border-line py-3">
         <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
@@ -224,14 +299,25 @@ export default function AttackLabPage() {
             ? `${report.interleavings_explored.toLocaleString("en-US")} interleavings explored · ${report.network}`
             : "Reading the test report"}
         </p>
-        <button
-          type="button"
-          onClick={reset}
-          className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted hover:text-paper"
-        >
-          <RotateCcw className="h-3 w-3" aria-hidden="true" />
-          Reset
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => void runAll()}
+            disabled={Boolean(runningId) || runningAll}
+            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-signal hover:text-paper disabled:opacity-50"
+          >
+            <Play className="h-3 w-3" aria-hidden="true" />
+            {runningAll ? "Running suite…" : "Run all 12"}
+          </button>
+          <button
+            type="button"
+            onClick={reset}
+            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted hover:text-paper"
+          >
+            <RotateCcw className="h-3 w-3" aria-hidden="true" />
+            Reset
+          </button>
+        </div>
       </div>
 
       <div className="space-y-10">

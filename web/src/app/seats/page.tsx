@@ -1,358 +1,243 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  ShieldCheck,
-  Search,
+  ArrowRight,
+  CircleAlert,
   RefreshCw,
-  ArrowUpRight,
-  Lock,
+  Search,
+  ShieldCheck,
   Sparkles,
-  Coins,
 } from "lucide-react";
 import { useNear } from "@/components/NearProvider";
-import { DefaultSeatSvgCard } from "@/components/KawungOrnament";
-import {
-  getNftTokens,
-  getSeat,
-  getVaultState,
-} from "@/lib/near/rpc";
-import type { Nep171Token, SeatView, VaultStateView } from "@/lib/near/types";
-import { formatYocto } from "@/lib/near/format";
+import { useDemo } from "@/lib/demo/DemoProvider";
+import { useAllSeats } from "@/lib/chain/hooks";
+import type { Seat } from "@/lib/chain/types";
+import { near, seatLabel, shortAccount } from "@/lib/utils";
+import { Button, LinkButton } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Chip";
+import { Panel } from "@/components/ui/Panel";
+import { SeatArtwork } from "@/components/seat/SeatArtwork";
+import { SeatGlyph } from "@/components/seat/SeatGlyph";
 
-interface EnrichedSeat {
-  token: Nep171Token;
-  seat: SeatView | null;
-  vault: VaultStateView | null;
+function statusChip(seat: Seat) {
+  if (seat.status === "listed") return <Chip tone="caution" dot>Listed</Chip>;
+  if (seat.status === "pending") return <Chip tone="caution" dot>Pending</Chip>;
+  if (seat.status === "cooldown") return <Chip tone="caution" dot>Cooldown</Chip>;
+  return <Chip tone="positive" dot>Active</Chip>;
 }
 
-export default function SeatsGalleryPage() {
-  const router = useRouter();
-  const {
-    lang,
-    accountId,
-    registryId,
-    config,
-    openWalletModal,
-    callContractMethod,
-  } = useNear();
-  const isId = lang === "id";
-
-  const [seats, setSeats] = useState<EnrichedSeat[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [filterMine, setFilterMine] = useState<boolean>(false);
-  const [lookupId, setLookupId] = useState<string>("");
-  const [mintHandle, setMintHandle] = useState<string>("");
-  const [isMinting, setIsMinting] = useState<boolean>(false);
-
-  const loadSeats = useCallback(async () => {
-    setLoading(true);
-    try {
-      const tokens = await getNftTokens(registryId, "0", 50);
-      const enriched = await Promise.all(
-        tokens.map(async (token) => {
-          const [seat, vault] = await Promise.all([
-            getSeat(token.token_id, registryId),
-            getVaultState(token.token_id),
-          ]);
-          return { token, seat, vault };
-        })
-      );
-      setSeats(enriched);
-    } finally {
-      setLoading(false);
-    }
-  }, [registryId]);
-
-  useEffect(() => {
-    loadSeats();
-  }, [loadSeats]);
-
-  const handleDirectLookup = (e: React.FormEvent) => {
-    e.preventDefault();
-    const raw = lookupId.trim().toLowerCase();
-    if (!raw) return;
-    const fullId = raw.includes(".") ? raw : `${raw}.${registryId}`;
-    router.push(`/seat/${encodeURIComponent(fullId)}`);
-  };
-
-  const handleMint = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!accountId) {
-      openWalletModal();
-      return;
-    }
-    setIsMinting(true);
-    try {
-      const args: Record<string, unknown> = { receiver_id: accountId };
-      if (mintHandle.trim()) {
-        args.handle = mintHandle.trim().toLowerCase();
-      }
-      await callContractMethod({
-        receiverId: registryId,
-        methodName: "mint_seat",
-        args,
-        gas: "220000000000000",
-        deposit: config?.seat_price || "2200000000000000000000000",
-      });
-      setMintHandle("");
-      await loadSeats();
-    } finally {
-      setIsMinting(false);
-    }
-  };
-
-  const displayedSeats = filterMine && accountId
-    ? seats.filter(
-        (s) =>
-          (s.vault?.owner_id || s.seat?.owner_id || s.token.owner_id) ===
-          accountId
-      )
-    : seats;
+function SeatDirectoryCard({ seat }: { seat: Seat }) {
+  const label = seat.name?.trim() || `Seat ${seatLabel(seat.tokenId)}`;
 
   return (
-    <div className="space-y-8">
-      {/* Header & Controls */}
-      <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-gold-500/25 bg-obsidian-800/80 p-6">
-        <div>
-          <span className="font-mono text-xs uppercase tracking-widest text-gold-400">
-            {isId
-              ? "Koleksi NEP-171 + Brankas Sub-Akun Tanpa Kunci"
-              : "NEP-171 Collection + Keyless Sub-Account Vaults"}
-          </span>
-          <h1 className="mt-1 font-serif text-3xl font-bold text-white sm:text-4xl">
-            {isId ? "Galeri Kursi & Brankas Logen" : "Logen Seat Vaults"}
-          </h1>
-          <p className="mt-1 text-xs text-slate-300">
-            {isId ? (
-              <>
-                Setiap kursi di <span className="font-mono text-gold-300">{registryId}</span> adalah
-                sub-akun NEAR tersendiri yang menyimpan uang dan berjalan dengan{" "}
-                <strong className="text-segel-400">0 kunci akses (Zero Access Keys)</strong>.
-              </>
-            ) : (
-              <>
-                Each token in <span className="font-mono text-gold-300">{registryId}</span> is its
-                own NEAR account running the immutable vault contract with{" "}
-                <strong className="text-segel-400">0 access keys</strong>.
-              </>
-            )}
+    <Link
+      href={`/seat/${encodeURIComponent(seat.tokenId)}`}
+      className="card-lift group flex flex-col rounded border border-line bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+    >
+      <div className="flex items-start justify-between gap-2 border-b border-line px-4 py-3">
+        <span className="bracket-label">
+          [ {String(seat.number).padStart(2, "0")} / SEAT ]
+        </span>
+        {statusChip(seat)}
+      </div>
+
+      <div className="flex items-center gap-4 px-4 py-4">
+        {seat.imageUrl ? (
+          <SeatArtwork seat={seat} className="h-20 w-20 shrink-0" />
+        ) : (
+          <SeatGlyph tokenId={seat.tokenId} innerDots={seat.innerDots} size={64} />
+        )}
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-16 font-medium text-paper group-hover:text-signal-strong">
+            {label}
+          </h2>
+          <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            {seat.tokenId}
           </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <form onSubmit={handleDirectLookup} className="flex items-center gap-1.5">
-            <div className="flex items-center rounded-xl border border-gold-500/30 bg-obsidian-950 px-3 py-2">
-              <Search className="mr-2 h-3.5 w-3.5 text-slate-400" />
-              <input
-                type="text"
-                value={lookupId}
-                onChange={(e) => setLookupId(e.target.value)}
-                placeholder={`s001.${registryId}`}
-                className="w-44 bg-transparent font-mono text-xs text-white placeholder-slate-500 focus:outline-none"
-              />
-            </div>
-            <button
-              type="submit"
-              className="rounded-xl border border-gold-500/40 bg-obsidian-900 px-3 py-2 text-xs font-semibold text-gold-300 hover:bg-obsidian-700"
-            >
-              {isId ? "Buka Brankas" : "Inspect Vault"}
-            </button>
-          </form>
-
-          {accountId && (
-            <button
-              type="button"
-              onClick={() => setFilterMine((v) => !v)}
-              className={`rounded-xl border px-3 py-2 text-xs font-medium transition ${
-                filterMine
-                  ? "border-gold-400 bg-gold-500/20 text-gold-300"
-                  : "border-slate-700 bg-obsidian-900 text-slate-300"
-              }`}
-            >
-              {isId ? "Kursi Saya Saja" : "My Seats Only"}
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={loadSeats}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-obsidian-900 px-3 py-2 text-xs text-slate-300 hover:border-gold-500/40 hover:text-gold-300"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            {isId ? "Segarkan" : "Refresh"}
-          </button>
+          <p className="mt-2 truncate font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            {shortAccount(seat.ownerId, 24)}
+          </p>
         </div>
       </div>
 
-      {/* Quick Mint Bar */}
-      <form
-        onSubmit={handleMint}
-        className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gold-500/30 bg-obsidian-900/90 px-5 py-4"
-      >
-        <div className="flex items-center gap-3">
-          <Sparkles className="h-5 w-5 text-gold-400" />
-          <div>
-            <p className="text-sm font-semibold text-white">
-              {isId
-                ? "Cetak Sub-Akun Kursi Baru Tanpa Kunci (Mint)"
-                : "Mint a New Keyless Seat Sub-Account"}
-            </p>
-            <p className="font-mono text-xs text-slate-400">
-              {isId
-                ? `Membuat <handle>.${registryId} dengan 0 kunci akses + saldo awal brankas`
-                : `Creates <handle>.${registryId} with 0 access keys + pinned vault code`}
-            </p>
+      <div className="mt-auto grid grid-cols-2 gap-px border-t border-line bg-line">
+        <div className="bg-surface px-4 py-3">
+          <div className="mono-label">Inside</div>
+          <div className="mt-1 font-mono text-16 tabular text-positive">
+            {near(seat.balanceYocto, 2)} NEAR
           </div>
+        </div>
+        <div className="bg-surface px-4 py-3">
+          <div className="mono-label">Earned</div>
+          <div className="mt-1 font-mono text-16 tabular text-paper">
+            {near(seat.earnedYocto, 2)} NEAR
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-line px-4 py-3 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+        <span>{seat.holdersCount} {seat.holdersCount === 1 ? "holder" : "holders"}</span>
+        <span className="inline-flex items-center gap-1 text-signal-strong">
+          Open seat
+          <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+export default function SeatsDirectoryPage() {
+  const queryClient = useQueryClient();
+  const { accountId, registryId } = useNear();
+  const { demo, demoAccount } = useDemo();
+  const currentAccount = demo ? demoAccount : accountId;
+  const seatsQuery = useAllSeats();
+  const [query, setQuery] = useState("");
+  const [mineOnly, setMineOnly] = useState(false);
+
+  const seats = useMemo(
+    () =>
+      [...(seatsQuery.data ?? [])].sort((a, b) => a.number - b.number),
+    [seatsQuery.data]
+  );
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return seats.filter((seat) => {
+      if (mineOnly && currentAccount && seat.ownerId !== currentAccount) return false;
+      if (!needle) return true;
+      return [seat.tokenId, seat.name, seat.handle, seat.ownerId]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(needle));
+    });
+  }, [currentAccount, mineOnly, query, seats]);
+
+  const registryLabel = demo ? "logen.testnet" : registryId;
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <span className="bracket-label">[ DIRECTORY / SEATS ]</span>
+          <h1 className="mt-2 text-40 font-semibold text-paper">Every seat.</h1>
+          <p className="mt-2 max-w-[56ch] text-14 leading-relaxed text-paper-muted">
+            The full club roll on <span className="font-mono text-paper-dim">{registryLabel}</span>.
+            Each seat is a keyless NEAR wallet with its own money and history.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center rounded-xl border border-gold-500/30 bg-obsidian-950 px-3 py-2">
-            <input
-              type="text"
-              value={mintHandle}
-              onChange={(e) => setMintHandle(e.target.value)}
-              placeholder={isId ? "nama-opsional" : "optional-handle"}
-              className="w-36 bg-transparent font-mono text-xs text-white placeholder-slate-500 focus:outline-none"
-            />
-            <span className="font-mono text-xs text-gold-400">.{registryId}</span>
-          </div>
-          <button
-            type="submit"
-            disabled={isMinting}
-            className="rounded-xl bg-gradient-to-r from-gold-500 to-gold-400 px-4 py-2 text-xs font-bold text-obsidian-950 shadow transition hover:brightness-110 disabled:opacity-50"
-          >
-            {isMinting
-              ? isId
-                ? "Mencetak..."
-                : "Minting..."
-              : `${isId ? "Cetak Kursi" : "Mint Seat"} (${formatYocto(
-                  config?.seat_price || "2200000000000000000000000"
-                )} NEAR)`}
-          </button>
+          <Chip tone={demo ? "caution" : "accent"} dot>
+            {demo ? "Simulated" : "NEAR Testnet"}
+          </Chip>
+          <LinkButton href="/mint" size="sm">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+            Mint a seat
+          </LinkButton>
         </div>
-      </form>
+      </div>
 
-      {/* Gallery Grid */}
-      {loading ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((n) => (
+      <Panel className="p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex min-h-10 w-full min-w-0 flex-1 items-center rounded border border-line bg-surface-sunken px-3 focus-within:border-signal">
+            <Search className="mr-2 h-4 w-4 shrink-0 text-paper-muted" aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by name, handle, id or owner"
+              aria-label="Search seats"
+              className="w-full bg-transparent py-2 font-mono text-12 text-paper outline-none placeholder:text-paper-muted"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            {currentAccount ? (
+              <Button
+                variant={mineOnly ? "primary" : "secondary"}
+                size="sm"
+                onClick={() => setMineOnly((value) => !value)}
+                aria-pressed={mineOnly}
+                className="flex-1 sm:flex-none"
+              >
+                My seats
+              </Button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void queryClient.invalidateQueries({ queryKey: ["seats"] })}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded border border-line text-paper-muted transition-colors hover:border-line-strong hover:text-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+              aria-label="Refresh seats"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+        <p className="mt-3 flex items-center gap-2 text-12 text-paper-muted">
+          <ShieldCheck className="h-3.5 w-3.5 text-positive" aria-hidden="true" />
+          {filtered.length} of {seats.length} seats · no access keys, ever
+        </p>
+      </Panel>
+
+      {seatsQuery.isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Reading seats">
+          {Array.from({ length: 6 }).map((_, index) => (
             <div
-              key={n}
-              className="h-80 animate-pulse rounded-2xl border border-gold-500/20 bg-obsidian-800/50 p-5"
+              key={index}
+              className="h-[260px] animate-skeleton rounded border border-line bg-surface"
             />
           ))}
         </div>
-      ) : displayedSeats.length === 0 ? (
-        <div className="rounded-3xl border border-gold-500/25 bg-obsidian-900/70 p-10 text-center">
-          <ShieldCheck className="mx-auto h-10 w-10 text-gold-400" />
-          <h2 className="mt-3 font-serif text-2xl font-bold text-white">
-            No Seats Found on `{registryId}`
+      ) : seatsQuery.isError ? (
+        <Panel className="mx-auto max-w-prose p-8 text-center">
+          <CircleAlert className="mx-auto h-6 w-6 text-caution" aria-hidden="true" />
+          <h2 className="mt-4 text-24 font-semibold text-paper">
+            We could not read the directory.
           </h2>
-          <p className="mx-auto mt-2 max-w-xl text-xs text-slate-400">
-            Either no seats have been minted yet on <span className="font-mono">{registryId}</span>,
-            or you can inspect a specific seat account directly (e.g.,{" "}
-            <Link
-              href={`/seat/s001.${registryId}`}
-              className="font-mono text-gold-300 underline"
-            >
-              s001.{registryId}
-            </Link>
-            ).
+          <p className="mt-2 text-14 leading-relaxed text-paper-muted">
+            Nothing changed. Try again in a moment.
           </p>
-        </div>
-      ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {displayedSeats.map(({ token, seat, vault }) => {
-            const ownerId = vault?.owner_id || seat?.owner_id || token.owner_id;
-            const seq = vault?.rotation_seq ?? seat?.rotation_seq ?? 0;
-            const isListed =
-              vault?.status === "Listed" || Boolean(seat?.listing);
-            const vaultBal = formatYocto(vault?.balance ?? "0");
-            const claimable = formatYocto(seat?.claimable ?? "0");
-            const mediaUri = token.metadata?.media;
-
-            return (
-              <Link
-                key={token.token_id}
-                href={`/seat/${encodeURIComponent(token.token_id)}`}
-                className="group flex flex-col justify-between rounded-2xl border border-gold-500/25 bg-obsidian-800/80 p-5 shadow-lg transition hover:-translate-y-1 hover:border-gold-400/70 hover:shadow-[0_12px_35px_rgba(212,166,74,0.18)]"
+          <Button className="mt-5" variant="secondary" onClick={() => seatsQuery.refetch()}>
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            Try again
+          </Button>
+        </Panel>
+      ) : filtered.length === 0 ? (
+        <Panel className="p-8 text-center sm:p-12">
+          <Sparkles className="mx-auto h-5 w-5 text-paper-muted" aria-hidden="true" />
+          <h2 className="mt-4 text-24 font-semibold text-paper">
+            {seats.length === 0 ? "No seats yet." : "No seats match that search."}
+          </h2>
+          <p className="mx-auto mt-2 max-w-[40ch] text-14 leading-relaxed text-paper-muted">
+            {seats.length === 0
+              ? "Mint the first one. It becomes an NFT and a keyless wallet in one move."
+              : "Try a shorter name, a handle, or clear the filters."}
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {seats.length === 0 ? (
+              <LinkButton href="/mint">
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                Mint a seat
+              </LinkButton>
+            ) : (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setQuery("");
+                  setMineOnly(false);
+                }}
               >
-                <div>
-                  {/* On-chain Dynamic SVG Media */}
-                  <div className="relative mb-4 aspect-[16/10] w-full overflow-hidden rounded-xl border border-gold-500/20 bg-obsidian-950">
-                    {mediaUri && mediaUri.startsWith("data:image/svg+xml") ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={mediaUri}
-                        alt={token.token_id}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <DefaultSeatSvgCard
-                        tokenId={token.token_id}
-                        ownerId={ownerId}
-                        rotationSeq={seq}
-                        status={isListed ? "Listed" : "Active"}
-                        balanceNear={vaultBal}
-                      />
-                    )}
-                  </div>
-
-                  {/* Header & Status Badge */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h3 className="font-mono text-base font-bold text-white group-hover:text-gold-300">
-                        {token.token_id}
-                      </h3>
-                      <p className="font-mono text-xs text-slate-400">
-                        Owner: <span className="text-slate-200">{ownerId}</span>
-                      </p>
-                    </div>
-                    {isListed ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-threat-500/40 bg-threat-500/15 px-2.5 py-0.5 font-mono text-[10px] font-bold text-threat-400">
-                        <Lock className="h-3 w-3" />
-                        FROZEN · LISTED
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-segel-500/40 bg-segel-500/15 px-2.5 py-0.5 font-mono text-[10px] font-bold text-segel-400">
-                        <ShieldCheck className="h-3 w-3" />
-                        ACTIVE · SEQ #{seq}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Balances Footer */}
-                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-800 pt-3 font-mono text-xs">
-                  <div className="rounded-lg bg-obsidian-950/80 p-2">
-                    <span className="block text-[10px] text-slate-400">
-                      VAULT BALANCE
-                    </span>
-                    <span className="font-bold text-gold-300">
-                      {vaultBal} NEAR
-                    </span>
-                  </div>
-                  <div className="rounded-lg bg-obsidian-950/80 p-2">
-                    <span className="block text-[10px] text-slate-400">
-                      UNCLAIMED POOL
-                    </span>
-                    <span className="inline-flex items-center gap-1 font-bold text-segel-400">
-                      <Coins className="h-3 w-3" />
-                      {claimable} NEAR
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between text-xs font-medium text-gold-400">
-                  <span>Open Vault & Keyless Proof</span>
-                  <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </div>
-              </Link>
-            );
-          })}
+                Clear filters
+              </Button>
+            )}
+          </div>
+        </Panel>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((seat) => (
+            <SeatDirectoryCard key={seat.tokenId} seat={seat} />
+          ))}
         </div>
       )}
     </div>

@@ -2,22 +2,24 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Landmark,
-  Coins,
-  RefreshCw,
-  ArrowUpRight,
   CheckCircle2,
+  Coins,
   ExternalLink,
+  Landmark,
+  RefreshCw,
 } from "lucide-react";
 import { useNear } from "@/components/NearProvider";
-import { KratonDivider } from "@/components/KawungOrnament";
+import { useDemo } from "@/lib/demo/DemoProvider";
 import { EXPLORER_URL, getSales } from "@/lib/near/rpc";
 import type { Sale } from "@/lib/near/types";
 import { formatTimestampMs, formatYocto } from "@/lib/near/format";
+import { Button } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Chip";
+import { Panel } from "@/components/ui/Panel";
+import { Reveal } from "@/components/ui/Reveal";
 
 export default function TreasuryPage() {
   const {
-    lang,
     accountId,
     registryId,
     config,
@@ -26,7 +28,7 @@ export default function TreasuryPage() {
     openWalletModal,
     callContractMethod,
   } = useNear();
-  const isId = lang === "id";
+  const { demo } = useDemo();
 
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -45,12 +47,20 @@ export default function TreasuryPage() {
   }, [registryId, refreshChainState]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const handleRelease = async (
     method: "release_kas_klub" | "release_organizer"
   ) => {
+    if (demo) {
+      setIsBusy(true);
+      await new Promise((r) => window.setTimeout(r, 600));
+      setStatusMsg(`Simulated ${method}() executed.`);
+      setIsBusy(false);
+      return;
+    }
+
     if (!accountId) {
       openWalletModal();
       return;
@@ -77,261 +87,267 @@ export default function TreasuryPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-gold-500/25 bg-obsidian-800/80 p-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <span className="font-mono text-xs uppercase tracking-widest text-gold-400">
-            {isId
-              ? "Keputusan Desain K10 · Buku Besar Penarikan Tanpa Izin (Pull Ledgers)"
-              : "Design Decision K10 · Permissionless Pull Ledgers"}
-          </span>
-          <h1 className="mt-1 font-serif text-3xl font-bold text-white sm:text-4xl">
-            {isId
-              ? "Kas Klub & Buku Besar Protokol"
-              : "Kas Klub Treasury & Protocol Ledgers"}
+          <span className="bracket-label">[ TREASURY / PULL LEDGERS ]</span>
+          <h1 className="mt-2 text-40 font-semibold text-paper">
+            Club treasury & ledgers.
           </h1>
-          <p className="mt-1 max-w-2xl text-xs text-slate-300">
-            {isId ? (
-              <>
-                Untuk mencegah kegagalan transfer lintas-kontrak memblokir penjualan tiket
-                atau jual-beli kursi, seluruh pembayaran keluar di{" "}
-                <span className="font-mono text-gold-300">{registryId}</span> menggunakan
-                sistem <em>Pull Ledger</em>. Alamat penerima (<span className="font-mono">kas_klub_id</span>{" "}
-                dan <span className="font-mono">organizer_id</span>) bersifat permanen, dan
-                siapa saja dapat memicu pencairan dana ke akun tersebut.
-              </>
-            ) : (
-              <>
-                To prevent failed cross-contract pushes from ever blocking a ticket sale or
-                seat settlement, all outgoing payments in{" "}
-                <span className="font-mono text-gold-300">{registryId}</span> use pull
-                ledgers. Fixed recipient addresses (<span className="font-mono">kas_klub_id</span>{" "}
-                and <span className="font-mono">organizer_id</span>) are immutable from deploy;
-                anyone may trigger <span className="font-mono">release_kas_klub</span> or{" "}
-                <span className="font-mono">release_organizer</span>.
-              </>
-            )}
+          <p className="mt-2 max-w-[58ch] text-14 leading-relaxed text-paper-muted">
+            To prevent failed cross-contract pushes from ever blocking a ticket sale or
+            seat handoff, all outgoing protocol splits in{" "}
+            <span className="font-mono text-paper">{registryId}</span> use permissionless
+            pull ledgers.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={loadData}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-obsidian-900 px-4 py-2 text-xs text-slate-300 hover:text-gold-300"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          {isId ? "Segarkan Buku Besar" : "Refresh Ledgers"}
-        </button>
+        <div className="flex items-center gap-2">
+          <Chip tone={demo ? "caution" : "accent"} dot>
+            {demo ? "Simulated" : "NEAR Testnet"}
+          </Chip>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void loadData()}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {statusMsg && (
-        <div className="rounded-2xl border border-gold-500/40 bg-obsidian-800 p-4 font-mono text-xs text-gold-300">
+      {statusMsg ? (
+        <div
+          role="status"
+          className="rounded border border-[rgba(123,216,143,0.3)] bg-positive-soft px-4 py-3 font-mono text-12 text-positive"
+        >
           {statusMsg}
         </div>
-      )}
+      ) : null}
 
       {/* Three Core Treasury Books */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* 1. Kas Klub Ledger */}
-        <div className="flex flex-col justify-between rounded-3xl border border-segel-500/35 bg-obsidian-900/90 p-6">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-xs uppercase tracking-wider text-segel-400">
-                50% Ticket Cut + 5% Secondary Royalties
-              </span>
-              <Landmark className="h-5 w-5 text-segel-400" />
+      <Reveal>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* 1. Kas Klub Ledger */}
+          <Panel className="flex flex-col justify-between">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <span className="bracket-label">[ 01 / KAS KLUB ]</span>
+              <Landmark className="h-4 w-4 text-positive" />
             </div>
-            <h2 className="font-serif text-2xl font-bold text-white">
-              Kas Klub (Club Treasury)
-            </h2>
-            <div className="rounded-2xl border border-slate-800 bg-obsidian-950 p-4 font-mono text-xs space-y-2">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Fixed Recipient:</span>
-                <span className="font-bold text-white">
-                  {config?.kas_klub_id || "—"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Owed (`kas_klub_owed`):</span>
-                <span className="text-base font-bold text-segel-400">
-                  {formatYocto(stats?.kas_klub_owed ?? "0")} NEAR
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Total Released:</span>
-                <span className="text-slate-200">
-                  {formatYocto(stats?.kas_klub_released ?? "0")} NEAR
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Royalties Accrued:</span>
-                <span className="text-gold-300">
-                  {formatYocto(stats?.royalties_total ?? "0")} NEAR
-                </span>
-              </div>
-            </div>
-          </div>
 
-          <button
-            type="button"
-            disabled={isBusy || BigInt(stats?.kas_klub_owed || "0") === 0n}
-            onClick={() => handleRelease("release_kas_klub")}
-            className="mt-5 w-full rounded-xl bg-gradient-to-r from-segel-500 to-segel-400 py-3 text-xs font-bold text-obsidian-950 shadow transition hover:brightness-110 disabled:opacity-40"
-          >
-            Trigger `release_kas_klub()` (30 Tgas)
-          </button>
+            <div className="space-y-4 p-4 sm:p-5">
+              <div>
+                <h2 className="text-24 font-semibold text-paper">Club Treasury</h2>
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                  50% ticket cut + 5% secondary royalties
+                </p>
+              </div>
+
+              <dl className="divide-y divide-line border-y border-line font-mono text-12">
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Recipient</dt>
+                  <dd className="truncate max-w-[180px] text-paper">
+                    {config?.kas_klub_id || "kas.logen.testnet"}
+                  </dd>
+                </div>
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Owed (kas_klub_owed)</dt>
+                  <dd className="text-positive tabular">
+                    {formatYocto(stats?.kas_klub_owed ?? "0")} NEAR
+                  </dd>
+                </div>
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Total released</dt>
+                  <dd className="text-paper tabular">
+                    {formatYocto(stats?.kas_klub_released ?? "0")} NEAR
+                  </dd>
+                </div>
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Royalties accrued</dt>
+                  <dd className="text-signal tabular">
+                    {formatYocto(stats?.royalties_total ?? "0")} NEAR
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="border-t border-line p-4">
+              <Button
+                fullWidth
+                disabled={
+                  isBusy || (!demo && BigInt(stats?.kas_klub_owed || "0") === 0n)
+                }
+                onClick={() => void handleRelease("release_kas_klub")}
+              >
+                Trigger release_kas_klub()
+              </Button>
+            </div>
+          </Panel>
+
+          {/* 2. Organizer Ledger */}
+          <Panel className="flex flex-col justify-between">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <span className="bracket-label">[ 02 / ORGANIZER ]</span>
+              <Coins className="h-4 w-4 text-signal" />
+            </div>
+
+            <div className="space-y-4 p-4 sm:p-5">
+              <div>
+                <h2 className="text-24 font-semibold text-paper">Organizer Ledger</h2>
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                  10% primary ticket cut
+                </p>
+              </div>
+
+              <dl className="divide-y divide-line border-y border-line font-mono text-12">
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Recipient</dt>
+                  <dd className="truncate max-w-[180px] text-paper">
+                    {config?.organizer_id || "organizer.logen.testnet"}
+                  </dd>
+                </div>
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Owed (organizer_owed)</dt>
+                  <dd className="text-signal tabular">
+                    {formatYocto(stats?.organizer_owed ?? "0")} NEAR
+                  </dd>
+                </div>
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Total released</dt>
+                  <dd className="text-paper tabular">
+                    {formatYocto(stats?.organizer_released ?? "0")} NEAR
+                  </dd>
+                </div>
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Events created</dt>
+                  <dd className="text-paper tabular">{stats?.events_count ?? 0}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="border-t border-line p-4">
+              <Button
+                variant="secondary"
+                fullWidth
+                disabled={
+                  isBusy || (!demo && BigInt(stats?.organizer_owed || "0") === 0n)
+                }
+                onClick={() => void handleRelease("release_organizer")}
+              >
+                Trigger release_organizer()
+              </Button>
+            </div>
+          </Panel>
+
+          {/* 3. Member Pool Accumulator Book */}
+          <Panel className="flex flex-col justify-between">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <span className="bracket-label">[ 03 / MEMBER POOL ]</span>
+              <CheckCircle2 className="h-4 w-4 text-positive" />
+            </div>
+
+            <div className="space-y-4 p-4 sm:p-5">
+              <div>
+                <h2 className="text-24 font-semibold text-paper">Seat Holders</h2>
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                  40% primary ticket cut · O(1) accrual
+                </p>
+              </div>
+
+              <dl className="divide-y divide-line border-y border-line font-mono text-12">
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Accumulator (acc)</dt>
+                  <dd className="text-positive tabular">
+                    {formatYocto(stats?.acc ?? "0")} NEAR/seat
+                  </dd>
+                </div>
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Total distributed</dt>
+                  <dd className="text-paper tabular">
+                    {formatYocto(stats?.total_pool_distributed ?? "0")} NEAR
+                  </dd>
+                </div>
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Claimed to vaults</dt>
+                  <dd className="text-positive tabular">
+                    {formatYocto(stats?.total_claimed ?? "0")} NEAR
+                  </dd>
+                </div>
+                <div className="flex justify-between py-2.5">
+                  <dt className="text-paper-muted">Remainder carry</dt>
+                  <dd className="text-paper-muted tabular">
+                    {stats?.carry ?? "0"} yocto
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="border-t border-line p-4">
+              <a
+                href={`${EXPLORER_URL}/address/${registryId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded border border-line bg-surface-sunken px-4 font-mono text-12 text-paper transition-colors hover:border-line-strong"
+              >
+                Inspect {registryId}
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
+          </Panel>
         </div>
-
-        {/* 2. Organizer Ledger */}
-        <div className="flex flex-col justify-between rounded-3xl border border-indigo-500/35 bg-obsidian-900/90 p-6">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-xs uppercase tracking-wider text-indigo-300">
-                10% Primary Ticket Cut
-              </span>
-              <Coins className="h-5 w-5 text-indigo-400" />
-            </div>
-            <h2 className="font-serif text-2xl font-bold text-white">
-              Organizer Pull Ledger
-            </h2>
-            <div className="rounded-2xl border border-slate-800 bg-obsidian-950 p-4 font-mono text-xs space-y-2">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Fixed Recipient:</span>
-                <span className="font-bold text-white">
-                  {config?.organizer_id || "—"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Owed (`organizer_owed`):</span>
-                <span className="text-base font-bold text-indigo-300">
-                  {formatYocto(stats?.organizer_owed ?? "0")} NEAR
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Total Released:</span>
-                <span className="text-slate-200">
-                  {formatYocto(stats?.organizer_released ?? "0")} NEAR
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Events Created:</span>
-                <span className="text-slate-300">{stats?.events_count ?? 0}</span>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            disabled={isBusy || BigInt(stats?.organizer_owed || "0") === 0n}
-            onClick={() => handleRelease("release_organizer")}
-            className="mt-5 w-full rounded-xl bg-indigo-500 py-3 text-xs font-bold text-white shadow transition hover:bg-indigo-400 disabled:opacity-40"
-          >
-            Trigger `release_organizer()` (30 Tgas)
-          </button>
-        </div>
-
-        {/* 3. Member Pool Accumulator Book */}
-        <div className="flex flex-col justify-between rounded-3xl border border-gold-500/35 bg-obsidian-900/90 p-6">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-xs uppercase tracking-wider text-gold-400">
-                40% Primary Ticket Cut · O(1) Accrual
-              </span>
-              <CheckCircle2 className="h-5 w-5 text-gold-400" />
-            </div>
-            <h2 className="font-serif text-2xl font-bold text-white">
-              Pool Anggota (Seat Holders)
-            </h2>
-            <div className="rounded-2xl border border-slate-800 bg-obsidian-950 p-4 font-mono text-xs space-y-2">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Accumulator (`acc`):</span>
-                <span className="text-base font-bold text-gold-300">
-                  {formatYocto(stats?.acc ?? "0")} NEAR/seat
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Total Distributed:</span>
-                <span className="text-white">
-                  {formatYocto(stats?.total_pool_distributed ?? "0")} NEAR
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Total Claimed to Vaults:</span>
-                <span className="text-segel-400">
-                  {formatYocto(stats?.total_claimed ?? "0")} NEAR
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Remainder Carry (`carry`):</span>
-                <span className="text-slate-300">
-                  {stats?.carry ?? "0"} yoctoNEAR
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <a
-            href={`${EXPLORER_URL}/address/${registryId}`}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-5 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-gold-500/40 bg-obsidian-950 py-3 text-xs font-semibold text-gold-300 hover:bg-obsidian-800"
-          >
-            Inspect `{registryId}` on NearBlocks
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        </div>
-      </div>
-
-      <KratonDivider label="Secondary Sales & Royalty Feed (`get_sales`)" />
+      </Reveal>
 
       {/* Secondary Sales Table */}
-      <section className="rounded-3xl border border-gold-500/25 bg-obsidian-800/70 p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-serif text-2xl font-bold text-white">
-            Secondary Sales & 5% Kas Klub Royalty Log
-          </h3>
-          <span className="font-mono text-xs text-slate-400">
-            Total Volume: {formatYocto(stats?.sales_volume ?? "0")} NEAR
+      <Panel>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
+          <span className="bracket-label">[ SECONDARY SALES & 5% ROYALTY LOG ]</span>
+          <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            Total volume: {formatYocto(stats?.sales_volume ?? "0")} NEAR
           </span>
         </div>
 
-        {sales.length === 0 ? (
-          <p className="font-mono text-xs text-slate-400">
-            No secondary sales recorded on `{registryId}` yet.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="pb-2">Seat</th>
-                  <th className="pb-2">Seller</th>
-                  <th className="pb-2">Buyer</th>
-                  <th className="pb-2">Sale Price</th>
-                  <th className="pb-2">Kas Klub Royalty</th>
-                  <th className="pb-2">Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {sales.map((s, idx) => (
-                  <tr key={`${s.token_id}-${s.at_ms}-${idx}`}>
-                    <td className="py-2.5 font-bold text-gold-300">{s.token_id}</td>
-                    <td className="py-2.5 text-slate-300">{s.seller}</td>
-                    <td className="py-2.5 text-segel-400">{s.buyer}</td>
-                    <td className="py-2.5 text-white">{formatYocto(s.price)} NEAR</td>
-                    <td className="py-2.5 text-gold-400">
-                      {formatYocto(s.royalty)} NEAR
-                    </td>
-                    <td className="py-2.5 text-slate-400">
-                      {formatTimestampMs(s.at_ms)}
-                    </td>
+        <div className="p-4 sm:p-5">
+          {sales.length === 0 ? (
+            <p className="font-mono text-12 text-paper-muted">
+              No secondary sales recorded on {registryId} yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-mono text-12">
+                <thead>
+                  <tr className="border-b border-line text-[10px] uppercase tracking-label text-paper-muted">
+                    <th className="pb-2">Seat</th>
+                    <th className="pb-2">Seller</th>
+                    <th className="pb-2">Buyer</th>
+                    <th className="pb-2">Sale price</th>
+                    <th className="pb-2">Club royalty</th>
+                    <th className="pb-2">Time</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {sales.map((s, idx) => (
+                    <tr key={`${s.token_id}-${s.at_ms}-${idx}`}>
+                      <td className="py-2.5 text-paper">{s.token_id}</td>
+                      <td className="py-2.5 text-paper-muted">{s.seller}</td>
+                      <td className="py-2.5 text-positive">{s.buyer}</td>
+                      <td className="py-2.5 text-paper tabular">
+                        {formatYocto(s.price)} NEAR
+                      </td>
+                      <td className="py-2.5 text-signal tabular">
+                        {formatYocto(s.royalty)} NEAR
+                      </td>
+                      <td className="py-2.5 text-paper-muted">
+                        {formatTimestampMs(s.at_ms)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </Panel>
     </div>
   );
 }

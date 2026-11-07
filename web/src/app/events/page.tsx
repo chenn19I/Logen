@@ -2,17 +2,16 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Ticket,
-  Sparkles,
-  RefreshCw,
   Calendar,
-  Users,
-  PlusCircle,
-  Coins,
   CheckCircle2,
+  PlusCircle,
+  RefreshCw,
+  Ticket,
+  Users,
 } from "lucide-react";
 import { useNear } from "@/components/NearProvider";
-import { KratonDivider } from "@/components/KawungOrnament";
+import { useDemo } from "@/lib/demo/DemoProvider";
+import { useEvents as useDemoEvents } from "@/lib/chain/hooks";
 import {
   getEvents,
   getTicketPriceFor,
@@ -25,10 +24,13 @@ import {
   parseNearToYocto,
   splitTicketRevenue,
 } from "@/lib/near/format";
+import { Button } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Chip";
+import { Panel } from "@/components/ui/Panel";
+import { Reveal } from "@/components/ui/Reveal";
 
 export default function ClubEventsPage() {
   const {
-    lang,
     accountId,
     registryId,
     config,
@@ -36,7 +38,8 @@ export default function ClubEventsPage() {
     openWalletModal,
     callContractMethod,
   } = useNear();
-  const isId = lang === "id";
+  const { demo } = useDemo();
+  const demoEventsQuery = useDemoEvents();
 
   const [events, setEvents] = useState<EventView[]>([]);
   const [userTickets, setUserTickets] = useState<Record<number, number>>({});
@@ -47,7 +50,7 @@ export default function ClubEventsPage() {
 
   // Organizer Create Event Form
   const [eventName, setEventName] = useState<string>(
-    "Gamelan Nocturne · Kraton Residency"
+    "Logen Night Session · Keyless Vaults"
   );
   const [eventPriceNear, setEventPriceNear] = useState<string>("5");
   const [eventCapacity, setEventCapacity] = useState<string>("100");
@@ -61,9 +64,27 @@ export default function ClubEventsPage() {
     setLoading(true);
     try {
       const evs = await getEvents(registryId, 0, 50);
-      setEvents(evs);
+      if (evs.length > 0) {
+        setEvents(evs);
+      } else if (demo && demoEventsQuery.data) {
+        setEvents(
+          demoEventsQuery.data.map((d, idx) => ({
+            id: idx + 1,
+            name: d.title,
+            price: d.ticketPriceYocto,
+            capacity: d.capacity,
+            sold: d.sold,
+            starts_at_ms: d.startsAtMs,
+            created_at_ms: d.startsAtMs - 86_400_000,
+            member_discount_bps: 2000,
+            bps: { pool: 4000, kas: 5000, organizer: 1000 },
+          }))
+        );
+      } else {
+        setEvents([]);
+      }
 
-      if (accountId) {
+      if (accountId && evs.length > 0) {
         const [tks, pricesEntries] = await Promise.all([
           getTicketsForAccount(accountId, registryId),
           Promise.all(
@@ -86,13 +107,30 @@ export default function ClubEventsPage() {
     } finally {
       setLoading(false);
     }
-  }, [registryId, accountId]);
+  }, [registryId, accountId, demo, demoEventsQuery.data]);
 
   useEffect(() => {
-    loadEvents();
+    void loadEvents();
   }, [loadEvents]);
 
   const handleBuyTicket = async (ev: EventView) => {
+    if (demo) {
+      setIsBusy(true);
+      setStatusMsg(null);
+      await new Promise((r) => window.setTimeout(r, 700));
+      setUserTickets((prev) => ({ ...prev, [ev.id]: (prev[ev.id] || 0) + 1 }));
+      setEvents((prev) =>
+        prev.map((item) =>
+          item.id === ev.id ? { ...item, sold: item.sold + 1 } : item
+        )
+      );
+      setStatusMsg(
+        `Simulated ticket purchased for "${ev.name}". 40% credited to the Member Pool accumulator.`
+      );
+      setIsBusy(false);
+      return;
+    }
+
     if (!accountId) {
       openWalletModal();
       return;
@@ -121,6 +159,30 @@ export default function ClubEventsPage() {
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (demo) {
+      setIsBusy(true);
+      await new Promise((r) => window.setTimeout(r, 600));
+      const priceYocto = parseNearToYocto(eventPriceNear);
+      const nextId = events.length + 1;
+      setEvents((prev) => [
+        ...prev,
+        {
+          id: nextId,
+          name: eventName.trim() || `Club Event #${nextId}`,
+          price: priceYocto,
+          capacity: Number(eventCapacity) || 100,
+          sold: 0,
+          starts_at_ms: Date.now() + 7 * 24 * 3600 * 1000,
+          created_at_ms: Date.now(),
+          member_discount_bps: Number(eventDiscountBps) || 2000,
+          bps: { pool: 4000, kas: 5000, organizer: 1000 },
+        },
+      ]);
+      setStatusMsg(`Simulated event "${eventName}" created.`);
+      setIsBusy(false);
+      return;
+    }
+
     if (!accountId) {
       openWalletModal();
       return;
@@ -152,277 +214,271 @@ export default function ClubEventsPage() {
     }
   };
 
+  const seatsCount = stats?.seats_minted || 12;
+
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-gold-500/25 bg-obsidian-800/80 p-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <span className="font-mono text-xs uppercase tracking-widest text-gold-400">
-            {isId
-              ? "Syarat R1 & R3 · Akrual Bagi Hasil Tiket O(1)"
-              : "Requirement R1 & R3 · O(1) Ticket Revenue Accrual"}
-          </span>
-          <h1 className="mt-1 font-serif text-3xl font-bold text-white sm:text-4xl">
-            {isId
-              ? "Acara Klub & Bagi Hasil Anggota (40% / 50% / 10%)"
-              : "Club Events & Member Pool Accrual"}
+          <span className="bracket-label">[ EVENTS / O(1) REVENUE SPLIT ]</span>
+          <h1 className="mt-2 text-40 font-semibold text-paper">
+            Club events & member pool.
           </h1>
-          <p className="mt-1 max-w-2xl text-xs text-slate-300">
-            {isId ? (
-              <>
-                Setiap tiket yang terjual lewat{" "}
-                <span className="font-mono text-gold-300">registry.buy_ticket</span> langsung
-                membagi pendapatan: <strong className="text-gold-300">40% Pool Anggota</strong>{" "}
-                (dibagi rata ke {stats?.seats_minted ?? 0} brankas kursi),{" "}
-                <strong className="text-segel-400">50% Kas Klub</strong>, dan{" "}
-                <strong className="text-indigo-300">10% Organizer</strong>. Pemegang kursi
-                juga mendapat diskon otomatis lewat <span className="font-mono">ticket_price_for</span>.
-              </>
-            ) : (
-              <>
-                Every ticket sold via <span className="font-mono text-gold-300">registry.buy_ticket</span>{" "}
-                splits revenue according to the event&apos;s frozen basis points: default{" "}
-                <strong className="text-gold-300">40% Pool Anggota</strong> (shared equally by all{" "}
-                {stats?.seats_minted ?? 0} minted seats),{" "}
-                <strong className="text-segel-400">50% Kas Klub</strong>, and{" "}
-                <strong className="text-indigo-300">10% Organizer</strong>. Seat holders also
-                receive automatic discounts via <span className="font-mono">ticket_price_for</span>.
-              </>
-            )}
+          <p className="mt-2 max-w-[58ch] text-14 leading-relaxed text-paper-muted">
+            Every ticket sold via <span className="font-mono text-paper">registry.buy_ticket</span>{" "}
+            splits revenue in O(1) gas: <span className="font-mono text-positive">40% Member Pool</span>{" "}
+            (shared across all {seatsCount} seats), <span className="font-mono text-signal">50% Kas Klub</span>,
+            and <span className="font-mono text-paper">10% Organizer</span>.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={loadEvents}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-obsidian-900 px-4 py-2 text-xs text-slate-300 hover:border-gold-500/40 hover:text-gold-300"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          {isId ? "Segarkan Acara" : "Refresh Events"}
-        </button>
+        <div className="flex items-center gap-2">
+          <Chip tone={demo ? "caution" : "accent"} dot>
+            {demo ? "Simulated" : "NEAR Testnet"}
+          </Chip>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void loadEvents()}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {statusMsg && (
-        <div className="rounded-2xl border border-gold-500/40 bg-obsidian-800 p-4 font-mono text-xs text-gold-300">
+      {/* ASCII O(1) Revenue Split Diagram */}
+      <Reveal>
+        <div className="overflow-hidden rounded border border-line bg-ink-deep p-4 font-mono text-[11px] leading-relaxed text-paper-muted sm:p-5">
+          <div className="mb-2 flex items-center justify-between border-b border-line pb-2 text-[10px] uppercase tracking-label">
+            <span className="text-signal">[ O(1) ACCUMULATOR PIPELINE ]</span>
+            <span className="text-positive">CONSTANT GAS · NO LOOPS</span>
+          </div>
+          <pre className="overflow-x-auto no-scrollbar text-[11px] leading-[1.45] text-paper-dim">
+{`buy_ticket(event_id) ══► [ 40% MEMBER POOL ] ──► acc += floor((pool + carry) / ${seatsCount} seats)
+                     ╠═► [ 50% KAS KLUB    ] ──► kas_klub_owed += kas_cut (pull ledger)
+                     ╚═► [ 10% ORGANIZER   ] ──► organizer_owed += org_cut (pull ledger)`}
+          </pre>
+        </div>
+      </Reveal>
+
+      {statusMsg ? (
+        <div
+          role="status"
+          className="rounded border border-[rgba(123,216,143,0.3)] bg-positive-soft px-4 py-3 font-mono text-12 text-positive"
+        >
           {statusMsg}
         </div>
-      )}
+      ) : null}
 
       {/* Events List */}
       <section className="space-y-4">
-        <h2 className="font-serif text-2xl font-bold text-white">
-          On-Chain Club Events ({events.length})
-        </h2>
+        <div className="flex items-baseline justify-between border-b border-line pb-3">
+          <h2 className="text-24 font-semibold text-paper">
+            Scheduled events ({events.length})
+          </h2>
+          <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            Automatic 20% holder discount via ticket_price_for
+          </span>
+        </div>
 
         {loading ? (
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             {[1, 2].map((i) => (
               <div
                 key={i}
-                className="h-64 animate-pulse rounded-2xl border border-gold-500/20 bg-obsidian-800/50"
+                className="h-64 animate-skeleton rounded border border-line bg-surface"
               />
             ))}
           </div>
         ) : events.length === 0 ? (
-          <div className="rounded-3xl border border-gold-500/20 bg-obsidian-900/70 p-10 text-center">
-            <Ticket className="mx-auto h-10 w-10 text-gold-400" />
-            <h3 className="mt-3 font-serif text-2xl font-bold text-white">
-              No Events Created Yet on `{registryId}`
+          <Panel className="p-10 text-center">
+            <Ticket className="mx-auto h-6 w-6 text-paper-muted" />
+            <h3 className="mt-3 text-24 font-semibold text-paper">
+              No events on {registryId} yet.
             </h3>
-            <p className="mx-auto mt-1 max-w-lg text-xs text-slate-400">
-              Use the Organizer Panel below to create an event and test live{" "}
-              <span className="font-mono text-gold-300">buy_ticket</span> revenue splits.
+            <p className="mx-auto mt-2 max-w-[44ch] text-14 text-paper-muted">
+              Use the organizer panel below to schedule an event and test live{" "}
+              <span className="font-mono text-paper">buy_ticket</span> revenue splits.
             </p>
-          </div>
+          </Panel>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             {events.map((ev) => {
               const effectivePrice = memberPrices[ev.id] || ev.price;
-              const hasDiscount =
-                BigInt(effectivePrice) < BigInt(ev.price);
+              const hasDiscount = BigInt(effectivePrice) < BigInt(ev.price);
               const myCount = userTickets[ev.id] || 0;
               const split = splitTicketRevenue(
                 effectivePrice,
                 ev.bps,
-                stats?.seats_minted ?? 1
+                seatsCount
               );
               const soldOut = ev.sold >= ev.capacity;
 
               return (
-                <div
-                  key={ev.id}
-                  className="flex flex-col justify-between rounded-2xl border border-gold-500/30 bg-obsidian-800/90 p-6 shadow-lg"
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <span className="font-mono text-[11px] text-gold-400">
-                          EVENT #{ev.id} · SPLIT {ev.bps.pool / 100}% / {ev.bps.kas / 100}% /{" "}
-                          {ev.bps.organizer / 100}%
-                        </span>
-                        <h3 className="mt-0.5 font-serif text-2xl font-bold text-white">
-                          {ev.name}
-                        </h3>
-                      </div>
-                      {myCount > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-segel-500/40 bg-segel-500/15 px-3 py-1 font-mono text-xs font-bold text-segel-400">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          You Own {myCount}x
-                        </span>
-                      )}
+                <Panel key={ev.id} className="flex flex-col justify-between">
+                  <div className="flex items-start justify-between gap-2 border-b border-line px-4 py-3">
+                    <span className="bracket-label">
+                      [ EVENT #{String(ev.id).padStart(2, "0")} · {ev.bps.pool / 100}/{ev.bps.kas / 100}/{ev.bps.organizer / 100} ]
+                    </span>
+                    {myCount > 0 ? (
+                      <Chip tone="positive" icon={<CheckCircle2 className="h-3 w-3" />}>
+                        You hold {myCount}×
+                      </Chip>
+                    ) : (
+                      <Chip tone={soldOut ? "caution" : "neutral"} dot>
+                        {soldOut ? "Sold out" : "Open"}
+                      </Chip>
+                    )}
+                  </div>
+
+                  <div className="space-y-4 p-4 sm:p-5">
+                    <div>
+                      <h3 className="text-24 font-semibold text-paper">{ev.name}</h3>
+                      <p className="mt-1 flex items-center gap-2 font-mono text-12 text-paper-muted">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {formatTimestampMs(ev.starts_at_ms)}
+                      </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 font-mono text-xs">
-                      <div className="rounded-xl border border-slate-800 bg-obsidian-950 p-3">
-                        <span className="block text-[10px] text-slate-400">
-                          TICKET PRICE (`ticket_price_for`)
-                        </span>
-                        <span className="text-base font-bold text-gold-300">
-                          {formatYocto(effectivePrice)} NEAR
-                        </span>
-                        {hasDiscount && (
-                          <span className="block text-[10px] text-segel-400">
-                            Member Discount (-{ev.member_discount_bps / 100}% off{" "}
-                            {formatYocto(ev.price)} N)
-                          </span>
-                        )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded border border-line bg-surface-sunken p-3">
+                        <div className="mono-label">Ticket price</div>
+                        <div className="mt-1 font-mono text-24 tabular text-paper">
+                          {formatYocto(effectivePrice)}{" "}
+                          <span className="text-12 text-paper-muted">NEAR</span>
+                        </div>
+                        {hasDiscount ? (
+                          <div className="mt-1 font-mono text-[10px] uppercase tracking-label text-positive">
+                            Holder discount (−{ev.member_discount_bps / 100}%)
+                          </div>
+                        ) : null}
                       </div>
 
-                      <div className="rounded-xl border border-slate-800 bg-obsidian-950 p-3">
-                        <span className="block text-[10px] text-slate-400">
-                          CAPACITY & STARTS
-                        </span>
-                        <span className="flex items-center gap-1.5 text-sm font-bold text-white">
-                          <Users className="h-3.5 w-3.5 text-gold-400" />
-                          {ev.sold} / {ev.capacity} sold
-                        </span>
-                        <span className="block text-[10px] text-slate-400">
-                          <Calendar className="mr-1 inline h-3 w-3" />
-                          {formatTimestampMs(ev.starts_at_ms)}
-                        </span>
+                      <div className="rounded border border-line bg-surface-sunken p-3">
+                        <div className="mono-label">Capacity</div>
+                        <div className="mt-1 flex items-center gap-1.5 font-mono text-24 tabular text-paper">
+                          <Users className="h-4 w-4 text-paper-muted" />
+                          {ev.sold} / {ev.capacity}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-slate-800/90 bg-obsidian-950/70 p-3 font-mono text-[11px] space-y-1">
+                    <div className="space-y-1.5 rounded border border-line bg-ink-deep p-3 font-mono text-12">
                       <div className="flex justify-between">
-                        <span className="text-slate-400">
-                          → Pool Anggota ({ev.bps.pool / 100}%):
+                        <span className="text-paper-muted">
+                          → Member Pool ({ev.bps.pool / 100}%):
                         </span>
-                        <span className="text-gold-300">
-                          +{formatYocto(split.pool)} NEAR (+
-                          {formatYocto(split.perSeat, 6)} NEAR/seat)
+                        <span className="text-positive tabular">
+                          +{formatYocto(split.pool)} NEAR (+{formatYocto(split.perSeat, 4)}/seat)
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-400">
+                        <span className="text-paper-muted">
                           → Kas Klub ({ev.bps.kas / 100}%):
                         </span>
-                        <span className="text-segel-400">
+                        <span className="text-signal tabular">
                           +{formatYocto(split.kas)} NEAR
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-400">
+                        <span className="text-paper-muted">
                           → Organizer ({ev.bps.organizer / 100}%):
                         </span>
-                        <span className="text-indigo-300">
+                        <span className="text-paper tabular">
                           +{formatYocto(split.organizer)} NEAR
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={isBusy || soldOut}
-                    onClick={() => handleBuyTicket(ev)}
-                    className="mt-5 w-full rounded-xl bg-gradient-to-r from-gold-500 to-gold-400 py-3 text-xs font-bold text-obsidian-950 shadow transition hover:brightness-110 disabled:opacity-40"
-                  >
-                    {soldOut
-                      ? "Sold Out (E_SOLD_OUT)"
-                      : `Buy Ticket (${formatYocto(effectivePrice)} NEAR)`}
-                  </button>
-                </div>
+                  <div className="border-t border-line p-4">
+                    <Button
+                      fullWidth
+                      disabled={isBusy || soldOut}
+                      onClick={() => void handleBuyTicket(ev)}
+                    >
+                      {soldOut
+                        ? "Sold Out (E_SOLD_OUT)"
+                        : `Buy Ticket (${formatYocto(effectivePrice)} NEAR)`}
+                    </Button>
+                  </div>
+                </Panel>
               );
             })}
           </div>
         )}
       </section>
 
-      <KratonDivider label="Organizer Event Creation (`registry.create_event`)" />
-
       {/* Organizer Panel */}
-      <section className="rounded-3xl border border-gold-500/25 bg-obsidian-800/70 p-6 lg:p-8">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <PlusCircle className="h-5 w-5 text-gold-400" />
-            <div>
-              <h3 className="font-serif text-2xl font-bold text-white">
-                Create Club Event
-              </h3>
-              <p className="font-mono text-xs text-slate-400">
-                Authorized Organizer: {config?.organizer_id || "—"}
-                {isOrganizer ? " (Connected!)" : " (E_ONLY_ORGANIZER enforced on-chain)"}
-              </p>
-            </div>
+      <Panel>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
+          <div className="flex items-center gap-2">
+            <PlusCircle className="h-4 w-4 text-signal" />
+            <span className="bracket-label">[ ORGANIZER / CREATE EVENT ]</span>
           </div>
+          <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            Organizer: {config?.organizer_id || "organizer.logen.testnet"}
+            {isOrganizer ? " · Connected" : ""}
+          </span>
         </div>
 
-        <form onSubmit={handleCreateEvent} className="grid gap-4 sm:grid-cols-4">
+        <form onSubmit={handleCreateEvent} className="grid gap-4 p-4 sm:grid-cols-4 sm:p-5">
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs text-slate-300">Event Name</label>
+            <label htmlFor="event-name" className="mono-label block">
+              Event name
+            </label>
             <input
+              id="event-name"
               type="text"
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
-              className="w-full rounded-xl border border-gold-500/30 bg-obsidian-950 px-3 py-2 text-xs text-white"
+              className="mt-2 min-h-11 w-full rounded border border-line bg-surface-sunken px-3 font-mono text-14 text-paper outline-none focus:border-signal"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-300">
-              Ticket Price (NEAR)
+            <label htmlFor="event-price" className="mono-label block">
+              Ticket price (NEAR)
             </label>
             <input
+              id="event-price"
               type="text"
               value={eventPriceNear}
               onChange={(e) => setEventPriceNear(e.target.value)}
-              className="w-full rounded-xl border border-gold-500/30 bg-obsidian-950 px-3 py-2 font-mono text-xs text-white"
+              className="mt-2 min-h-11 w-full rounded border border-line bg-surface-sunken px-3 font-mono text-14 text-paper outline-none focus:border-signal tabular"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-300">
-              Capacity & Discount (bps)
-            </label>
-            <div className="grid grid-cols-2 gap-2">
+            <span className="mono-label block">Capacity & discount (bps)</span>
+            <div className="mt-2 grid grid-cols-2 gap-2">
               <input
                 type="number"
+                aria-label="Capacity"
                 value={eventCapacity}
                 onChange={(e) => setEventCapacity(e.target.value)}
                 placeholder="100"
-                className="rounded-xl border border-gold-500/30 bg-obsidian-950 px-2.5 py-2 font-mono text-xs text-white"
+                className="min-h-11 rounded border border-line bg-surface-sunken px-2.5 font-mono text-14 text-paper outline-none focus:border-signal tabular"
               />
               <input
                 type="number"
+                aria-label="Member discount in basis points"
                 value={eventDiscountBps}
                 onChange={(e) => setEventDiscountBps(e.target.value)}
                 placeholder="2000"
-                className="rounded-xl border border-gold-500/30 bg-obsidian-950 px-2.5 py-2 font-mono text-xs text-white"
+                className="min-h-11 rounded border border-line bg-surface-sunken px-2.5 font-mono text-14 text-paper outline-none focus:border-signal tabular"
               />
             </div>
           </div>
 
           <div className="sm:col-span-4">
-            <button
-              type="submit"
-              disabled={isBusy}
-              className="rounded-xl border border-gold-500/50 bg-gold-500/15 px-5 py-2.5 text-xs font-bold text-gold-300 transition hover:bg-gold-500 hover:text-obsidian-950"
-            >
-              {isBusy ? "Submitting create_event..." : "Create Event (30 Tgas)"}
-            </button>
+            <Button type="submit" variant="secondary" disabled={isBusy}>
+              {isBusy ? "Submitting create_event…" : "Create event (30 TGas)"}
+            </Button>
           </div>
         </form>
-      </section>
+      </Panel>
     </div>
   );
 }

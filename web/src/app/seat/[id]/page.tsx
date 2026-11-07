@@ -114,9 +114,9 @@ function MonthGroup({
 }) {
   return (
     <section aria-label={month}>
-      <h3 className="mono-label sticky top-16 z-10 -mx-4 bg-ink px-4 py-3 sm:mx-0 sm:px-0">
+      <h2 className="mono-label sticky top-16 z-10 -mx-4 bg-ink px-4 py-3 sm:mx-0 sm:px-0">
         {month}
-      </h3>
+      </h2>
       <div className="border-t border-line">
         {entries.map((entry) => {
           const amount = amountLabel(entry);
@@ -598,7 +598,7 @@ export default function SeatHistoryPage() {
           <Panel className="p-4">
             <div className="mono-label">Club</div>
             <div className="mt-2 break-all font-mono text-12 text-paper-muted">
-              {registryId}
+              {demo ? "logen.testnet" : registryId}
             </div>
             <p className="mt-3 text-12 leading-relaxed text-paper-muted">
               This seat has no keys. Only the club contract can move its money,

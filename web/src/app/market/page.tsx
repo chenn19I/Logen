@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -379,15 +378,24 @@ export default function MarketPage() {
         continueLabel="Open the seat"
       />
 
-      <div className="border-t border-line pt-4">
-        <p className="text-12 leading-relaxed text-paper-muted">
-          Want to sell?{" "}
-          <Link href="/" className="underline decoration-line underline-offset-4 hover:text-paper">
-            List a seat from your wallet
-          </Link>
-          .
-        </p>
-      </div>
+      <Panel className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-line bg-surface-sunken">
+            <Tag className="h-4 w-4 text-paper-muted" aria-hidden="true" />
+          </span>
+          <div>
+            <div className="mono-label">Have a seat to sell?</div>
+            <p className="mt-1 max-w-[58ch] text-12 leading-relaxed text-paper-muted">
+              List it from your wallet. The asking price and the money inside the
+              seat settle together.
+            </p>
+          </div>
+        </div>
+        <LinkButton href="/" variant="secondary" size="sm" className="shrink-0">
+          List a seat
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        </LinkButton>
+      </Panel>
     </div>
   );
 }

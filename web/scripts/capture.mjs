@@ -142,9 +142,21 @@ async function main() {
       await sleep(900);
     };
 
-    const shot = async (name) => {
+    const shot = async (name, viewportOnly = false) => {
+      if (viewportOnly) {
+        // Fixed sheets and drawers belong to the viewport, not the full page.
+        const result = await cdp.send("Page.captureScreenshot", {
+          format: "png",
+          captureBeyondViewport: false,
+        });
+        const file = path.join(OUT, `${name}.png`);
+        await fs.writeFile(file, Buffer.from(result.data, "base64"));
+        return file;
+      }
+
       // Walk the page once so scroll-triggered reveals are settled before the
-      // full-page capture. Then return to the top for a stable sticky layout.
+      // full-page capture. Then return to the top and release the sticky header
+      // so it does not get painted twice in the tall screenshot.
       await cdp.evaluate(`(async () => {
         const step = Math.max(240, Math.round(window.innerHeight * 0.7));
         const height = document.documentElement.scrollHeight;
@@ -156,6 +168,11 @@ async function main() {
         await new Promise((resolve) => setTimeout(resolve, 260));
         window.scrollTo(0, 0);
         await new Promise((resolve) => setTimeout(resolve, 320));
+        const header = document.querySelector("header");
+        if (header) {
+          header.dataset.capturePosition = header.style.position;
+          header.style.position = "static";
+        }
       })()`);
       const metrics = await cdp.send("Page.getLayoutMetrics");
       const size = metrics.cssContentSize ?? metrics.contentSize;
@@ -170,6 +187,13 @@ async function main() {
           scale: 1,
         },
       });
+      await cdp.evaluate(`(() => {
+        const header = document.querySelector("header");
+        if (header && "capturePosition" in header.dataset) {
+          header.style.position = header.dataset.capturePosition || "";
+          delete header.dataset.capturePosition;
+        }
+      })()`);
       const file = path.join(OUT, `${name}.png`);
       await fs.writeFile(file, Buffer.from(result.data, "base64"));
       return file;
@@ -209,7 +233,7 @@ async function main() {
       await clickText(cdp, "See the test");
       await waitForText(cdp, "The control");
       await sleep(400);
-      const sheet = await shot(`lab-sheet-${width}`);
+      const sheet = await shot(`lab-sheet-${width}`, true);
 
       return { files: [before, after, sheet], tried, errors: errors.slice(0, 20) };
     }
@@ -266,7 +290,7 @@ async function main() {
       const minted = await clickText(cdp, "Mint this seat", "button");
       const success = await waitForText(cdp, "Seat minted.", 20000);
       await sleep(900);
-      files.push(await shot(`mint-success-${width}`));
+      files.push(await shot(`mint-success-${width}`, true));
 
       return { files, dropped, ready, filled, minted, success, errors: errors.slice(0, 20) };
     }
@@ -276,6 +300,14 @@ async function main() {
       await waitForText(cdp, "Every credit and every handoff");
       await sleep(700);
       const file = await shot(`seat-${width}`);
+      return { files: [file], errors: errors.slice(0, 20) };
+    }
+
+    if (scenario === "seats") {
+      await nav("http://localhost:3000/seats?demo=1");
+      await waitForText(cdp, "Every seat.");
+      await sleep(900);
+      const file = await shot(`seats-${width}`);
       return { files: [file], errors: errors.slice(0, 20) };
     }
 
@@ -292,12 +324,12 @@ async function main() {
       await clickText(cdp, "Buy this seat");
       await waitForText(cdp, "What will happen");
       await sleep(400);
-      files.push(await shot(`market-sheet-${width}`));
+      files.push(await shot(`market-sheet-${width}`, true));
 
       await clickText(cdp, "Buy for", "button");
       await waitForText(cdp, "is yours.");
       await sleep(1400);
-      files.push(await shot(`handoff-${width}`));
+      files.push(await shot(`handoff-${width}`, true));
 
       return { files, errors: errors.slice(0, 20) };
     }
@@ -312,7 +344,7 @@ async function main() {
       await clickText(cdp, "Open drawer");
       await waitForText(cdp, "Access keys");
       await sleep(400);
-      files.push(await shot(`verify-drawer-${width}`));
+      files.push(await shot(`verify-drawer-${width}`, true));
       return { files, errors: errors.slice(0, 20) };
     }
 
