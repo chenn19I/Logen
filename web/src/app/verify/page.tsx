@@ -2,23 +2,22 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   AlertTriangle,
   ArrowLeft,
   Check,
   CircleAlert,
-  Copy,
   ExternalLink,
   Loader2,
   RefreshCw,
   ShieldCheck,
-  Terminal,
 } from "lucide-react";
 import { useNear } from "@/components/NearProvider";
 import { useDemo } from "@/lib/demo/DemoProvider";
 import { useProof, useSeats } from "@/lib/chain/hooks";
 import type { ProofRow } from "@/lib/chain/types";
-import { DEFAULT_REGISTRY_ID, EXPLORER_URL, PRIMARY_RPC_URL } from "@/lib/near/rpc";
+import { EXPLORER_URL } from "@/lib/near/rpc";
 import { useSound } from "@/lib/sound";
 import { formatTime, near, seatLabel } from "@/lib/utils";
 import { Button, LinkButton } from "@/components/ui/Button";
@@ -43,7 +42,7 @@ function RowMark({ row }: { row: ProofRow }) {
 }
 
 export default function VerifyPage() {
-  const { accountId, registryId, openWalletModal } = useNear();
+  const { accountId, openWalletModal } = useNear();
   const { demo, demoAccount } = useDemo();
   const { playTactileClick, playSuccessChime } = useSound();
   const currentAccount = demo ? demoAccount : accountId;
@@ -57,7 +56,6 @@ export default function VerifyPage() {
   const [checkingRow, setCheckingRow] = useState<string | null>(null);
   const [checkingAll, setCheckingAll] = useState(false);
   const [announcement, setAnnouncement] = useState("");
-  const [copiedCmdId, setCopiedCmdId] = useState<string | null>(null);
 
   const recheck = async (rowId?: string) => {
     playTactileClick();
@@ -214,8 +212,11 @@ export default function VerifyPage() {
             ))
           ) : (
             proof?.rows.map((row, index) => (
-              <div
-                key={row.id}
+              <motion.div
+                key={`${row.id}-${proof.checkedAtMs}`}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.04, duration: 0.22 }}
                 className="flex items-start gap-3 px-4 py-5 sm:gap-4 sm:px-5"
               >
                 <RowMark row={row} />
@@ -252,7 +253,7 @@ export default function VerifyPage() {
                     {row.detail}
                   </p>
                 </div>
-              </div>
+              </motion.div>
             ))
           )}
         </div>
@@ -294,97 +295,6 @@ export default function VerifyPage() {
           for the current holder.
         </p>
       </div>
-
-      {/* Independent RPC / CLI Verification Inspector (Ref #1 Lettra + Ref #5 Ian) */}
-      <Panel className="overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-sunken px-4 py-3 sm:px-5">
-          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-label text-paper-muted">
-            <Terminal className="h-3.5 w-3.5 text-signal" aria-hidden="true" />
-            <span>[ INDEPENDENT RPC / CURL VERIFICATION · ZERO TRUST ]</span>
-          </div>
-          <span className="font-mono text-[10px] uppercase tracking-label text-positive">
-            Run against {PRIMARY_RPC_URL}
-          </span>
-        </div>
-
-        <div className="divide-y divide-line">
-          {[
-            {
-              id: "seat-keys",
-              index: "01",
-              title: "Seat Zero-Key Check (`view_access_key_list`)",
-              expected: `"keys": []`,
-              cmd: `curl -s ${PRIMARY_RPC_URL} -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"1","method":"query","params":{"request_type":"view_access_key_list","finality":"final","account_id":"${seat.tokenId}"}}'`,
-            },
-            {
-              id: "vault-hash",
-              index: "02",
-              title: "Pinned Vault WASM Hash (`view_account`)",
-              expected: `"code_hash": "DFuv6MrVh9yz62uvRxYbZhAEewiWeqUKdYvb3kPLmwSg"`,
-              cmd: `curl -s ${PRIMARY_RPC_URL} -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"1","method":"query","params":{"request_type":"view_account","finality":"final","account_id":"${seat.tokenId}"}}'`,
-            },
-            {
-              id: "pair-check",
-              index: "03",
-              title: "Canonical Vault Item Info (`nft_item_info`)",
-              expected: `"spec": "sharded-item-1.0.0", "owner_id": "${seat.ownerId}"`,
-              cmd: `curl -s ${PRIMARY_RPC_URL} -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"1","method":"query","params":{"request_type":"call_function","finality":"final","account_id":"${seat.tokenId}","method_name":"nft_item_info","args_base64":"e30="}}'`,
-            },
-            {
-              id: "parent-seal",
-              index: "04",
-              title: "Sealed Parent Registry (`view_access_key_list`)",
-              expected: `"keys": [] (tx BETN1taR…4ek)`,
-              cmd: `curl -s ${PRIMARY_RPC_URL} -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"1","method":"query","params":{"request_type":"view_access_key_list","finality":"final","account_id":"${registryId || DEFAULT_REGISTRY_ID}"}}'`,
-            },
-          ].map((item) => {
-            const isCopied = copiedCmdId === item.id;
-            return (
-              <div
-                key={item.id}
-                className="flex flex-col gap-2 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 font-mono text-12">
-                    <span className="text-[10px] text-paper-muted">{item.index}</span>
-                    <span className="text-paper">{item.title}</span>
-                    <span className="rounded border border-[rgba(123,216,143,0.3)] bg-positive-soft px-1.5 py-0.5 text-[10px] text-positive">
-                      Expects {item.expected}
-                    </span>
-                  </div>
-                  <code className="mt-1 block truncate font-mono text-[11px] text-paper-muted">
-                    $ {item.cmd}
-                  </code>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    playTactileClick();
-                    if (typeof navigator !== "undefined" && navigator.clipboard) {
-                      void navigator.clipboard.writeText(item.cmd);
-                    }
-                    setCopiedCmdId(item.id);
-                    window.setTimeout(() => setCopiedCmdId(null), 2000);
-                  }}
-                  className="inline-flex shrink-0 items-center gap-1.5 self-start rounded border border-line bg-surface px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-label text-paper-dim transition-colors hover:border-signal hover:text-paper sm:self-center"
-                >
-                  {isCopied ? (
-                    <>
-                      <Check className="h-3 w-3 text-positive" aria-hidden="true" />
-                      <span className="text-positive">Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3 w-3" aria-hidden="true" />
-                      <span>Copy curl</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </Panel>
 
       {proofQuery.isError ? (
         <p className="flex items-center gap-2 text-12 text-danger" role="alert">

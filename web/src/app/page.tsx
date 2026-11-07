@@ -2,15 +2,14 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
   CalendarDays,
-  Check,
   ChevronRight,
   CircleAlert,
-  Copy,
   FlaskConical,
   ImagePlus,
   Lock,
@@ -18,7 +17,6 @@ import {
   ShieldCheck,
   Sparkles,
   Tag,
-  Terminal,
   Ticket,
   UserRound,
 } from "lucide-react";
@@ -28,7 +26,7 @@ import { useDemo } from "@/lib/demo/DemoProvider";
 import { useEvents, useProof, useSeatHistory, useSeats } from "@/lib/chain/hooks";
 import type { HistoryEntry } from "@/lib/chain/types";
 import { parseNearToYocto } from "@/lib/near/format";
-import { playSuccessChime, playTactileClick } from "@/lib/sound";
+import { playTactileClick } from "@/lib/sound";
 import {
   countdownLabel,
   formatDate,
@@ -45,15 +43,12 @@ import { Reveal } from "@/components/ui/Reveal";
 import { MascotPass } from "@/components/brand/MascotPass";
 import { SeatCard } from "@/components/seat/SeatCard";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
-import { PixelChair } from "@/components/seat/PixelChair";
 import { SeatSwitcher } from "@/components/seat/SeatSwitcher";
 import { ProofStamp } from "@/components/seat/ProofStamp";
 import { VerifyDrawer } from "@/components/seat/VerifyDrawer";
 import { ConfirmationSheet } from "@/components/seat/ConfirmationSheet";
 import { HandoffOverlay, type HandoffMode } from "@/components/seat/Handoff";
-import { AsciiVaultField } from "@/components/ascii/AsciiVaultField";
-import { AsciiArchitectureFlow } from "@/components/ascii/AsciiArchitectureFlow";
-import { PixelMatrixReadout } from "@/components/ascii/PixelMatrixReadout";
+import { AsciiVaultField, type FieldMode } from "@/components/ascii/AsciiVaultField";
 
 const PREVIEW_ROLL = [
   { num: "01", tokenId: "s001.logen.testnet", balance: "2.46", holder: "bob.testnet", dots: 4 },
@@ -71,118 +66,69 @@ const PREVIEW_ROLL = [
 ] as const;
 
 function ConnectScreen() {
-  const { openWalletModal, registryId } = useNear();
+  const { openWalletModal } = useNear();
   const { setDemo } = useDemo();
   const [activeRollIdx, setActiveRollIdx] = useState(6);
-  const [copiedCmd, setCopiedCmd] = useState(false);
+  const [vaultMode, setVaultMode] = useState<FieldMode>("seat");
   const activePreview = PREVIEW_ROLL[activeRollIdx] ?? PREVIEW_ROLL[6];
 
-  const proofCmd = `curl -s https://rpc.testnet.near.org -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":"1","method":"query","params":{"request_type":"view_access_key_list","finality":"final","account_id":"s001.${registryId || "logen-84b273.testnet"}"}}'`;
-
-  const copyProofCmd = async () => {
-    playTactileClick();
-    try {
-      await navigator.clipboard.writeText(proofCmd);
-      setCopiedCmd(true);
-      playSuccessChime();
-      window.setTimeout(() => setCopiedCmd(false), 1800);
-    } catch {
-      // Clipboard blocked
-    }
-  };
-
-  const moves = [
+  const moves: Array<{
+    number: string;
+    title: string;
+    copy: string;
+    mode: FieldMode;
+    icon: typeof ImagePlus;
+  }> = [
     {
       number: "01",
       title: "Upload a portrait",
-      copy: "A face for the seat. PNG, JPEG or WebP, up to 8 MB.",
+      copy: "Give the seat its own face. Mint it in one step.",
+      mode: "seat",
       icon: ImagePlus,
     },
     {
       number: "02",
-      title: "Mint the seat",
-      copy: "An NFT and a keyless NEAR wallet in one move.",
+      title: "Hold a keyless wallet",
+      copy: "Ticket revenue lands directly inside the seat.",
+      mode: "cube",
       icon: Sparkles,
     },
     {
       number: "03",
-      title: "Hold the wallet",
-      copy: "The money, history and access travel with the seat.",
+      title: "Sell them together",
+      copy: "When the seat changes hands, the money inside goes with it.",
+      mode: "prism",
       icon: ShieldCheck,
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <section className="terminal-grid relative overflow-hidden rounded border border-line bg-surface">
-        {/* NORRVIK Architectural Telemetry Sub-Header Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-ink-deep/80 px-4 py-2 font-mono text-[9px] uppercase tracking-label text-paper-muted sm:px-6">
-          <div className="flex items-center gap-3">
-            <span className="text-paper-dim">
-              FIG. 01 / KEYLESS SEAT ARCHITECTURE / SHARDED-ITEM-1.0.0
-            </span>
-            <span className="hidden text-paper-muted/60 md:inline">
-              · LOCAL GRID / 1 : 1
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-positive">KEYS 00 / SEALED</span>
-            <span className="hidden text-paper-dim sm:inline">
-              {registryId || "logen-84b273.testnet"}
-            </span>
-          </div>
-        </div>
-
-        <div className="relative grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-14 lg:pl-16">
-          {/* Left-edge vertical elevation ruler (NORRVIK CAD scale) */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-0 hidden w-8 flex-col justify-between border-r border-line/60 bg-ink-deep/40 py-8 font-mono text-[8px] text-paper-muted/65 lg:flex"
-          >
-            {["06", "07", "08", "09", "10", "11", "12"].map((tick) => (
-              <div key={tick} className="flex items-center gap-1">
-                <span className="h-px w-2 bg-line-strong" />
-                <span>{tick}</span>
-              </div>
-            ))}
-          </div>
-
+        <div className="grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-14">
           <div className="min-w-0">
-            <div className="mb-3 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-label text-signal">
-              <span>(01) NEP-171 SEAT</span>
-              <span className="text-paper-muted">/</span>
-              <span>SUB-ACCOUNT VAULT</span>
-              <span className="text-paper-muted">/</span>
-              <span className="text-positive">ZERO KEYS</span>
-            </div>
-
             <h1 className="max-w-[12ch] text-40 font-semibold leading-[0.98] tracking-[-0.035em] text-paper sm:text-72">
               Sell the seat.
               <br />
               <span className="text-signal">The wallet goes with it.</span>
             </h1>
-            <p className="mt-6 max-w-[48ch] font-mono text-14 leading-[1.8] text-paper-dim">
+            <p className="mt-6 max-w-[46ch] font-mono text-14 leading-[1.8] text-paper-dim">
               A membership NFT that owns its own keyless wallet.
               <br />
               Mint it with your own portrait. Hold the seat, hold the money.
             </p>
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-              {/* NORRVIK Split Architectural Primary CTA */}
-              <button
-                type="button"
+              <Button
+                size="lg"
                 onClick={() => {
                   playTactileClick();
                   openWalletModal();
                 }}
-                className="group inline-flex min-h-12 w-full items-stretch overflow-hidden rounded border border-line-strong bg-paper text-left font-mono text-12 font-semibold uppercase tracking-label text-ink-deep transition-transform active:translate-y-px sm:w-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+                className="w-full sm:w-auto"
               >
-                <span className="flex flex-1 items-center px-5 py-3 transition-colors group-hover:bg-white">
-                  Connect wallet
-                </span>
-                <span className="flex w-12 items-center justify-center border-l border-ink-deep/15 bg-signal text-ink-deep transition-colors group-hover:bg-[var(--accent-strong)]">
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                </span>
-              </button>
+                Connect wallet
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Button>
               <LinkButton
                 href="/mint"
                 variant="secondary"
@@ -192,39 +138,6 @@ function ConnectScreen() {
               >
                 Mint a seat
               </LinkButton>
-            </div>
-            <p className="mt-3 max-w-[42ch] text-12 leading-relaxed text-paper-muted">
-              Signing proves you hold a seat. No transaction, no fee. Minting is free
-              in demo.
-            </p>
-
-            {/* Lettra-style one-click RPC zero-key verification command pill */}
-            <div className="mt-4 flex max-w-[480px] items-center justify-between gap-2 rounded border border-line bg-ink-deep px-3 py-2 font-mono text-[11px]">
-              <div className="flex min-w-0 items-center gap-2">
-                <Terminal className="h-3.5 w-3.5 shrink-0 text-signal" aria-hidden="true" />
-                <span className="truncate text-paper-dim">
-                  rpc view_access_key_list({activePreview.tokenId}) →{" "}
-                  <span className="text-positive">&quot;keys&quot;:[]</span>
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => void copyProofCmd()}
-                aria-label="Copy curl on-chain zero-key proof command"
-                className="inline-flex h-6 shrink-0 items-center gap-1 rounded border border-line bg-surface px-2 text-[9px] uppercase tracking-label text-paper-muted transition-colors hover:border-signal hover:text-paper"
-              >
-                {copiedCmd ? (
-                  <>
-                    <Check className="h-3 w-3 text-positive" aria-hidden="true" />
-                    <span className="text-positive">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-3 w-3" aria-hidden="true" />
-                    <span>curl</span>
-                  </>
-                )}
-              </button>
             </div>
 
             <button
@@ -240,7 +153,11 @@ function ConnectScreen() {
             </button>
 
             <div className="mt-8">
-              <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Preview club seats">
+              <div
+                className="flex flex-wrap items-center gap-1.5"
+                role="group"
+                aria-label="Preview club seats"
+              >
                 {PREVIEW_ROLL.map((seatItem, index) => {
                   const selected = index === activeRollIdx;
                   return (
@@ -255,24 +172,30 @@ function ConnectScreen() {
                       }}
                       aria-label={`Preview seat ${seatItem.num} (${seatItem.balance} NEAR inside)`}
                       aria-pressed={selected}
-                      className={`rounded p-0.5 transition-transform duration-150 ${
-                        selected
-                          ? "-translate-y-0.5 ring-1 ring-signal bg-signal-soft"
-                          : "opacity-75 hover:-translate-y-0.5 hover:opacity-100"
-                      }`}
+                      className="relative rounded p-1 transition-transform duration-150 hover:-translate-y-0.5"
                     >
-                      <SeatGlyph
-                        tokenId={seatItem.tokenId}
-                        innerDots={seatItem.dots}
-                        size={22}
-                      />
+                      {selected ? (
+                        <motion.span
+                          layoutId="hero-seat-ring"
+                          transition={{ type: "spring", stiffness: 360, damping: 28 }}
+                          className="absolute inset-0 rounded border border-signal bg-signal-soft"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                      <span className="relative z-10 block">
+                        <SeatGlyph
+                          tokenId={seatItem.tokenId}
+                          innerDots={seatItem.dots}
+                          size={22}
+                        />
+                      </span>
                     </button>
                   );
                 })}
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
-                  12 seats. Each one a wallet ·{" "}
+                  12 seats ·{" "}
                   <span className="text-paper-dim">
                     #{activePreview.num} ({activePreview.balance} NEAR)
                   </span>
@@ -300,128 +223,53 @@ function ConnectScreen() {
             />
           </div>
         </div>
-
-        {/* NORRVIK Multi-Cell Telemetry Dock at bottom of hero */}
-        <div className="grid grid-cols-2 gap-px border-t border-line bg-line font-mono text-[9px] uppercase tracking-label sm:grid-cols-4 lg:grid-cols-7">
-          <div className="bg-ink-deep px-3.5 py-3">
-            <div className="text-paper-muted">Interleavings</div>
-            <div className="mt-1 text-12 font-semibold text-paper tabular">80,620</div>
-          </div>
-          <div className="bg-ink-deep px-3.5 py-3">
-            <div className="text-paper-muted">Access keys</div>
-            <div className="mt-1 text-12 font-semibold text-positive tabular">0 / 0</div>
-          </div>
-          <div className="bg-ink-deep px-3.5 py-3">
-            <div className="text-paper-muted">Pool share</div>
-            <div className="mt-1 text-12 font-semibold text-signal tabular">40.0%</div>
-          </div>
-          <Link
-            href="/mint"
-            onClick={() => playTactileClick()}
-            className="bg-ink-deep px-3.5 py-3 transition-colors hover:bg-surface"
-          >
-            <div className="text-signal">01</div>
-            <div className="mt-1 text-paper-dim">Mint seat</div>
-          </Link>
-          <Link
-            href="/events"
-            onClick={() => playTactileClick()}
-            className="bg-ink-deep px-3.5 py-3 transition-colors hover:bg-surface"
-          >
-            <div className="text-signal">02</div>
-            <div className="mt-1 text-paper-dim">Ticket pool</div>
-          </Link>
-          <Link
-            href="/lounge"
-            onClick={() => playTactileClick()}
-            className="bg-ink-deep px-3.5 py-3 transition-colors hover:bg-surface"
-          >
-            <div className="text-signal">03</div>
-            <div className="mt-1 text-paper-dim">Lounge gate</div>
-          </Link>
-          <Link
-            href="/lab"
-            onClick={() => playTactileClick()}
-            className="col-span-2 bg-ink-deep px-3.5 py-3 transition-colors hover:bg-surface sm:col-span-1"
-          >
-            <div className="text-signal">04</div>
-            <div className="mt-1 text-paper-dim">Attack lab</div>
-          </Link>
-        </div>
       </section>
 
       <Reveal>
-        <section className="grid gap-px overflow-hidden rounded border border-line bg-line sm:grid-cols-3">
-          {moves.map((move) => (
-            <div
-              key={move.number}
-              className="bg-surface p-4 sm:p-5"
-            >
-              <span className="font-mono text-[10px] uppercase tracking-label text-signal">
-                {move.number}
-              </span>
-              <h2 className="mt-2 text-16 font-medium text-paper">{move.title}</h2>
-              <p className="mt-1 text-12 leading-relaxed text-paper-muted">
-                {move.copy}
-              </p>
-            </div>
-          ))}
-        </section>
-      </Reveal>
-
-      <Reveal delay={0.04}>
         <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
-          <AsciiVaultField />
+          <AsciiVaultField activeMode={vaultMode} onModeChange={setVaultMode} />
 
-          <Panel className="flex flex-col justify-between p-5 sm:p-6">
-            <div>
-              <h2 className="text-24 font-semibold text-paper">
-                Every seat is a keyless vault.
-              </h2>
-              <p className="mt-2 text-14 leading-relaxed text-paper-muted">
-                Each seat is a dedicated NEAR sub-account with zero access keys.
-                Event revenue flows in automatically, and selling the NFT transfers
-                the entire vault atomically.
-              </p>
-
-              <div className="mt-6 grid grid-cols-3 gap-3 border-y border-line py-4">
-                <div>
-                  <div className="mono-label">Access keys</div>
-                  <div className="mt-2">
-                    <PixelMatrixReadout value="00" size="sm" tone="positive" label="0 access keys" />
+          <div className="flex flex-col justify-between gap-3">
+            {moves.map((move) => {
+              const active = vaultMode === move.mode;
+              return (
+                <button
+                  key={move.number}
+                  type="button"
+                  onClick={() => {
+                    playTactileClick();
+                    setVaultMode(move.mode);
+                  }}
+                  aria-pressed={active}
+                  className={`relative flex flex-1 flex-col justify-center overflow-hidden rounded border p-5 text-left transition-colors ${
+                    active
+                      ? "border-signal bg-surface text-paper"
+                      : "border-line bg-surface/60 text-paper-muted hover:border-line-strong hover:text-paper"
+                  }`}
+                >
+                  {active ? (
+                    <motion.span
+                      layoutId="active-move-bar"
+                      transition={{ type: "spring", stiffness: 340, damping: 28 }}
+                      className="absolute inset-y-0 left-0 w-1 bg-signal"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-label">
+                    <span className="text-signal">{move.number}</span>
+                    {active ? <span className="text-positive">Active view</span> : null}
                   </div>
-                </div>
-                <div>
-                  <div className="mono-label">Pool split</div>
-                  <div className="mt-2">
-                    <PixelMatrixReadout value="40%" size="sm" tone="signal" label="40 percent pool split" />
-                  </div>
-                </div>
-                <div>
-                  <div className="mono-label">Attacks blocked</div>
-                  <div className="mt-2">
-                    <PixelMatrixReadout value="12/12" size="sm" tone="paper" label="12 of 12 attacks blocked" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 grid gap-2 sm:grid-cols-2">
-              <LinkButton href="/lab" variant="secondary" size="sm" className="justify-between">
-                <span>Attack Lab</span>
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </LinkButton>
-              <LinkButton href="/lounge" variant="secondary" size="sm" className="justify-between">
-                <span>Lounge Gate</span>
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </LinkButton>
-            </div>
-          </Panel>
+                  <h2 className="mt-1.5 text-16 font-medium text-paper">
+                    {move.title}
+                  </h2>
+                  <p className="mt-1 text-12 leading-relaxed text-paper-muted">
+                    {move.copy}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
         </section>
-      </Reveal>
-
-      <Reveal delay={0.08}>
-        <AsciiArchitectureFlow />
       </Reveal>
     </div>
   );
@@ -983,16 +831,41 @@ export default function SeatWalletPage() {
             </p>
           ) : null}
 
-          {demo ? (
+          <div className="flex flex-wrap items-center gap-4 pt-1">
             <button
               type="button"
-              onClick={() => void simulateSale()}
-              className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 hover:text-caution"
+              onClick={openDelegate}
+              disabled={listed || cooldown}
+              className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 hover:text-paper disabled:opacity-50"
             >
-              <FlaskConical className="h-3 w-3" aria-hidden="true" />
-              Demo: simulate a sale
+              {selectedSeat.delegate
+                ? `Delegate: ${selectedSeat.delegate.accountId} (${near(
+                    selectedSeat.delegate.remainingYocto,
+                    2
+                  )} NEAR)`
+                : "Set spending delegate"}
             </button>
-          ) : null}
+            {selectedSeat.delegate ? (
+              <button
+                type="button"
+                onClick={() => void revokeDelegate()}
+                disabled={listed || pending}
+                className="font-mono text-[10px] uppercase tracking-label text-danger underline decoration-line underline-offset-4 hover:opacity-80 disabled:opacity-50"
+              >
+                Revoke
+              </button>
+            ) : null}
+            {demo ? (
+              <button
+                type="button"
+                onClick={() => void simulateSale()}
+                className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 hover:text-caution"
+              >
+                <FlaskConical className="h-3 w-3" aria-hidden="true" />
+                Demo: simulate a sale
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="space-y-6 lg:col-span-7">
@@ -1059,77 +932,6 @@ export default function SeatWalletPage() {
                   />
                 ))
               )}
-            </div>
-          </Panel>
-
-          <Panel>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
-              <div>
-                <div className="mono-label">
-                  Epoch-bound delegate · seq #
-                  {selectedSeat.rotationSeq ?? Math.max(0, selectedSeat.holdersCount - 1)}
-                </div>
-                <h2 className="mt-1 text-16 font-medium text-paper">
-                  Agent / hot-key spending allowance
-                </h2>
-              </div>
-              <Chip tone={selectedSeat.delegate ? "positive" : "neutral"} dot>
-                {selectedSeat.delegate ? "Active for this epoch" : "None configured"}
-              </Chip>
-            </div>
-            <div className="px-4 py-4">
-              {selectedSeat.delegate ? (
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <div className="mono-label">Delegate account</div>
-                    <div className="mt-1 truncate font-mono text-14 text-paper">
-                      {selectedSeat.delegate.accountId}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="mono-label">Remaining allowance</div>
-                    <div className="mt-1 font-mono text-14 tabular text-positive">
-                      {near(selectedSeat.delegate.remainingYocto, 2)} NEAR
-                    </div>
-                  </div>
-                  <div className="sm:text-right">
-                    <div className="mono-label">Bound to epoch</div>
-                    <div className="mt-1 font-mono text-14 tabular text-paper">
-                      rotation_seq #{selectedSeat.delegate.seq}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-12 leading-relaxed text-paper-muted">
-                  Grant a bounded NEAR spending allowance (`set_delegate`) to an AI agent or
-                  hot wallet without adding an access key to the seat.
-                </p>
-              )}
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-                <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
-                  Auto-wiped on sale or transfer (`v_rotate` / `v_settle_sale`)
-                </span>
-                <div className="flex items-center gap-2">
-                  {selectedSeat.delegate ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={listed || pending}
-                      onClick={() => void revokeDelegate()}
-                    >
-                      Revoke
-                    </Button>
-                  ) : null}
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={listed || cooldown}
-                    onClick={openDelegate}
-                  >
-                    {selectedSeat.delegate ? "Update allowance" : "Set delegate"}
-                  </Button>
-                </div>
-              </div>
             </div>
           </Panel>
         </div>

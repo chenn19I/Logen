@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   CircleAlert,
@@ -70,24 +71,15 @@ function ListingCard({
   const isMine = listing.seller === currentAccount;
   const price = near(listing.priceYocto, 2);
   const inside = near(listing.insideYocto, 2);
-  const priceNum = nearValue(listing.priceYocto, 4);
-  const insideNum = nearValue(listing.insideYocto, 4);
-  const netExposure = Math.max(0, priceNum - insideNum).toFixed(2);
-  const royaltyNear = (priceNum * 0.05).toFixed(2);
 
   return (
-    <Panel className="card-lift flex flex-col">
+    <Panel className="card-lift flex h-full flex-col">
       <div className="flex items-start justify-between gap-2 border-b border-line px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-12 uppercase tracking-label text-paper-muted">
-            Seat {number}
-          </span>
-          <span className="rounded border border-line bg-surface-sunken px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-label text-paper-muted">
-            NONCE #{listing.nonce}
-          </span>
-        </div>
+        <span className="font-mono text-12 uppercase tracking-label text-paper-muted">
+          Seat {number}
+        </span>
         <Chip tone="caution" dot>
-          Listed · Frozen
+          Listed
         </Chip>
       </div>
 
@@ -124,16 +116,6 @@ function ListingCard({
           <span className="font-mono text-16 tabular text-positive">
             {inside} NEAR
           </span>
-        </div>
-        <div className="grid grid-cols-2 gap-2 border-b border-line py-2.5 font-mono text-[10px] uppercase tracking-label">
-          <div>
-            <span className="text-paper-muted">Net exposure</span>
-            <div className="mt-0.5 text-12 text-paper tabular">{netExposure} NEAR</div>
-          </div>
-          <div className="text-right">
-            <span className="text-paper-muted">Club royalty (5%)</span>
-            <div className="mt-0.5 text-12 text-paper-dim tabular">{royaltyNear} NEAR</div>
-          </div>
         </div>
         <div className="py-3">
           <CompareBar inside={listing.insideYocto} price={listing.priceYocto} />
@@ -310,13 +292,25 @@ export default function MarketPage() {
         </Panel>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {listings.map((listing) => (
-            <ListingCard
+          {listings.map((listing, idx) => (
+            <motion.div
               key={listing.tokenId}
-              listing={listing}
-              currentAccount={currentAccount}
-              onBuy={openBuy}
-            />
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                type: "spring",
+                stiffness: 340,
+                damping: 28,
+                delay: idx * 0.05,
+              }}
+              className="h-full"
+            >
+              <ListingCard
+                listing={listing}
+                currentAccount={currentAccount}
+                onBuy={openBuy}
+              />
+            </motion.div>
           ))}
         </div>
       )}

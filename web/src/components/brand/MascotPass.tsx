@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { Eye, ScanLine } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Eye, Lock, ShieldCheck, Sparkles } from "lucide-react";
 import { LogenMascot } from "@/components/brand/LogenMascot";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
 import { playScanPulse, playTactileClick } from "@/lib/sound";
@@ -17,9 +18,8 @@ export interface MascotPassProps {
 }
 
 /**
- * The seat pass: the mascot framed as a physical club credential with subtle
- * 3D perspective tilt, live CAD yaw/pitch telemetry, and an interactive
- * X-Ray Vault Inspection mode ("What's inside the seat").
+ * Physical club pass with smooth 3D pointer tilt, animated number transitions,
+ * and a clean visual X-Ray reveal (no wall of text).
  */
 export function MascotPass({
   className,
@@ -44,10 +44,10 @@ export function MascotPass({
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const rect = el.getBoundingClientRect();
-    const nx = (e.clientX - rect.left) / rect.width; // 0..1
-    const ny = (e.clientY - rect.top) / rect.height; // 0..1
-    const ry = (nx - 0.5) * 9;
-    const rx = (0.5 - ny) * 8;
+    const nx = (e.clientX - rect.left) / rect.width;
+    const ny = (e.clientY - rect.top) / rect.height;
+    const ry = (nx - 0.5) * 11;
+    const rx = (0.5 - ny) * 9;
     setTilt({
       rx,
       ry,
@@ -68,70 +68,48 @@ export function MascotPass({
     else playTactileClick();
   };
 
-  const yawStr = String(Math.round(Math.abs(tilt.ry * 10))).padStart(3, "0");
-  const pitchStr = String(Math.round(45 + tilt.rx * 2)).padStart(2, "0");
-
   return (
     <div
-      className={cn("w-full", className)}
-      style={{ perspective: "1100px" }}
+      className={cn("w-full select-none", className)}
+      style={{ perspective: "1200px" }}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[9px] uppercase tracking-label text-paper-muted">
-        <div className="flex items-center gap-2">
-          <span>Member pass / {seatNumber}</span>
-          <span className="hidden text-paper-muted/60 sm:inline">
-            · YAW {yawStr} / PITCH {pitchStr}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={toggleXray}
-            aria-pressed={xray}
-            className={cn(
-              "inline-flex items-center gap-1 rounded border px-2 py-0.5 font-mono text-[8px] uppercase tracking-label transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]",
-              xray
-                ? "border-signal bg-signal-soft text-signal-strong"
-                : "border-line bg-surface-sunken text-paper-dim hover:border-line-strong hover:text-paper"
-            )}
-          >
-            {xray ? (
-              <>
-                <Eye className="h-2.5 w-2.5 text-signal" aria-hidden="true" />
-                Portrait view
-              </>
-            ) : (
-              <>
-                <ScanLine className="h-2.5 w-2.5 text-signal" aria-hidden="true" />
-                X-Ray vault
-              </>
-            )}
-          </button>
-          <span className="inline-flex items-center gap-1.5 text-positive">
-            <span className="h-1 w-1 rounded-full bg-positive" aria-hidden="true" />
-            Live
-          </span>
-        </div>
+      <div className="flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+        <span>Seat {seatNumber}</span>
+        <button
+          type="button"
+          onClick={toggleXray}
+          aria-pressed={xray}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-label transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]",
+            xray
+              ? "border-signal bg-signal-soft text-paper"
+              : "border-line bg-surface text-paper-muted hover:border-line-strong hover:text-paper"
+          )}
+        >
+          <Eye className="h-2.5 w-2.5 text-signal" aria-hidden="true" />
+          {xray ? "Portrait" : "Inside vault"}
+        </button>
       </div>
 
       <div
         ref={cardRef}
+        onClick={toggleXray}
         onPointerMove={handlePointerMove}
         onPointerLeave={handlePointerLeave}
         style={{
           transform: tilt.active
-            ? `rotateX(${tilt.rx.toFixed(2)}deg) rotateY(${tilt.ry.toFixed(2)}deg) translateZ(0)`
-            : "rotateX(0deg) rotateY(0deg) translateZ(0)",
+            ? `rotateX(${tilt.rx.toFixed(2)}deg) rotateY(${tilt.ry.toFixed(2)}deg) scale3d(1.01, 1.01, 1.01)`
+            : "rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)",
           transition: tilt.active
-            ? "transform 90ms ease-out"
-            : "transform 420ms cubic-bezier(0.22, 1, 0.36, 1)",
+            ? "transform 80ms ease-out"
+            : "transform 500ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
-        className="relative mt-2 overflow-hidden rounded border border-line bg-[#05070d] will-change-transform"
+        className="group relative mt-2 cursor-pointer overflow-hidden rounded border border-line bg-[#05070d] will-change-transform hover:border-line-strong"
       >
         <div
           className={cn(
-            "transition-all duration-300",
-            xray ? "scale-[0.98] opacity-25 saturate-0" : "opacity-100"
+            "transition-all duration-500 ease-out",
+            xray ? "scale-105 opacity-20 blur-[2px] saturate-0" : "scale-100 opacity-100"
           )}
         >
           <LogenMascot
@@ -144,184 +122,156 @@ export function MascotPass({
           />
         </div>
 
-        {/* Subtle interactive specular sheen */}
+        {/* Interactive pointer spotlight sheen */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 transition-opacity duration-300"
           style={{
             opacity: tilt.active || xray ? 1 : 0,
-            background: `radial-gradient(290px circle at ${tilt.gx}% ${tilt.gy}%, rgba(77, 232, 255, ${
-              xray ? "0.22" : "0.14"
+            background: `radial-gradient(300px circle at ${tilt.gx}% ${tilt.gy}%, rgba(77, 232, 255, ${
+              xray ? "0.2" : "0.14"
             }), rgba(236, 232, 216, 0.04) 45%, transparent 72%)`,
           }}
         />
 
-        {/* X-Ray Vault Internal Anatomy Overlay (Bardhyl "What's In My Bag" + NORRVIK LiDAR) */}
-        {xray ? (
-          <div
-            className="absolute inset-0 z-10 flex flex-col justify-between bg-[radial-gradient(circle_at_50%_42%,rgba(59,155,255,0.12),rgba(5,7,13,0.86)_78%)] p-4"
-            aria-label="X-Ray internal seat vault anatomy"
-          >
-            {/* Blueprint grid & diagonal LiDAR scan beam */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(77,232,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(77,232,255,0.06)_1px,transparent_1px)] bg-[size:24px_24px]"
-            />
+        {/* Visual Vault Core Overlay (minimal, animated, zero text bloat) */}
+        <AnimatePresence>
+          {xray ? (
+            <motion.div
+              key="xray-overlay"
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_45%,rgba(59,155,255,0.16),rgba(5,7,13,0.88)_75%)] p-6 text-center"
+            >
+              {/* Animated orbital vault ring */}
+              <motion.div
+                initial={{ rotate: -20, scale: 0.85 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ type: "spring", stiffness: 180, damping: 18 }}
+                className="relative flex h-36 w-36 flex-col items-center justify-center rounded-full border border-[rgba(77,232,255,0.35)] bg-[#060c16]/90 shadow-[0_0_40px_rgba(77,232,255,0.18)]"
+              >
+                <span className="font-mono text-[9px] uppercase tracking-label text-paper-muted">
+                  Locked inside
+                </span>
+                <span className="mt-1 font-mono text-32 font-semibold leading-none text-positive tabular">
+                  {balance}
+                </span>
+                <span className="mt-1 font-mono text-[9px] uppercase tracking-label text-[#4de8ff]">
+                  NEAR
+                </span>
+              </motion.div>
 
-            <div className="relative z-10 mt-11 space-y-2.5">
-              <div className="flex items-center justify-between border-b border-[rgba(77,232,255,0.24)] pb-1.5 font-mono text-[8px] uppercase tracking-label text-[#4de8ff]">
-                <span>[ INTERNAL VAULT ANATOMY · SHARDED-ITEM-1.0.0 ]</span>
-                <span>SCAN 100%</span>
-              </div>
+              {/* 3 minimal animated pills */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08, duration: 0.25 }}
+                className="mt-5 flex flex-wrap justify-center gap-2 font-mono text-[10px] uppercase tracking-label"
+              >
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(123,216,143,0.35)] bg-[#07130d]/90 px-3 py-1 text-positive">
+                  <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+                  0 Keys
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(77,232,255,0.3)] bg-[#070d16]/90 px-3 py-1 text-[#4de8ff]">
+                  <Lock className="h-3 w-3" aria-hidden="true" />
+                  Pinned Code
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface/90 px-3 py-1 text-paper">
+                  <Sparkles className="h-3 w-3 text-signal" aria-hidden="true" />
+                  1-Step Handoff
+                </span>
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
-              <div className="grid gap-2">
-                <div className="rounded border border-[rgba(77,232,255,0.28)] bg-[#070d16]/90 p-2.5 font-mono">
-                  <div className="flex items-center justify-between text-[8px] uppercase tracking-label text-paper-muted">
-                    <span>01 / SUB-ACCOUNT IDENTITY</span>
-                    <span className="text-positive">KEYS: [] (0)</span>
-                  </div>
-                  <div className="mt-1 truncate text-[11px] text-paper">
-                    {tokenId}
-                  </div>
-                  <div className="mt-0.5 text-[9px] text-paper-muted">
-                    Created via atomic batch without AddKey (Invariant K1)
-                  </div>
-                </div>
-
-                <div className="rounded border border-[rgba(77,232,255,0.28)] bg-[#070d16]/90 p-2.5 font-mono">
-                  <div className="flex items-center justify-between text-[8px] uppercase tracking-label text-paper-muted">
-                    <span>02 / PINNED VAULT WASM</span>
-                    <span className="text-[#4de8ff]">IMMUTABLE</span>
-                  </div>
-                  <div className="mt-1 truncate text-[10px] text-paper-dim">
-                    4MMm6JjN8YiGcx11EJoNejVZGeZEpeGXU4Ak32FhZUk3
-                  </div>
-                  <div className="mt-0.5 text-[9px] text-paper-muted">
-                    Parent registry sealed · zero upgrade authority (K7)
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded border border-[rgba(123,216,143,0.3)] bg-[#07130d]/90 p-2.5 font-mono">
-                    <div className="text-[8px] uppercase tracking-label text-paper-muted">
-                      03 / INSIDE BALANCE
-                    </div>
-                    <div className="mt-1 text-[14px] font-semibold text-positive tabular">
-                      {balance} NEAR
-                    </div>
-                    <div className="mt-0.5 text-[8px] uppercase tracking-label text-paper-muted">
-                      0.05 N storage reserve
-                    </div>
-                  </div>
-
-                  <div className="rounded border border-[rgba(77,232,255,0.28)] bg-[#070d16]/90 p-2.5 font-mono">
-                    <div className="text-[8px] uppercase tracking-label text-paper-muted">
-                      04 / ROTATION EPOCH
-                    </div>
-                    <div className="mt-1 text-[14px] font-semibold text-signal tabular">
-                      seq = 0
-                    </div>
-                    <div className="mt-0.5 text-[8px] uppercase tracking-label text-paper-muted">
-                      Moves in 1 receipt
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative z-10 mb-20 flex items-center justify-between rounded border border-line bg-[#06090f]/90 px-2.5 py-1.5 font-mono text-[8px] uppercase tracking-label text-paper-muted">
-              <span>PAIR CHECK: REGISTRY == VAULT</span>
-              <span className="text-positive">VERIFIED T0–T3</span>
-            </div>
-          </div>
-        ) : null}
-
-        <span
-          className="pointer-events-none absolute left-2 top-2 z-20 h-3 w-3 border-l border-t border-[rgba(236,232,216,0.3)]"
-          aria-hidden="true"
-        />
-        <span
-          className="pointer-events-none absolute right-2 top-2 z-20 h-3 w-3 border-r border-t border-[rgba(236,232,216,0.3)]"
-          aria-hidden="true"
-        />
-        <span
-          className="pointer-events-none absolute bottom-2 left-2 z-20 h-3 w-3 border-b border-l border-[rgba(236,232,216,0.3)]"
-          aria-hidden="true"
-        />
-        <span
-          className="pointer-events-none absolute bottom-2 right-2 z-20 h-3 w-3 border-b border-r border-[rgba(236,232,216,0.3)]"
-          aria-hidden="true"
-        />
-
+        {/* Top header inside card */}
         <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-4 p-4">
           <div>
             <div className="font-display text-[13px] font-semibold uppercase leading-none tracking-[0.18em] text-paper">
               Logen
             </div>
-            <div className="mt-1.5 font-mono text-[8px] uppercase tracking-label text-paper-muted">
-              {tokenId}
-            </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={tokenId}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16 }}
+                className="mt-1.5 font-mono text-[9px] uppercase tracking-label text-paper-muted"
+              >
+                {tokenId}
+              </motion.div>
+            </AnimatePresence>
           </div>
-          <div className="text-right font-mono text-[8px] uppercase leading-relaxed tracking-label text-paper-muted">
-            <div className="text-[#4de8ff]">{holderLabel}</div>
-            <div>0 Access Keys</div>
-          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={holderLabel}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.16 }}
+              className="rounded-full border border-[rgba(77,232,255,0.25)] bg-[#050a14]/80 px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-label text-[#4de8ff] backdrop-blur-sm"
+            >
+              {holderLabel}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
+        {/* Bottom pass footer with spring-animated seat number & balance */}
         <div className="absolute inset-x-0 bottom-0 z-20 p-4">
           <div className="flex items-end justify-between gap-4">
             <div className="flex items-end gap-3">
-              <span aria-hidden="true">
+              <motion.span
+                key={tokenId}
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                aria-hidden="true"
+              >
                 <SeatGlyph tokenId={tokenId} innerDots={innerDots} size={38} />
-              </span>
+              </motion.span>
               <div>
                 <div className="font-mono text-[8px] uppercase tracking-label text-paper-muted">
-                  Seat no.
+                  Seat
                 </div>
-                <div className="mt-1 font-mono text-[52px] leading-[0.72] tracking-[-0.05em] text-paper tabular transition-all duration-150">
-                  {seatNumber}
-                </div>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={seatNumber}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.16, ease: "easeOut" }}
+                    className="mt-1 font-mono text-[52px] leading-[0.72] tracking-[-0.05em] text-paper tabular"
+                  >
+                    {seatNumber}
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </div>
             <div className="text-right">
               <div className="font-mono text-[8px] uppercase tracking-label text-paper-muted">
                 Inside
               </div>
-              <div className="mt-1 font-mono text-[20px] leading-none text-positive tabular transition-all duration-150">
-                {balance}
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={balance}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.16, ease: "easeOut" }}
+                  className="mt-1 font-mono text-[22px] leading-none text-positive tabular"
+                >
+                  {balance}
+                </motion.div>
+              </AnimatePresence>
               <div className="mt-1 font-mono text-[8px] uppercase tracking-label text-paper-muted">
-                NEAR / 0 keys
+                NEAR
               </div>
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-[rgba(236,232,216,0.18)] pt-2.5 font-mono text-[8px] uppercase tracking-label">
-            <span className="text-paper-muted">
-              {xray ? "X-Ray inspection active" : "Keeper of the seat"}
-            </span>
-            <span className="text-[#4de8ff]">No keys, ever</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-px border-x border-b border-line bg-line">
-        <div className="bg-ink px-2.5 py-2.5">
-          <div className="font-mono text-[8px] uppercase tracking-label text-paper-muted">
-            Network
-          </div>
-          <div className="mt-1 font-mono text-[10px] text-paper">NEAR Testnet</div>
-        </div>
-        <div className="bg-ink px-2.5 py-2.5">
-          <div className="font-mono text-[8px] uppercase tracking-label text-paper-muted">
-            Wallet
-          </div>
-          <div className="mt-1 font-mono text-[10px] text-positive">Keyless</div>
-        </div>
-        <div className="bg-ink px-2.5 py-2.5">
-          <div className="font-mono text-[8px] uppercase tracking-label text-paper-muted">
-            Access
-          </div>
-          <div className="mt-1 font-mono text-[10px] text-paper">Holder</div>
         </div>
       </div>
     </div>

@@ -1,22 +1,16 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowRight,
   ArrowUpRight,
   Check,
   ExternalLink,
-  Layers,
   Play,
   RotateCcw,
-  ShieldCheck,
-  Terminal,
 } from "lucide-react";
 import {
-  createSimulatorPresets,
   THREAT_MODEL_A1_A12,
-  type SimPresetId,
-  type SimWorldState,
   type ThreatScenario,
 } from "@/lib/near/sim";
 import { EXPLORER_URL } from "@/lib/near/rpc";
@@ -25,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Sheet } from "@/components/ui/Sheet";
-import { PixelMatrixReadout } from "@/components/ascii/PixelMatrixReadout";
 
 interface ReportResult {
   id: string;
@@ -109,22 +102,30 @@ function AttackRow({
 
       <div className="min-w-0">
         <p className="text-16 leading-snug text-paper">{title}</p>
-        {tried ? (
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <BlockedStamp small />
-            <span className="font-mono text-[10px] uppercase tracking-label text-positive">
-              {errorCode}
-            </span>
-            <button
-              type="button"
-              onClick={() => onOpen(scenario)}
-              className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 hover:text-paper"
+        <AnimatePresence>
+          {tried ? (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18 }}
+              className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2"
             >
-              See the test
-              <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
-            </button>
-          </div>
-        ) : null}
+              <BlockedStamp small />
+              <span className="font-mono text-[10px] uppercase tracking-label text-positive">
+                {errorCode}
+              </span>
+              <button
+                type="button"
+                onClick={() => onOpen(scenario)}
+                className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 hover:text-paper"
+              >
+                See the test
+                <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+              </button>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
 
       <Button
@@ -140,476 +141,132 @@ function AttackRow({
   );
 }
 
-function cloneWorld(world: SimWorldState): SimWorldState {
-  return {
-    ...world,
-    wallets: { ...world.wallets },
-    logs: world.logs.map((entry) => ({ ...entry })),
-  };
-}
+const VISUAL_RACES = [
+  {
+    id: "payout",
+    label: "Payout mid-sale",
+    steps: [
+      { tag: "01", title: "Ticket payout in flight", status: "+20 NEAR to seat", ok: true },
+      { tag: "02", title: "Seller tries to drain", status: "BLOCKED · E_FROZEN", ok: false },
+      { tag: "03", title: "Buyer settles sale", status: "Owns seat + 40 NEAR", ok: true },
+    ],
+  },
+  {
+    id: "relist",
+    label: "Bait & switch",
+    steps: [
+      { tag: "01", title: "Seller cancels & drains", status: "Relisted at nonce #2", ok: true },
+      { tag: "02", title: "Buyer tx checks nonce #1", status: "BLOCKED · E_NONCE_MISMATCH", ok: false },
+      { tag: "03", title: "Escrow auto-refunds", status: "100% refunded to buyer", ok: true },
+    ],
+  },
+  {
+    id: "sync",
+    label: "Lost callback",
+    steps: [
+      { tag: "01", title: "Callback drops mid-transfer", status: "Vault ahead of index", ok: true },
+      { tag: "02", title: "Old owner tries transfer", status: "BLOCKED · E_NOT_OWNER", ok: false },
+      { tag: "03", title: "Permissionless sync()", status: "Index healed to seq #1", ok: true },
+    ],
+  },
+] as const;
 
 function ReceiptInterleavingWorkbench() {
-  const presets = useMemo(() => createSimulatorPresets(), []);
   const {
     playTactileClick: click,
     playBlockedThud: blocked,
     playSuccessChime: success,
   } = useSound();
-  const [presetId, setPresetId] = useState<SimPresetId>("s1_payout_race");
-  const activePreset = useMemo(
-    () => presets.find((item) => item.id === presetId) ?? presets[0],
-    [presets, presetId]
-  );
+  const [raceId, setRaceId] = useState<(typeof VISUAL_RACES)[number]["id"]>("payout");
+  const [activeStep, setActiveStep] = useState<number>(2);
+  const [playing, setPlaying] = useState(false);
 
-  const [world, setWorld] = useState<SimWorldState>(() =>
-    cloneWorld(presets[0].initialWorld)
-  );
-  const [cursors, setCursors] = useState<Record<string, number>>({});
+  const race = VISUAL_RACES.find((r) => r.id === raceId) ?? VISUAL_RACES[0];
 
-  const resetSim = useCallback(
-    (targetPreset = activePreset) => {
-      setWorld(cloneWorld(targetPreset.initialWorld));
-      const initialCursors: Record<string, number> = {};
-      targetPreset.transactions.forEach((tx) => {
-        initialCursors[tx.txId] = 0;
-      });
-      setCursors(initialCursors);
-    },
-    [activePreset]
-  );
-
-  useEffect(() => {
-    resetSim(activePreset);
-  }, [activePreset, resetSim]);
-
-  const stepTransaction = (txId: string) => {
-    const tx = activePreset.transactions.find((item) => item.txId === txId);
-    if (!tx) return;
-    const idx = cursors[txId] ?? 0;
-    const receipt = tx.receipts[idx];
-    if (!receipt) return;
-
-    const nextWorld = cloneWorld(world);
-    receipt.execute(nextWorld);
-    const latestLog = nextWorld.logs[nextWorld.logs.length - 1];
-    if (latestLog?.outcome === "BLOCKED") {
-      blocked();
-    } else {
-      click();
-    }
-    setWorld(nextWorld);
-    setCursors((prev) => ({ ...prev, [txId]: idx + 1 }));
+  const playRace = async (targetId = raceId) => {
+    if (playing) return;
+    click();
+    setRaceId(targetId);
+    setPlaying(true);
+    setActiveStep(0);
+    await new Promise((r) => window.setTimeout(r, 420));
+    setActiveStep(1);
+    blocked();
+    await new Promise((r) => window.setTimeout(r, 480));
+    setActiveStep(2);
+    success();
+    setPlaying(false);
   };
-
-  const runSchedule = (txSequence: string[]) => {
-    const nextWorld = cloneWorld(activePreset.initialWorld);
-    const nextCursors: Record<string, number> = {};
-    activePreset.transactions.forEach((tx) => {
-      nextCursors[tx.txId] = 0;
-    });
-
-    let sawBlocked = false;
-    for (const txId of txSequence) {
-      const tx = activePreset.transactions.find((item) => item.txId === txId);
-      if (!tx) continue;
-      const idx = nextCursors[txId] ?? 0;
-      const receipt = tx.receipts[idx];
-      if (!receipt) continue;
-      receipt.execute(nextWorld);
-      const latestLog = nextWorld.logs[nextWorld.logs.length - 1];
-      if (latestLog?.outcome === "BLOCKED") sawBlocked = true;
-      nextCursors[txId] = idx + 1;
-    }
-
-    if (sawBlocked) blocked();
-    else success();
-    setWorld(nextWorld);
-    setCursors(nextCursors);
-  };
-
-  const totalRemaining = activePreset.transactions.reduce((acc, tx) => {
-    const cur = cursors[tx.txId] ?? 0;
-    return acc + Math.max(0, tx.receipts.length - cur);
-  }, 0);
-
-  const pairStatus =
-    world.vaultOwner === world.indexOwner && world.vaultSeq === world.indexSeq
-      ? "Consistent"
-      : world.vaultSeq > world.indexSeq
-        ? "IndexBehind"
-        : "Diverged";
 
   return (
     <section
-      aria-labelledby="interleaving-workbench-heading"
-      className="overflow-hidden rounded border border-line bg-ink-deep"
+      aria-label="Live receipt race simulator"
+      className="overflow-hidden rounded border border-line bg-surface p-4 sm:p-5"
     >
-      {/* Top NORRVIK-style Telemetry Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3">
-        <div className="flex items-center gap-2.5">
-          <Layers className="h-4 w-4 text-signal" aria-hidden="true" />
-          <span className="font-mono text-[10px] uppercase tracking-label text-signal">
-            [ INTERACTIVE RECEIPT-INTERLEAVING WORKBENCH · TRACK 10 R4 ]
-          </span>
-        </div>
-        <span className="font-mono text-[10px] uppercase tracking-label text-positive">
-          {activePreset.totalInterleavingsInRustTest.toLocaleString("en-US")} schedules proved in Rust
-        </span>
-      </div>
-
-      <div className="p-4 sm:p-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2
-              id="interleaving-workbench-heading"
-              className="text-24 font-semibold text-paper"
-            >
-              Step through in-flight NEAR receipts in any order.
-            </h2>
-            <p className="mt-1.5 max-w-[68ch] text-14 leading-relaxed text-paper-muted">
-              {activePreset.description}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              click();
-              resetSim(activePreset);
-            }}
-            className="inline-flex items-center gap-1.5 rounded border border-line bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted transition-colors hover:border-line-strong hover:text-paper"
-          >
-            <RotateCcw className="h-3 w-3" aria-hidden="true" />
-            Reset state
-          </button>
-        </div>
-
-        {/* Scenario Selector Tabs */}
-        <div className="mt-5 grid gap-2 sm:grid-cols-3">
-          {presets.map((preset, idx) => {
-            const active = preset.id === activePreset.id;
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {VISUAL_RACES.map((item) => {
+            const active = item.id === raceId;
             return (
               <button
-                key={preset.id}
+                key={item.id}
                 type="button"
-                onClick={() => {
-                  click();
-                  setPresetId(preset.id);
-                }}
+                onClick={() => void playRace(item.id)}
                 className={cn(
-                  "flex flex-col items-start justify-between rounded border p-3 text-left transition-colors",
-                  active
-                    ? "border-signal bg-[rgba(232,90,42,0.1)] text-paper"
-                    : "border-line bg-surface text-paper-muted hover:border-line-strong hover:text-paper"
+                  "relative rounded px-3 py-1.5 font-mono text-[10px] uppercase tracking-label transition-colors",
+                  active ? "text-paper" : "text-paper-muted hover:text-paper"
                 )}
               >
-                <div className="flex w-full items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-label">
-                  <span className={active ? "text-signal" : "text-paper-muted"}>
-                    0{idx + 1} / SCENARIO
-                  </span>
-                  <span className="text-positive">
-                    {preset.totalInterleavingsInRustTest.toLocaleString("en-US")} runs
-                  </span>
-                </div>
-                <div className="mt-1.5 font-mono text-12 font-semibold text-paper">
-                  {preset.title}
-                </div>
+                {active ? (
+                  <motion.span
+                    layoutId="active-race-pill"
+                    transition={{ type: "spring", stiffness: 360, damping: 28 }}
+                    className="absolute inset-0 rounded border border-signal bg-signal-soft"
+                    aria-hidden="true"
+                  />
+                ) : null}
+                <span className="relative z-10">{item.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Quick Race Schedule Presets */}
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-y border-line py-3">
-          <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
-            Quick race schedules:
-          </span>
-          {activePreset.id === "s1_payout_race" ? (
-            <>
-              <button
-                type="button"
-                onClick={() =>
-                  runSchedule([
-                    "tx_ticket",
-                    "tx_claim",
-                    "tx_claim",
-                    "tx_seller_withdraw",
-                    "tx_agent_withdraw",
-                    "tx_buy",
-                    "tx_buy",
-                    "tx_buy",
-                  ])
-                }
-                className="rounded border border-line bg-surface px-2.5 py-1 font-mono text-[10px] uppercase tracking-label text-paper-dim transition-colors hover:border-signal hover:text-paper"
-              >
-                Schedule A: Payout lands BEFORE sale settles (R4)
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  runSchedule([
-                    "tx_ticket",
-                    "tx_claim",
-                    "tx_buy",
-                    "tx_buy",
-                    "tx_seller_withdraw",
-                    "tx_agent_withdraw",
-                    "tx_claim",
-                    "tx_buy",
-                  ])
-                }
-                className="rounded border border-line bg-surface px-2.5 py-1 font-mono text-[10px] uppercase tracking-label text-paper-dim transition-colors hover:border-signal hover:text-paper"
-              >
-                Schedule B: Payout lands MID-SALE after v_settle_sale (R4)
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  runSchedule([
-                    "tx_seller_withdraw",
-                    "tx_agent_withdraw",
-                    "tx_buy",
-                    "tx_buy",
-                    "tx_seller_withdraw",
-                    "tx_agent_withdraw",
-                    "tx_buy",
-                  ])
-                }
-                className="rounded border border-line bg-surface px-2.5 py-1 font-mono text-[10px] uppercase tracking-label text-paper-dim transition-colors hover:border-signal hover:text-paper"
-              >
-                Schedule C: Seller + Agent drain race before & after cut-off
-              </button>
-            </>
-          ) : activePreset.id === "s2_bait_and_switch" ? (
-            <>
-              <button
-                type="button"
-                onClick={() =>
-                  runSchedule([
-                    "tx_bob_buy",
-                    "tx_alice_bait",
-                    "tx_alice_bait",
-                    "tx_alice_bait",
-                    "tx_bob_buy",
-                    "tx_bob_buy",
-                  ])
-                }
-                className="rounded border border-line bg-surface px-2.5 py-1 font-mono text-[10px] uppercase tracking-label text-paper-dim transition-colors hover:border-signal hover:text-paper"
-              >
-                Race A: Alice cancels, drains & relists while Bob is in escrow
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  runSchedule([
-                    "tx_bob_buy",
-                    "tx_bob_buy",
-                    "tx_alice_bait",
-                    "tx_bob_buy",
-                  ])
-                }
-                className="rounded border border-line bg-surface px-2.5 py-1 font-mono text-[10px] uppercase tracking-label text-paper-dim transition-colors hover:border-signal hover:text-paper"
-              >
-                Race B: Bob settles before Alice cancel lands
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() =>
-                runSchedule([
-                  "tx_stale_transfer",
-                  "tx_stale_transfer",
-                  "tx_sync",
-                  "tx_sync",
-                  "tx_stale_transfer",
-                ])
-              }
-              className="rounded border border-line bg-surface px-2.5 py-1 font-mono text-[10px] uppercase tracking-label text-paper-dim transition-colors hover:border-signal hover:text-paper"
+        <Button
+          size="sm"
+          variant="secondary"
+          loading={playing}
+          onClick={() => void playRace(raceId)}
+        >
+          <Play className="h-3 w-3" aria-hidden="true" />
+          Simulate race
+        </Button>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {race.steps.map((step, index) => {
+          const reached = index <= activeStep;
+          return (
+            <motion.div
+              key={`${race.id}-${step.tag}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{
+                opacity: reached ? 1 : 0.35,
+                y: 0,
+                scale: index === activeStep && playing ? 1.02 : 1,
+              }}
+              transition={{ type: "spring", stiffness: 300, damping: 24 }}
+              className="rounded border border-line bg-ink-deep p-3.5"
             >
-              Race: Stale owner exploit attempt → Permissionless sync() heals index
-            </button>
-          )}
-        </div>
-
-        {/* Interactive Receipt Dispatcher + Dual Contract State */}
-        <div className="mt-5 grid gap-6 lg:grid-cols-12">
-          {/* Left: In-Flight Transactions Queue */}
-          <div className="space-y-3 lg:col-span-6">
-            <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-label text-paper-muted">
-              <span>In-flight transactions (click any receipt to execute next)</span>
-              <span>{totalRemaining} receipts left</span>
-            </div>
-
-            {activePreset.transactions.map((tx) => {
-              const cur = cursors[tx.txId] ?? 0;
-              const nextReceipt = tx.receipts[cur];
-              const done = cur >= tx.receipts.length;
-              return (
-                <div
-                  key={tx.txId}
-                  className={cn(
-                    "rounded border p-3 transition-colors",
-                    done
-                      ? "border-line bg-surface-sunken opacity-75"
-                      : "border-line bg-surface"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-12 font-semibold text-paper">
-                      {tx.txLabel}
-                    </span>
-                    <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
-                      {cur} / {tx.receipts.length} receipts
-                    </span>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-mono text-12 text-paper-dim">
-                      {nextReceipt
-                        ? nextReceipt.receiptLabel
-                        : "All receipts in this transaction settled."}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant={done ? "ghost" : "secondary"}
-                      disabled={done}
-                      onClick={() => stepTransaction(tx.txId)}
-                    >
-                      {done ? "Complete" : "Step receipt"}
-                      {!done ? <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /> : null}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Right: Dual-Contract Telemetry + Receipt Execution Log */}
-          <div className="space-y-4 lg:col-span-6">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded border border-line bg-surface p-3.5 font-mono">
-                <div className="flex items-center justify-between text-[10px] uppercase tracking-label text-paper-muted">
-                  <span>01 / VAULT SUB-ACCOUNT</span>
-                  <span className="text-positive">CANONICAL</span>
-                </div>
-                <div className="mt-2 space-y-1.5 text-12">
-                  <div className="flex justify-between">
-                    <span className="text-paper-muted">owner_id</span>
-                    <span className="text-paper">{world.vaultOwner}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-paper-muted">rotation_seq</span>
-                    <span className="text-signal">#{world.vaultSeq}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-paper-muted">status</span>
-                    <span
-                      className={
-                        world.vaultStatus === "Listed" ? "text-caution" : "text-positive"
-                      }
-                    >
-                      {world.vaultStatus} {world.vaultStatus === "Listed" ? "(Frozen)" : ""}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-paper-muted">vault_balance</span>
-                    <span className="text-positive tabular">{world.vaultBalance} NEAR</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-paper-muted">delegate</span>
-                    <span className="text-paper-dim">
-                      {world.delegateAccount
-                        ? `${world.delegateAccount} (${world.delegateAllowance}N)`
-                        : "None (wiped)"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded border border-line bg-surface p-3.5 font-mono">
-                <div className="flex items-center justify-between text-[10px] uppercase tracking-label text-paper-muted">
-                  <span>02 / REGISTRY INDEX</span>
-                  <span
-                    className={
-                      pairStatus === "Consistent" ? "text-positive" : "text-caution"
-                    }
-                  >
-                    {pairStatus}
-                  </span>
-                </div>
-                <div className="mt-2 space-y-1.5 text-12">
-                  <div className="flex justify-between">
-                    <span className="text-paper-muted">index_owner</span>
-                    <span className="text-paper">{world.indexOwner}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-paper-muted">index_seq</span>
-                    <span className="text-paper">#{world.indexSeq}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-paper-muted">listing_nonce</span>
-                    <span className="text-paper">#{world.listingNonce}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-paper-muted">escrow / claim</span>
-                    <span className="text-paper tabular">
-                      {world.escrow}N / {world.inFlightClaim}N
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-paper-muted">bob / alice</span>
-                    <span className="text-paper-dim tabular">
-                      {world.wallets["bob.testnet"] ?? 0}N /{" "}
-                      {world.wallets["alice.testnet"] ?? 0}N
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Receipt Execution Log */}
-            <div className="rounded border border-line bg-surface">
-              <div className="flex items-center justify-between border-b border-line px-3.5 py-2 font-mono text-[10px] uppercase tracking-label text-paper-muted">
-                <span className="inline-flex items-center gap-1.5">
-                  <Terminal className="h-3 w-3 text-signal" aria-hidden="true" />
-                  Cross-contract receipt trace
+              <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-label">
+                <span className="text-paper-muted">Step {step.tag}</span>
+                <span className={step.ok ? "text-positive" : "text-danger"}>
+                  {step.status}
                 </span>
-                <span>{world.logs.length} events</span>
               </div>
-              <div className="max-h-56 divide-y divide-line overflow-y-auto px-3.5">
-                {world.logs.length === 0 ? (
-                  <p className="py-6 text-center font-mono text-12 text-paper-muted">
-                    Click any receipt on the left or pick a Quick Race Schedule above to inspect
-                    cross-contract execution.
-                  </p>
-                ) : (
-                  world.logs.map((entry) => (
-                    <div key={`${entry.step}-${entry.receipt}`} className="py-2.5 text-12">
-                      <div className="flex flex-wrap items-center justify-between gap-2 font-mono">
-                        <span className="text-paper">
-                          #{entry.step} · {entry.receipt}
-                        </span>
-                        <span
-                          className={cn(
-                            "rounded px-1.5 py-0.5 text-[10px] uppercase tracking-label",
-                            entry.outcome === "BLOCKED"
-                              ? "border border-danger bg-danger-soft text-danger"
-                              : "border border-[rgba(123,216,143,0.3)] bg-positive-soft text-positive"
-                          )}
-                        >
-                          {entry.outcome}
-                          {entry.code ? ` · ${entry.code}` : ""}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-12 leading-relaxed text-paper-muted">
-                        {entry.detail}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+              <div className="mt-2 text-14 font-medium text-paper">{step.title}</div>
+            </motion.div>
+          );
+        })}
       </div>
     </section>
   );

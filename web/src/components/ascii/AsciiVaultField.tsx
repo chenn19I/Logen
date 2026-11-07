@@ -5,7 +5,7 @@ import { Pause, Play, ZoomIn } from "lucide-react";
 import { playScanPulse, playTactileClick } from "@/lib/sound";
 import { cn } from "@/lib/utils";
 
-type FieldMode = "seat" | "cube" | "prism";
+export type FieldMode = "seat" | "cube" | "prism";
 
 interface Point3D {
   x: number;
@@ -299,20 +299,43 @@ export function AsciiVaultField({
   className,
   compact = false,
   initialMode = "seat",
+  activeMode,
+  onModeChange,
 }: {
   className?: string;
   compact?: boolean;
   initialMode?: FieldMode;
+  activeMode?: FieldMode;
+  onModeChange?: (mode: FieldMode) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const timeRef = useRef(0);
   const restippleRef = useRef(0); // 1.0 -> 0.0 cellular stipple transition (TONASY99 Restipple)
-  const [mode, setMode] = useState<FieldMode>(initialMode);
+  const [internalMode, setInternalMode] = useState<FieldMode>(initialMode);
+  const mode = activeMode ?? internalMode;
   const [zoomIdx, setZoomIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
 
   const zoom = ZOOM_LEVELS[zoomIdx] ?? 1.0;
+
+  useEffect(() => {
+    if (activeMode && activeMode !== internalMode) {
+      restippleRef.current = 1.0;
+      setInternalMode(activeMode);
+    }
+  }, [activeMode, internalMode]);
+
+  const switchMode = (nextMode: FieldMode) => {
+    if (nextMode !== mode) {
+      restippleRef.current = 1.0;
+      playScanPulse();
+    } else {
+      playTactileClick();
+    }
+    setInternalMode(nextMode);
+    onModeChange?.(nextMode);
+  };
 
   const pointerRef = useRef({
     x: 0,
@@ -521,28 +544,14 @@ export function AsciiVaultField({
       }
       ctx.stroke();
 
-      // NORRVIK diagonal architectural LiDAR slice band across the field
-      ctx.strokeStyle = "rgba(59, 155, 255, 0.16)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(leftEdge + 8, bottomEdge - 42);
-      ctx.lineTo(rightEdge - 8, 48);
-      ctx.stroke();
-
-      // 2. Draw 3D isometric vault pedestal & architectural frame (no circle/sphere)
+      // 2. Draw 3D isometric vault pedestal & architectural frame
       const baseCorners = [
         project3D(-0.86, 0.86, -0.86),
         project3D(0.86, 0.86, -0.86),
         project3D(0.86, 0.86, 0.86),
         project3D(-0.86, 0.86, 0.86),
       ];
-      const topCorners = [
-        project3D(-0.68, -0.86, -0.68),
-        project3D(0.68, -0.86, -0.68),
-        project3D(0.68, -0.86, 0.68),
-        project3D(-0.68, -0.86, 0.68),
-      ];
-      ctx.strokeStyle = "rgba(236, 232, 216, 0.08)";
+      ctx.strokeStyle = "rgba(236, 232, 216, 0.06)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (let c = 0; c < 4; c += 1) {
@@ -550,20 +559,6 @@ export function AsciiVaultField({
         const b1 = baseCorners[(c + 1) % 4];
         ctx.moveTo(b0.x, b0.y);
         ctx.lineTo(b1.x, b1.y);
-      }
-      // Pedestal cross-diagonals
-      ctx.moveTo(baseCorners[0].x, baseCorners[0].y);
-      ctx.lineTo(baseCorners[2].x, baseCorners[2].y);
-      ctx.moveTo(baseCorners[1].x, baseCorners[1].y);
-      ctx.lineTo(baseCorners[3].x, baseCorners[3].y);
-      ctx.stroke();
-
-      ctx.strokeStyle = "rgba(59, 155, 255, 0.09)";
-      ctx.setLineDash([3, 5]);
-      ctx.beginPath();
-      for (let c = 0; c < 4; c += 1) {
-        ctx.moveTo(baseCorners[c].x, baseCorners[c].y);
-        ctx.lineTo(topCorners[c].x, topCorners[c].y);
       }
       ctx.stroke();
       ctx.restore();
@@ -576,29 +571,29 @@ export function AsciiVaultField({
             ? Math.hypot(pt.x - ptr.pointerX, pt.y - ptr.pointerY)
             : 999;
         const proximity =
-          dist < 76 ? Math.max(0, 1 - dist / 76) * ptr.glow * (pt.z + 1.1) * 0.65 : 0;
+          dist < 84 ? Math.max(0, 1 - dist / 84) * ptr.glow * (pt.z + 1.1) * 0.72 : 0;
         const pulseWave =
           ptr.pulse > 0.01
             ? Math.max(
                 0,
-                1 - Math.abs(Math.hypot(pt.x - cx, pt.y - cy) - (1 - ptr.pulse) * radius * 1.35) / 28
+                1 - Math.abs(Math.hypot(pt.x - cx, pt.y - cy) - (1 - ptr.pulse) * radius * 1.45) / 32
               ) * ptr.pulse
             : 0;
 
         const alpha = Math.min(
           1,
-          (pt.accent ? 0.24 : 0.09) +
-            (pt.z + 1) * (pt.accent ? 0.36 : 0.28) +
-            proximity * 0.55 +
-            pulseWave * 0.5
+          (pt.accent ? 0.26 : 0.1) +
+            (pt.z + 1) * (pt.accent ? 0.38 : 0.28) +
+            proximity * 0.58 +
+            pulseWave * 0.55
         );
         ctx.globalAlpha = alpha;
 
         const depthLevel = Math.min(3, Math.max(0, Math.round((pt.z + 1) * 1.5)));
         const palette =
-          pulseWave > 0.18
+          pulseWave > 0.16
             ? 2
-            : proximity > 0.15 || pt.accent
+            : proximity > 0.14 || pt.accent
               ? 1
               : 0;
         const row = palette * 4 + depthLevel;
@@ -611,7 +606,7 @@ export function AsciiVaultField({
           cellPx * dpr,
           cellPx * dpr,
           pt.x - cellPx / 2,
-          pt.y - cellPx / 2,
+          pt.y - cellPx / 2 + pulseWave * -5,
           cellPx,
           cellPx
         );
@@ -619,61 +614,10 @@ export function AsciiVaultField({
 
       ctx.globalAlpha = 1;
 
-      // 3. NORRVIK 3D-projected floating CAD callout annotations
-      if (!compact && width > 420) {
-        const coreVertex =
-          mode === "seat"
-            ? project3D(0, -0.32, 0.18)
-            : mode === "cube"
-              ? project3D(0, 0, 0.36)
-              : project3D(0, -0.45, 0);
-        const baseVertex =
-          mode === "seat"
-            ? project3D(0.46, 0.22, 0.38)
-            : mode === "cube"
-              ? project3D(0.65, 0.65, 0.65)
-              : project3D(0.55, 0.15, 0.55);
-
-        ctx.save();
-        ctx.font = `500 9px "Geist Mono", "IBM Plex Mono", monospace`;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-
-        // Callout 1: Vault Core
-        const c1x = Math.min(rightEdge - 142, Math.max(leftEdge + 18, coreVertex.x + 28));
-        const c1y = Math.max(46, Math.min(bottomEdge - 80, coreVertex.y - 26));
-        ctx.strokeStyle = "rgba(59, 155, 255, 0.55)";
-        ctx.lineWidth = 0.85;
-        ctx.beginPath();
-        ctx.moveTo(coreVertex.x, coreVertex.y);
-        ctx.lineTo(c1x - 4, c1y);
-        ctx.stroke();
-        ctx.fillStyle = "rgba(8, 12, 18, 0.86)";
-        ctx.fillRect(c1x - 4, c1y - 8, 126, 16);
-        ctx.strokeRect(c1x - 4, c1y - 8, 126, 16);
-        ctx.fillStyle = POSITIVE;
-        ctx.fillText("VAULT CORE · 0 KEYS", c1x + 2, c1y + 0.5);
-
-        // Callout 2: Sub-Account Binding
-        const c2x = Math.max(leftEdge + 18, Math.min(rightEdge - 148, baseVertex.x - 134));
-        const c2y = Math.min(bottomEdge - 56, Math.max(58, baseVertex.y + 22));
-        ctx.strokeStyle = "rgba(236, 232, 216, 0.32)";
-        ctx.beginPath();
-        ctx.moveTo(baseVertex.x, baseVertex.y);
-        ctx.lineTo(c2x + 126, c2y);
-        ctx.stroke();
-        ctx.fillStyle = "rgba(12, 15, 11, 0.86)";
-        ctx.fillRect(c2x, c2y - 8, 130, 16);
-        ctx.strokeRect(c2x, c2y - 8, 130, 16);
-        ctx.fillStyle = PAPER;
-        ctx.fillText("SUB-ACCOUNT == SEAT", c2x + 5, c2y + 0.5);
-        ctx.restore();
-      }
-
-      // 4. TONASY99 Restipple cellular matrix transition wave on mode switch
+      // TONASY99 Restipple cellular matrix transition wave on mode switch
       if (restippleRef.current > 0.01) {
-        const prog = 1 - restippleRef.current; // 0 -> 1
-        const cell = 26;
+        const prog = 1 - restippleRef.current;
+        const cell = 24;
         const cols = Math.ceil((rightEdge - leftEdge) / cell);
         const rows = Math.ceil((bottomEdge - 16) / cell);
         ctx.save();
@@ -684,24 +628,18 @@ export function AsciiVaultField({
           for (let c = 0; c < cols; c += 1) {
             const diag = (c / Math.max(1, cols) + r / Math.max(1, rows)) * 0.5;
             const delta = Math.abs(prog * 1.35 - diag);
-            if (delta < 0.26) {
+            if (delta < 0.24) {
               const cxCell = leftEdge + c * cell + cell / 2;
               const cyCell = 16 + r * cell + cell / 2;
-              const intensity = 1 - delta / 0.26;
+              const intensity = 1 - delta / 0.24;
               ctx.globalAlpha = intensity * 0.72;
               if ((r + c) % 3 === 0) {
                 ctx.strokeStyle = SIGNAL;
                 ctx.lineWidth = 0.8;
-                ctx.strokeRect(cxCell - 5, cyCell - 5, 10, 10);
-                ctx.beginPath();
-                ctx.moveTo(cxCell - 5, cyCell);
-                ctx.lineTo(cxCell + 5, cyCell);
-                ctx.moveTo(cxCell, cyCell - 5);
-                ctx.lineTo(cxCell, cyCell + 5);
-                ctx.stroke();
+                ctx.strokeRect(cxCell - 4.5, cyCell - 4.5, 9, 9);
               } else if ((r + c) % 3 === 1) {
                 ctx.fillStyle = POSITIVE;
-                ctx.fillRect(cxCell - 3, cyCell - 3, 6, 6);
+                ctx.fillRect(cxCell - 2.5, cyCell - 2.5, 5, 5);
               } else {
                 ctx.fillStyle = PAPER;
                 ctx.fillText("⊞", cxCell, cyCell);
@@ -710,117 +648,6 @@ export function AsciiVaultField({
           }
         }
         ctx.restore();
-      }
-
-      // 5. NORRVIK & TONASY99 Top/Bottom Telemetry HUD inside canvas
-      ctx.save();
-      ctx.font = `500 9px "Geist Mono", "IBM Plex Mono", monospace`;
-      ctx.fillStyle = MUTED;
-      ctx.globalAlpha = 0.78;
-      ctx.textAlign = "left";
-      const sceneIdx = mode === "seat" ? "01 / 03" : mode === "cube" ? "02 / 03" : "03 / 03";
-      const sceneLabel =
-        mode === "seat"
-          ? "SEAT THRONE + VAULT"
-          : mode === "cube"
-            ? "4D TESSERACT VAULT"
-            : "CRYSTAL LEDGER PRISM";
-      ctx.fillText(`FIG. ${sceneIdx} · ${sceneLabel}`, leftEdge + 10, 28);
-      ctx.fillText(`${ zoom.toFixed(2) }×`, leftEdge + 10, bottomEdge - 8);
-
-      ctx.textAlign = "right";
-      const yawDeg = String(Math.round(((yaw * 180) / Math.PI + 360) % 360)).padStart(3, "0");
-      const pitchDeg = String(Math.round((pitch * 180) / Math.PI)).padStart(2, "0");
-      ctx.fillText(
-        `YAW ${yawDeg}° / PITCH ${pitchDeg}° · ${points.length} PTS`,
-        rightEdge - 10,
-        28
-      );
-      ctx.fillText("MOVE TO ORBIT · CLICK TO PULSE", rightEdge - 10, bottomEdge - 8);
-      ctx.restore();
-
-      // Target-lock leader lines & character extraction readout
-      const cycle = t % 16;
-      const charIdx = Math.min(phraseLen - 1, Math.floor(cycle / 1.05));
-      const charPhase = (cycle % 1.05) / 1.05;
-      const settled = cycle >= phraseLen * 1.05;
-
-      const spacing = Math.min(24, (field - 44) / phraseLen);
-      const startX = cx - ((phraseLen - 1) * spacing) / 2;
-      const readoutY = height - (compact ? 32 : 38);
-
-      const primaryTarget = projected[captureIndices[charIdx]];
-      const secondaryTarget =
-        projected[captureIndices[(charIdx + 5) % phraseLen]];
-
-      if (!settled && primaryTarget && secondaryTarget) {
-        const anchors: Array<[typeof primaryTarget, number]> = [
-          [primaryTarget, leftEdge + 16],
-          [secondaryTarget, rightEdge - 16],
-        ];
-        anchors.forEach(([target, anchorX], idx) => {
-          ctx.strokeStyle = idx === 0 ? SIGNAL : PAPER;
-          ctx.globalAlpha = idx === 0 ? 0.52 : 0.22;
-          ctx.lineWidth = 0.85;
-          ctx.beginPath();
-          ctx.moveTo(anchorX, 34);
-          ctx.lineTo(target.x, target.y - 8);
-          ctx.stroke();
-
-          // Small target reticle box around locked 3D node
-          if (idx === 0) {
-            ctx.strokeRect(target.x - 8, target.y - 8, 16, 16);
-          }
-        });
-      }
-
-      // Draw captured phrase slots at the bottom
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.font = `600 ${compact ? 15 : 18}px "Geist Mono", "IBM Plex Mono", monospace`;
-
-      for (let i = 0; i < phraseLen; i += 1) {
-        const isLit =
-          settled || i < charIdx || (i === charIdx && charPhase > 0.82);
-        const ch = targetPhrase[i];
-        ctx.fillStyle = isLit
-          ? ch === "=" || ch === "0" || ch === "7"
-            ? POSITIVE
-            : SIGNAL
-          : PAPER;
-        ctx.globalAlpha = isLit ? 0.96 : 0.2;
-        ctx.fillText(isLit ? ch : "·", startX + i * spacing, readoutY);
-      }
-
-      // Smooth cubic Hermite flight of captured letter from 3D node to readout slot
-      if (!settled && primaryTarget && charPhase > 0.4 && charPhase < 0.84) {
-        const u = (charPhase - 0.4) / 0.44;
-        const ease = u * u * (3 - 2 * u);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = SIGNAL;
-        ctx.font = `600 ${(12 + 6 * ease).toFixed(1)}px "Geist Mono", "IBM Plex Mono", monospace`;
-        const fx = primaryTarget.x + (startX + charIdx * spacing - primaryTarget.x) * ease;
-        const fy = primaryTarget.y + (readoutY - primaryTarget.y) * ease;
-        ctx.fillText(targetPhrase[charIdx], fx, fy);
-      }
-
-      // Draw four corner brackets around the field
-      ctx.globalAlpha = 0.4;
-      ctx.strokeStyle = PAPER;
-      ctx.lineWidth = 1;
-      const corners: Array<[number, number, number, number]> = [
-        [leftEdge, 16, 1, 1],
-        [rightEdge, 16, -1, 1],
-        [leftEdge, bottomEdge, 1, -1],
-        [rightEdge, bottomEdge, -1, -1],
-      ];
-      for (const [bx, by, dx, dy] of corners) {
-        ctx.beginPath();
-        ctx.moveTo(bx + 18 * dx, by);
-        ctx.lineTo(bx + 4 * dx, by);
-        ctx.quadraticCurveTo(bx, by, bx, by + 4 * dy);
-        ctx.lineTo(bx, by + 18 * dy);
-        ctx.stroke();
       }
       ctx.globalAlpha = 1;
     }
@@ -974,15 +801,7 @@ export function AsciiVaultField({
             <button
               key={item}
               type="button"
-              onClick={() => {
-                if (mode !== item) {
-                  restippleRef.current = 1.0;
-                  playScanPulse();
-                } else {
-                  playTactileClick();
-                }
-                setMode(item);
-              }}
+              onClick={() => switchMode(item)}
               aria-pressed={mode === item}
               className={cn(
                 "rounded border px-2 py-0.5 font-mono text-[9px] uppercase tracking-label transition-colors",
