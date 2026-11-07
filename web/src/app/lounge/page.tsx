@@ -717,14 +717,7 @@ export default function LoungePage() {
             <div className="mt-2 font-mono text-40 tabular text-signal">
               {doorCode(enteredSeatId ?? holderSeat?.tokenId ?? "s007")}
             </div>
-            <div className="mt-2 flex lg:justify-end">
-              <PixelMatrixReadout
-                value={doorCode(enteredSeatId ?? holderSeat?.tokenId ?? "s007")}
-                size="sm"
-                tone="signal"
-              />
-            </div>
-            <div className="mt-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            <div className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
               Show this at the door
             </div>
           </div>
