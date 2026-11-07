@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Pause, Play } from "lucide-react";
+import { Pause, Play, ZoomIn } from "lucide-react";
+import { playScanPulse, playTactileClick } from "@/lib/sound";
 import { cn } from "@/lib/utils";
 
 type FieldMode = "seat" | "cube" | "prism";
@@ -292,6 +293,8 @@ function getLayout(width: number, height: number) {
   };
 }
 
+const ZOOM_LEVELS = [1.0, 1.18, 1.32] as const;
+
 export function AsciiVaultField({
   className,
   compact = false,
@@ -303,9 +306,13 @@ export function AsciiVaultField({
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const timeRef = useRef(0);
+  const restippleRef = useRef(0); // 1.0 -> 0.0 cellular stipple transition (TONASY99 Restipple)
   const [mode, setMode] = useState<FieldMode>(initialMode);
+  const [zoomIdx, setZoomIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
+
+  const zoom = ZOOM_LEVELS[zoomIdx] ?? 1.0;
 
   const pointerRef = useRef({
     x: 0,
@@ -441,8 +448,8 @@ export function AsciiVaultField({
         const depthZ = rz * cosP - y3 * sinP;
         const perspective = 2.85 / (2.85 - 0.42 * depthZ);
         return {
-          x: cx + rx * radius * perspective,
-          y: cy + ry * radius * perspective,
+          x: cx + rx * radius * zoom * perspective,
+          y: cy + ry * radius * zoom * perspective,
           z: depthZ,
         };
       };
@@ -468,8 +475,8 @@ export function AsciiVaultField({
         cy,
         radius * 1.35
       );
-      stageGlow.addColorStop(0, "rgba(59, 155, 255, 0.08)");
-      stageGlow.addColorStop(0.52, "rgba(123, 216, 143, 0.02)");
+      stageGlow.addColorStop(0, "rgba(59, 155, 255, 0.09)");
+      stageGlow.addColorStop(0.52, "rgba(123, 216, 143, 0.024)");
       stageGlow.addColorStop(1, "rgba(6, 8, 5, 0)");
       ctx.fillStyle = stageGlow;
       ctx.fillRect(leftEdge, 16, rightEdge - leftEdge, bottomEdge - 16);
@@ -512,6 +519,14 @@ export function AsciiVaultField({
         ctx.moveTo(leftEdge + 8, gy);
         ctx.lineTo(rightEdge - 8, gy);
       }
+      ctx.stroke();
+
+      // NORRVIK diagonal architectural LiDAR slice band across the field
+      ctx.strokeStyle = "rgba(59, 155, 255, 0.16)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(leftEdge + 8, bottomEdge - 42);
+      ctx.lineTo(rightEdge - 8, 48);
       ctx.stroke();
 
       // 2. Draw 3D isometric vault pedestal & architectural frame (no circle/sphere)
@@ -603,6 +618,126 @@ export function AsciiVaultField({
       }
 
       ctx.globalAlpha = 1;
+
+      // 3. NORRVIK 3D-projected floating CAD callout annotations
+      if (!compact && width > 420) {
+        const coreVertex =
+          mode === "seat"
+            ? project3D(0, -0.32, 0.18)
+            : mode === "cube"
+              ? project3D(0, 0, 0.36)
+              : project3D(0, -0.45, 0);
+        const baseVertex =
+          mode === "seat"
+            ? project3D(0.46, 0.22, 0.38)
+            : mode === "cube"
+              ? project3D(0.65, 0.65, 0.65)
+              : project3D(0.55, 0.15, 0.55);
+
+        ctx.save();
+        ctx.font = `500 9px "Geist Mono", "IBM Plex Mono", monospace`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+
+        // Callout 1: Vault Core
+        const c1x = Math.min(rightEdge - 142, Math.max(leftEdge + 18, coreVertex.x + 28));
+        const c1y = Math.max(46, Math.min(bottomEdge - 80, coreVertex.y - 26));
+        ctx.strokeStyle = "rgba(59, 155, 255, 0.55)";
+        ctx.lineWidth = 0.85;
+        ctx.beginPath();
+        ctx.moveTo(coreVertex.x, coreVertex.y);
+        ctx.lineTo(c1x - 4, c1y);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(8, 12, 18, 0.86)";
+        ctx.fillRect(c1x - 4, c1y - 8, 126, 16);
+        ctx.strokeRect(c1x - 4, c1y - 8, 126, 16);
+        ctx.fillStyle = POSITIVE;
+        ctx.fillText("VAULT CORE · 0 KEYS", c1x + 2, c1y + 0.5);
+
+        // Callout 2: Sub-Account Binding
+        const c2x = Math.max(leftEdge + 18, Math.min(rightEdge - 148, baseVertex.x - 134));
+        const c2y = Math.min(bottomEdge - 56, Math.max(58, baseVertex.y + 22));
+        ctx.strokeStyle = "rgba(236, 232, 216, 0.32)";
+        ctx.beginPath();
+        ctx.moveTo(baseVertex.x, baseVertex.y);
+        ctx.lineTo(c2x + 126, c2y);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(12, 15, 11, 0.86)";
+        ctx.fillRect(c2x, c2y - 8, 130, 16);
+        ctx.strokeRect(c2x, c2y - 8, 130, 16);
+        ctx.fillStyle = PAPER;
+        ctx.fillText("SUB-ACCOUNT == SEAT", c2x + 5, c2y + 0.5);
+        ctx.restore();
+      }
+
+      // 4. TONASY99 Restipple cellular matrix transition wave on mode switch
+      if (restippleRef.current > 0.01) {
+        const prog = 1 - restippleRef.current; // 0 -> 1
+        const cell = 26;
+        const cols = Math.ceil((rightEdge - leftEdge) / cell);
+        const rows = Math.ceil((bottomEdge - 16) / cell);
+        ctx.save();
+        ctx.font = `500 10px "Geist Mono", "IBM Plex Mono", monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        for (let r = 0; r < rows; r += 1) {
+          for (let c = 0; c < cols; c += 1) {
+            const diag = (c / Math.max(1, cols) + r / Math.max(1, rows)) * 0.5;
+            const delta = Math.abs(prog * 1.35 - diag);
+            if (delta < 0.26) {
+              const cxCell = leftEdge + c * cell + cell / 2;
+              const cyCell = 16 + r * cell + cell / 2;
+              const intensity = 1 - delta / 0.26;
+              ctx.globalAlpha = intensity * 0.72;
+              if ((r + c) % 3 === 0) {
+                ctx.strokeStyle = SIGNAL;
+                ctx.lineWidth = 0.8;
+                ctx.strokeRect(cxCell - 5, cyCell - 5, 10, 10);
+                ctx.beginPath();
+                ctx.moveTo(cxCell - 5, cyCell);
+                ctx.lineTo(cxCell + 5, cyCell);
+                ctx.moveTo(cxCell, cyCell - 5);
+                ctx.lineTo(cxCell, cyCell + 5);
+                ctx.stroke();
+              } else if ((r + c) % 3 === 1) {
+                ctx.fillStyle = POSITIVE;
+                ctx.fillRect(cxCell - 3, cyCell - 3, 6, 6);
+              } else {
+                ctx.fillStyle = PAPER;
+                ctx.fillText("⊞", cxCell, cyCell);
+              }
+            }
+          }
+        }
+        ctx.restore();
+      }
+
+      // 5. NORRVIK & TONASY99 Top/Bottom Telemetry HUD inside canvas
+      ctx.save();
+      ctx.font = `500 9px "Geist Mono", "IBM Plex Mono", monospace`;
+      ctx.fillStyle = MUTED;
+      ctx.globalAlpha = 0.78;
+      ctx.textAlign = "left";
+      const sceneIdx = mode === "seat" ? "01 / 03" : mode === "cube" ? "02 / 03" : "03 / 03";
+      const sceneLabel =
+        mode === "seat"
+          ? "SEAT THRONE + VAULT"
+          : mode === "cube"
+            ? "4D TESSERACT VAULT"
+            : "CRYSTAL LEDGER PRISM";
+      ctx.fillText(`FIG. ${sceneIdx} · ${sceneLabel}`, leftEdge + 10, 28);
+      ctx.fillText(`${ zoom.toFixed(2) }×`, leftEdge + 10, bottomEdge - 8);
+
+      ctx.textAlign = "right";
+      const yawDeg = String(Math.round(((yaw * 180) / Math.PI + 360) % 360)).padStart(3, "0");
+      const pitchDeg = String(Math.round((pitch * 180) / Math.PI)).padStart(2, "0");
+      ctx.fillText(
+        `YAW ${yawDeg}° / PITCH ${pitchDeg}° · ${points.length} PTS`,
+        rightEdge - 10,
+        28
+      );
+      ctx.fillText("MOVE TO ORBIT · CLICK TO PULSE", rightEdge - 10, bottomEdge - 8);
+      ctx.restore();
 
       // Target-lock leader lines & character extraction readout
       const cycle = t % 16;
@@ -741,6 +876,11 @@ export function AsciiVaultField({
         } else {
           ptr.pulse = 0;
         }
+        if (restippleRef.current > 0.005) {
+          restippleRef.current = Math.max(0, restippleRef.current - dt * 1.65);
+        } else {
+          restippleRef.current = 0;
+        }
 
         drawFrame(timeRef.current);
       }
@@ -810,7 +950,7 @@ export function AsciiVaultField({
       canvas.removeEventListener("pointerleave", onPointerLeave);
       canvas.removeEventListener("pointercancel", onPointerLeave);
     };
-  }, [mode, paused, reduced, compact]);
+  }, [mode, zoom, paused, reduced, compact]);
 
   return (
     <div
@@ -820,16 +960,29 @@ export function AsciiVaultField({
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3.5 py-2">
-        <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
-          Keyless vault
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            Keyless vault
+          </span>
+          <span className="font-mono text-[9px] text-signal">
+            {mode === "seat" ? "01/03" : mode === "cube" ? "02/03" : "03/03"}
+          </span>
+        </div>
 
         <div className="flex items-center gap-1.5">
-          {(["seat", "cube", "prism"] as const).map((item) => (
+          {(["seat", "cube", "prism"] as const).map((item, idx) => (
             <button
               key={item}
               type="button"
-              onClick={() => setMode(item)}
+              onClick={() => {
+                if (mode !== item) {
+                  restippleRef.current = 1.0;
+                  playScanPulse();
+                } else {
+                  playTactileClick();
+                }
+                setMode(item);
+              }}
               aria-pressed={mode === item}
               className={cn(
                 "rounded border px-2 py-0.5 font-mono text-[9px] uppercase tracking-label transition-colors",
@@ -838,13 +991,30 @@ export function AsciiVaultField({
                   : "border-line bg-surface-sunken text-paper-muted hover:border-line-strong hover:text-paper"
               )}
             >
+              <span className="mr-1 text-[8px] opacity-65">0{idx + 1}</span>
               {item}
             </button>
           ))}
 
           <button
             type="button"
-            onClick={() => setPaused((p) => !p)}
+            onClick={() => {
+              playTactileClick();
+              setZoomIdx((prev) => (prev + 1) % ZOOM_LEVELS.length);
+            }}
+            aria-label={`Cycle vault zoom level (currently ${zoom.toFixed(2)}x)`}
+            className="inline-flex items-center gap-1 rounded border border-line bg-surface-sunken px-2 py-0.5 font-mono text-[9px] uppercase tracking-label text-paper-muted transition-colors hover:border-line-strong hover:text-paper"
+          >
+            <ZoomIn className="h-2.5 w-2.5 text-signal" aria-hidden="true" />
+            {zoom.toFixed(2)}×
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              playTactileClick();
+              setPaused((p) => !p);
+            }}
             disabled={reduced}
             aria-label={
               reduced
@@ -853,7 +1023,7 @@ export function AsciiVaultField({
                   ? "Resume ASCII animation"
                   : "Pause ASCII animation"
             }
-            className="ml-1 inline-flex items-center gap-1 rounded border border-line bg-surface-sunken px-2 py-0.5 font-mono text-[9px] uppercase tracking-label text-paper-muted transition-colors hover:border-line-strong hover:text-paper disabled:opacity-50"
+            className="ml-0.5 inline-flex items-center gap-1 rounded border border-line bg-surface-sunken px-2 py-0.5 font-mono text-[9px] uppercase tracking-label text-paper-muted transition-colors hover:border-line-strong hover:text-paper disabled:opacity-50"
           >
             {paused ? (
               <Play className="h-2.5 w-2.5" aria-hidden="true" />
