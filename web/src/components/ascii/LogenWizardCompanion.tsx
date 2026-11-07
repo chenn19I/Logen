@@ -1285,7 +1285,7 @@ export function LogenWizardCompanion() {
   const [lang, setLang] = useState<PetLang>("id");
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [mood, setMood] = useState<RobotMood>("calm");
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [inspectMode, setInspectMode] = useState(false);
   const [autoRoam, setAutoRoam] = useState(true);
   const [title, setTitle] = useState("Bit-07 · Robot Familiar Logen");
@@ -1332,12 +1332,15 @@ export function LogenWizardCompanion() {
       newText: string,
       newTitle = "Bit-07 · Robot Familiar Logen",
       nextMood: RobotMood = "talking",
-      routeSuggestion: { label: string; route: string } | null = null
+      routeSuggestion: { label: string; route: string } | null = null,
+      shouldOpenPanel = false
     ) => {
       setTitle(newTitle);
       setFullSpeech(newText);
       setSuggestedRoute(routeSuggestion);
-      setPanelOpen(true);
+      if (shouldOpenPanel) {
+        setPanelOpen(true);
+      }
       setMood(nextMood);
     },
     []
@@ -1398,7 +1401,7 @@ export function LogenWizardCompanion() {
     return () => window.clearInterval(roamInterval);
   }, [autoRoam, mood, inspectMode]);
 
-  // Route or language change awareness
+  // Route or language change awareness (updates speech silently without forcing bubble open)
   useEffect(() => {
     if (mood === "sleeping") return;
     const info = PAGE_GREETINGS[lang][pathname] ?? PAGE_GREETINGS[lang]["/"];
@@ -1406,7 +1409,8 @@ export function LogenWizardCompanion() {
       info.greeting,
       `Bit-07 (${LANG_META[lang].code}) · ${pathname === "/" ? "Home" : pathname}`,
       "happy",
-      null
+      null,
+      false
     );
   }, [pathname, lang, speak]);
 
@@ -1433,7 +1437,7 @@ export function LogenWizardCompanion() {
 
       castAsciiSpell({ x: e.clientX, y: e.clientY, intensity: 1.05, tone: "positive" });
       const explanation = explainElementMultilingual(target, lang);
-      speak(explanation, `🔍 Bit-07 (${LANG_META[lang].code})`, "scanning", null);
+      speak(explanation, `🔍 Bit-07 (${LANG_META[lang].code})`, "scanning", null, true);
       setInspectMode(false);
     };
 
@@ -1560,7 +1564,7 @@ export function LogenWizardCompanion() {
 
     if (mood !== "sleeping") {
       setMood("lifted");
-      speak(meta.liftedSpeech, meta.liftedTitle, "lifted");
+      speak(meta.liftedSpeech, meta.liftedTitle, "lifted", null, false);
     }
   };
 
@@ -1568,7 +1572,7 @@ export function LogenWizardCompanion() {
     if (dragRef.current.moved) return;
     if (mood === "sleeping") {
       castAsciiSpell({ x: e.clientX, y: e.clientY, intensity: 0.9, tone: "signal" });
-      speak(meta.wakeSpeech, `Bit-07 (${meta.code})`, "happy");
+      speak(meta.wakeSpeech, `Bit-07 (${meta.code})`, "happy", null, false);
       return;
     }
 
@@ -1577,7 +1581,7 @@ export function LogenWizardCompanion() {
 
     if (pokeCountRef.current >= 3) {
       pokeCountRef.current = 0;
-      speak(meta.tickleSpeech, meta.tickleTitle, "happy");
+      speak(meta.tickleSpeech, meta.tickleTitle, "happy", null, true);
       return;
     }
 
@@ -1592,7 +1596,8 @@ export function LogenWizardCompanion() {
       "talking",
       entry.actionRoute && entry.actionLabel
         ? { label: entry.actionLabel, route: entry.actionRoute }
-        : null
+        : null,
+      true
     );
   };
 
