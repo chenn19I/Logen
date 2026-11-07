@@ -15,6 +15,12 @@ interface FlowSpec {
     tag: string;
     label: string;
     detail: string;
+    stateSnapshot: {
+      owner: string;
+      seq: string;
+      status: string;
+      balance: string;
+    };
   }>;
 }
 
@@ -45,16 +51,34 @@ const FLOWS: FlowSpec[] = [
         tag: "01",
         label: "Sub-account creation",
         detail: "Registry creates <handle>.logen.testnet and deploys the vault WASM.",
+        stateSnapshot: {
+          owner: "pending",
+          seq: "0",
+          status: "Deploying",
+          balance: "2.20 NEAR",
+        },
       },
       {
         tag: "02",
-        label: "Key deletion",
-        detail: "All access keys are deleted on creation. Nobody can sign as the vault.",
+        label: "Keyless batch init",
+        detail: "Account is initialized without AddKey. Nobody can ever sign as the vault.",
+        stateSnapshot: {
+          owner: "holder.near",
+          seq: "0",
+          status: "Keys: []",
+          balance: "2.20 NEAR",
+        },
       },
       {
         tag: "03",
         label: "NFT & vault bind",
         detail: "Whoever holds the NEP-171 seat NFT controls the vault.",
+        stateSnapshot: {
+          owner: "holder.near",
+          seq: "0",
+          status: "Idle",
+          balance: "2.20 NEAR",
+        },
       },
     ],
   },
@@ -84,16 +108,34 @@ const FLOWS: FlowSpec[] = [
         tag: "40%",
         label: "Member Pool",
         detail: "40% of every ticket increases every minted seat's withdrawable balance.",
+        stateSnapshot: {
+          owner: "holder.near",
+          seq: "0",
+          status: "Accruing",
+          balance: "+0.40 NEAR",
+        },
       },
       {
         tag: "50%",
         label: "Kas Klub Treasury",
         detail: "50% accrues to the club treasury via pull-ledger.",
+        stateSnapshot: {
+          owner: "kas.logen",
+          seq: "—",
+          status: "Pull Ledger",
+          balance: "+0.50 NEAR",
+        },
       },
       {
         tag: "10%",
-        label: "Event Organizer",
-        detail: "10% accrues to the organizer. Remainder yoctoNEAR is kept in carry.",
+        label: "Vault Sweep (claim)",
+        detail: "Calling claim(token_id) transfers the accrued share directly into the seat vault.",
+        stateSnapshot: {
+          owner: "holder.near",
+          seq: "0",
+          status: "Credited",
+          balance: "2.60 NEAR",
+        },
       },
     ],
   },
@@ -123,16 +165,34 @@ const FLOWS: FlowSpec[] = [
         tag: "A2",
         label: "Withdrawal freeze",
         detail: "Listing locks the vault so the seller cannot drain the seat before sale.",
+        stateSnapshot: {
+          owner: "seller.near",
+          seq: "0",
+          status: "Listed (Frozen)",
+          balance: "3.20 NEAR",
+        },
       },
       {
         tag: "A4",
         label: "Balance assertion",
         detail: "Buyer's transaction asserts min_balance and nonce on-chain.",
+        stateSnapshot: {
+          owner: "escrow",
+          seq: "0 → 1",
+          status: "Verifying",
+          balance: "≥ 3.20 NEAR",
+        },
       },
       {
         tag: "A11",
         label: "Session rotation",
         detail: "Transfer increments rotation_seq, invalidating the previous holder's session.",
+        stateSnapshot: {
+          owner: "buyer.near",
+          seq: "1",
+          status: "Idle (Rotated)",
+          balance: "3.20 NEAR",
+        },
       },
     ],
   },
@@ -141,15 +201,18 @@ const FLOWS: FlowSpec[] = [
 export function AsciiArchitectureFlow({ className }: { className?: string }) {
   const [activeId, setActiveId] = useState<FlowSpec["id"]>("mint");
   const [pulseStep, setPulseStep] = useState(0);
+  const [autoPlay, setAutoPlay] = useState(true);
 
   const current = FLOWS.find((f) => f.id === activeId) ?? FLOWS[0];
+  const activeStepObj = current.steps[pulseStep] ?? current.steps[0];
 
   useEffect(() => {
+    if (!autoPlay) return;
     const timer = window.setInterval(() => {
       setPulseStep((prev) => (prev + 1) % 3);
-    }, 2200);
+    }, 2600);
     return () => window.clearInterval(timer);
-  }, [activeId]);
+  }, [activeId, autoPlay]);
 
   return (
     <section
@@ -248,7 +311,27 @@ export function AsciiArchitectureFlow({ className }: { className?: string }) {
             </pre>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 font-mono text-[10px] text-paper-muted">
+          {/* Live Vault State Snapshot bar */}
+          <div className="mt-4 grid grid-cols-4 gap-2 rounded border border-line bg-surface-sunken px-3 py-2 font-mono text-[10px]">
+            <div>
+              <div className="text-paper-muted">owner_id</div>
+              <div className="mt-0.5 truncate text-paper">{activeStepObj.stateSnapshot.owner}</div>
+            </div>
+            <div>
+              <div className="text-paper-muted">rotation_seq</div>
+              <div className="mt-0.5 text-signal tabular">{activeStepObj.stateSnapshot.seq}</div>
+            </div>
+            <div>
+              <div className="text-paper-muted">status</div>
+              <div className="mt-0.5 text-positive">{activeStepObj.stateSnapshot.status}</div>
+            </div>
+            <div>
+              <div className="text-paper-muted">vault</div>
+              <div className="mt-0.5 text-paper tabular">{activeStepObj.stateSnapshot.balance}</div>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-1 font-mono text-[10px] text-paper-muted">
             <span className="text-signal">{current.method}</span>
             <span>{current.invariant}</span>
           </div>
@@ -258,11 +341,20 @@ export function AsciiArchitectureFlow({ className }: { className?: string }) {
           {current.steps.map((step, index) => {
             const active = pulseStep === index;
             return (
-              <div
+              <button
                 key={step.tag}
-                onMouseEnter={() => setPulseStep(index)}
+                type="button"
+                onMouseEnter={() => {
+                  setAutoPlay(false);
+                  setPulseStep(index);
+                }}
+                onMouseLeave={() => setAutoPlay(true)}
+                onClick={() => {
+                  setAutoPlay(false);
+                  setPulseStep(index);
+                }}
                 className={cn(
-                  "cursor-default rounded border p-3 transition-colors",
+                  "w-full rounded border p-3 text-left transition-colors",
                   active
                     ? "border-signal bg-signal-soft"
                     : "border-line bg-surface-sunken hover:border-line-strong"
@@ -279,7 +371,7 @@ export function AsciiArchitectureFlow({ className }: { className?: string }) {
                 <p className="mt-1 text-12 leading-relaxed text-paper-muted">
                   {step.detail}
                 </p>
-              </div>
+              </button>
             );
           })}
         </div>
