@@ -458,8 +458,106 @@ export function AsciiVaultField({
 
       sorted.sort((a, b) => a.z - b.z);
 
-      // Draw 3D isometric vault pedestal & architectural frame (no circle/sphere)
+      // 1. Clean terminal blueprint background inside the stage
       ctx.save();
+      const stageGlow = ctx.createRadialGradient(
+        cx - ptr.x * 14,
+        cy - ptr.y * 10,
+        radius * 0.06,
+        cx,
+        cy,
+        radius * 1.35
+      );
+      stageGlow.addColorStop(0, "rgba(59, 155, 255, 0.085)");
+      stageGlow.addColorStop(0.52, "rgba(123, 216, 143, 0.022)");
+      stageGlow.addColorStop(1, "rgba(6, 8, 5, 0)");
+      ctx.fillStyle = stageGlow;
+      ctx.fillRect(leftEdge, 16, rightEdge - leftEdge, bottomEdge - 16);
+
+      // Subtle orthogonal blueprint grid lines & top/bottom ruler ticks
+      const gridStep = compact ? 36 : 44;
+      const parallaxX = -ptr.x * 6;
+      const parallaxY = -ptr.y * 6;
+      ctx.strokeStyle = "rgba(236, 232, 216, 0.028)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (
+        let gx = cx + (parallaxX % gridStep);
+        gx < rightEdge - 8;
+        gx += gridStep
+      ) {
+        ctx.moveTo(gx, 20);
+        ctx.lineTo(gx, bottomEdge - 24);
+      }
+      for (
+        let gx = cx + (parallaxX % gridStep) - gridStep;
+        gx > leftEdge + 8;
+        gx -= gridStep
+      ) {
+        ctx.moveTo(gx, 20);
+        ctx.lineTo(gx, bottomEdge - 24);
+      }
+      for (
+        let gy = cy + (parallaxY % gridStep);
+        gy < bottomEdge - 24;
+        gy += gridStep
+      ) {
+        ctx.moveTo(leftEdge + 8, gy);
+        ctx.lineTo(rightEdge - 8, gy);
+      }
+      for (
+        let gy = cy + (parallaxY % gridStep) - gridStep;
+        gy > 20;
+        gy -= gridStep
+      ) {
+        ctx.moveTo(leftEdge + 8, gy);
+        ctx.lineTo(rightEdge - 8, gy);
+      }
+      ctx.stroke();
+
+      // Ruler graduation ticks along top & bottom edges
+      ctx.strokeStyle = "rgba(236, 232, 216, 0.09)";
+      ctx.beginPath();
+      for (let tx = leftEdge + 24; tx <= rightEdge - 24; tx += 16) {
+        const isMajor = Math.round((tx - leftEdge) / 16) % 4 === 0;
+        const tickLen = isMajor ? 5 : 2.5;
+        ctx.moveTo(tx, 16);
+        ctx.lineTo(tx, 16 + tickLen);
+      }
+      ctx.stroke();
+
+      // Quadrant calibration '+' markers & top telemetry coordinates
+      ctx.fillStyle = "rgba(236, 232, 216, 0.16)";
+      ctx.font = '10px "Geist Mono", "IBM Plex Mono", monospace';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const calX = radius * 0.88;
+      const calY = radius * 0.56;
+      for (const sx of [-1, 1]) {
+        for (const sy of [-1, 1]) {
+          ctx.fillText(
+            "+",
+            cx + sx * calX + parallaxX * 1.2,
+            cy + sy * calY + parallaxY * 1.2
+          );
+        }
+      }
+      ctx.fillStyle = "rgba(141, 149, 133, 0.52)";
+      ctx.font = '9px "Geist Mono", "IBM Plex Mono", monospace';
+      ctx.textAlign = "left";
+      ctx.fillText(
+        `ISO.YAW ${yaw >= 0 ? "+" : ""}${yaw.toFixed(2)}`,
+        leftEdge + 12,
+        28
+      );
+      ctx.textAlign = "right";
+      ctx.fillText(
+        `PITCH +${pitch.toFixed(2)} // 60FPS`,
+        rightEdge - 12,
+        28
+      );
+
+      // 2. Draw 3D isometric vault pedestal & architectural frame (no circle/sphere)
       const baseCorners = [
         project3D(-0.86, 0.86, -0.86),
         project3D(0.86, 0.86, -0.86),

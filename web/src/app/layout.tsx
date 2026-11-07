@@ -7,6 +7,7 @@ import { QueryProvider } from "@/components/QueryProvider";
 import { DemoProvider } from "@/lib/demo/DemoProvider";
 import { Navbar } from "@/components/Navbar";
 import { SiteFooter } from "@/components/SiteFooter";
+import { AmbientBackdrop } from "@/components/ascii/AmbientBackdrop";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://logen-roan.vercel.app";
@@ -69,7 +70,8 @@ export default function RootLayout({
         <NearProvider>
           <QueryProvider>
             <DemoProvider>
-              <div className="flex min-h-screen flex-col">
+              <AmbientBackdrop />
+              <div className="relative z-10 flex min-h-screen flex-col">
                 <Navbar />
                 <main className="mx-auto w-full max-w-page flex-1 px-4 py-8 sm:px-6 sm:py-10">
                   {children}
