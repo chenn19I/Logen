@@ -19,8 +19,12 @@ export const metadata: Metadata = {
     "A members club where each seat is an NFT that owns its own keyless wallet. Mint a seat with your own artwork, sell it, and the money, history and access go with it. NEAR Testnet.",
   applicationName: "Logen",
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
+    icon: [
+      { url: "/icon.png", type: "image/png", sizes: "256x256" },
+      { url: "/logen-mascot.png", type: "image/png", sizes: "1254x1254" },
+    ],
+    shortcut: "/icon.png",
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
     type: "website",
