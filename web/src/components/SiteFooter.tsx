@@ -87,8 +87,8 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 font-mono text-[9px] uppercase tracking-label text-paper-muted">
-          <span>© 2026 Logen · [ SEAT == KEYLESS VAULT ]</span>
-          <span>Built on NEAR Testnet · NEP-171 + NEP-413 · Not audited</span>
+          <span>© 2026 Logen</span>
+          <span>Built on NEAR Testnet · Not audited</span>
         </div>
       </div>
     </footer>
