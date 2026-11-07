@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Pause, Play, Sparkles } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type FieldMode = "seat" | "cube" | "prism";
@@ -458,7 +458,7 @@ export function AsciiVaultField({
 
       sorted.sort((a, b) => a.z - b.z);
 
-      // 1. Clean terminal blueprint background inside the stage
+      // 1. Subtle stage background & blueprint grid
       ctx.save();
       const stageGlow = ctx.createRadialGradient(
         cx - ptr.x * 14,
@@ -468,17 +468,16 @@ export function AsciiVaultField({
         cy,
         radius * 1.35
       );
-      stageGlow.addColorStop(0, "rgba(59, 155, 255, 0.085)");
-      stageGlow.addColorStop(0.52, "rgba(123, 216, 143, 0.022)");
+      stageGlow.addColorStop(0, "rgba(59, 155, 255, 0.08)");
+      stageGlow.addColorStop(0.52, "rgba(123, 216, 143, 0.02)");
       stageGlow.addColorStop(1, "rgba(6, 8, 5, 0)");
       ctx.fillStyle = stageGlow;
       ctx.fillRect(leftEdge, 16, rightEdge - leftEdge, bottomEdge - 16);
 
-      // Subtle orthogonal blueprint grid lines & top/bottom ruler ticks
       const gridStep = compact ? 36 : 44;
       const parallaxX = -ptr.x * 6;
       const parallaxY = -ptr.y * 6;
-      ctx.strokeStyle = "rgba(236, 232, 216, 0.028)";
+      ctx.strokeStyle = "rgba(236, 232, 216, 0.025)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (
@@ -514,48 +513,6 @@ export function AsciiVaultField({
         ctx.lineTo(rightEdge - 8, gy);
       }
       ctx.stroke();
-
-      // Ruler graduation ticks along top & bottom edges
-      ctx.strokeStyle = "rgba(236, 232, 216, 0.09)";
-      ctx.beginPath();
-      for (let tx = leftEdge + 24; tx <= rightEdge - 24; tx += 16) {
-        const isMajor = Math.round((tx - leftEdge) / 16) % 4 === 0;
-        const tickLen = isMajor ? 5 : 2.5;
-        ctx.moveTo(tx, 16);
-        ctx.lineTo(tx, 16 + tickLen);
-      }
-      ctx.stroke();
-
-      // Quadrant calibration '+' markers & top telemetry coordinates
-      ctx.fillStyle = "rgba(236, 232, 216, 0.16)";
-      ctx.font = '10px "Geist Mono", "IBM Plex Mono", monospace';
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const calX = radius * 0.88;
-      const calY = radius * 0.56;
-      for (const sx of [-1, 1]) {
-        for (const sy of [-1, 1]) {
-          ctx.fillText(
-            "+",
-            cx + sx * calX + parallaxX * 1.2,
-            cy + sy * calY + parallaxY * 1.2
-          );
-        }
-      }
-      ctx.fillStyle = "rgba(141, 149, 133, 0.52)";
-      ctx.font = '9px "Geist Mono", "IBM Plex Mono", monospace';
-      ctx.textAlign = "left";
-      ctx.fillText(
-        `ISO.YAW ${yaw >= 0 ? "+" : ""}${yaw.toFixed(2)}`,
-        leftEdge + 12,
-        28
-      );
-      ctx.textAlign = "right";
-      ctx.fillText(
-        `PITCH +${pitch.toFixed(2)} // 60FPS`,
-        rightEdge - 12,
-        28
-      );
 
       // 2. Draw 3D isometric vault pedestal & architectural frame (no circle/sphere)
       const baseCorners = [
@@ -655,7 +612,7 @@ export function AsciiVaultField({
 
       const spacing = Math.min(24, (field - 44) / phraseLen);
       const startX = cx - ((phraseLen - 1) * spacing) / 2;
-      const readoutY = height - (compact ? 46 : 54);
+      const readoutY = height - (compact ? 32 : 38);
 
       const primaryTarget = projected[captureIndices[charIdx]];
       const secondaryTarget =
@@ -713,7 +670,7 @@ export function AsciiVaultField({
       }
 
       // Draw four corner brackets around the field
-      ctx.globalAlpha = 0.45;
+      ctx.globalAlpha = 0.4;
       ctx.strokeStyle = PAPER;
       ctx.lineWidth = 1;
       const corners: Array<[number, number, number, number]> = [
@@ -730,27 +687,6 @@ export function AsciiVaultField({
         ctx.lineTo(bx, by + 18 * dy);
         ctx.stroke();
       }
-
-      // Bottom telemetry captions inside the brackets
-      ctx.globalAlpha = 0.65;
-      ctx.fillStyle = MUTED;
-      ctx.font = '10px "Geist Mono", "IBM Plex Mono", monospace';
-      ctx.textAlign = "left";
-      ctx.fillText(
-        paused || reduced
-          ? "LOGEN / ASCII VAULT FIELD"
-          : "MOVE / CLICK TO PULSE FIELD",
-        leftEdge + 12,
-        bottomEdge - 12
-      );
-      ctx.textAlign = "right";
-      ctx.fillText(
-        `${String(settled ? phraseLen : charIdx + 1).padStart(2, "0")} / ${String(
-          phraseLen
-        ).padStart(2, "0")}`,
-        rightEdge - 12,
-        bottomEdge - 12
-      );
       ctx.globalAlpha = 1;
     }
 
@@ -883,13 +819,10 @@ export function AsciiVaultField({
         className
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3.5 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-signal animate-pulse" aria-hidden="true" />
-          <span className="font-mono text-[10px] uppercase tracking-label text-paper-dim">
-            [ ASCII VAULT FIELD · NEAR KEYLESS ]
-          </span>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3.5 py-2">
+        <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+          Keyless vault
+        </span>
 
         <div className="flex items-center gap-1.5">
           {(["seat", "cube", "prism"] as const).map((item) => (
@@ -935,7 +868,7 @@ export function AsciiVaultField({
       <div
         className={cn(
           "relative w-full select-none",
-          compact ? "h-[270px]" : "h-[340px] sm:h-[380px]"
+          compact ? "h-[260px]" : "h-[340px] sm:h-[370px]"
         )}
       >
         <canvas
@@ -944,18 +877,6 @@ export function AsciiVaultField({
           role="img"
           aria-label="Interactive 3D ASCII character field representing Logen keyless seat vaults on NEAR. Move pointer or click to interact."
         />
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface px-3.5 py-2 font-mono text-[9px] uppercase tracking-label text-paper-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <Sparkles className="h-3 w-3 text-signal" aria-hidden="true" />
-          {mode === "seat"
-            ? "Topology: 3D Club Seat Throne + Floating Keyless Vault"
-            : mode === "cube"
-              ? "Topology: 4D Tesseract Vault Cube · s007.logen.testnet"
-              : "Topology: Octahedral Crystal Obelisk · rotation_seq"}
-        </span>
-        <span className="text-positive">NEP-171 + NEP-413 VERIFIED</span>
       </div>
     </div>
   );
