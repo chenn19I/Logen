@@ -2,7 +2,9 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
+import { AsciiSpellText, castAsciiSpell } from "@/components/ascii/AsciiSpellEngine";
 import {
   ArrowRight,
   CircleAlert,
@@ -38,8 +40,8 @@ function SeatDirectoryCard({ seat }: { seat: Seat }) {
       className="card-lift group flex flex-col rounded border border-line bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
     >
       <div className="flex items-start justify-between gap-2 border-b border-line px-4 py-3">
-        <span className="bracket-label">
-          [ {String(seat.number).padStart(2, "0")} / SEAT ]
+        <span className="font-mono text-12 uppercase tracking-label text-paper-muted">
+          Seat {String(seat.number).padStart(2, "0")}
         </span>
         {statusChip(seat)}
       </div>
@@ -121,8 +123,11 @@ export default function SeatsDirectoryPage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <span className="bracket-label">[ DIRECTORY / SEATS ]</span>
-          <h1 className="mt-2 text-40 font-semibold text-paper">Every seat.</h1>
+          <AsciiSpellText
+            as="h1"
+            text="Every seat."
+            className="text-40 font-semibold text-paper"
+          />
           <p className="mt-2 max-w-[56ch] text-14 leading-relaxed text-paper-muted">
             The full club roll on <span className="font-mono text-paper-dim">{registryLabel}</span>.
             Each seat is a keyless NEAR wallet with its own money and history.
@@ -235,8 +240,21 @@ export default function SeatsDirectoryPage() {
         </Panel>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((seat) => (
-            <SeatDirectoryCard key={seat.tokenId} seat={seat} />
+          {filtered.map((seat, idx) => (
+            <motion.div
+              key={seat.tokenId}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                type: "spring",
+                stiffness: 340,
+                damping: 28,
+                delay: Math.min(idx * 0.04, 0.35),
+              }}
+              onClick={(e) => castAsciiSpell({ x: e.clientX, y: e.clientY, intensity: 0.8 })}
+            >
+              <SeatDirectoryCard seat={seat} />
+            </motion.div>
           ))}
         </div>
       )}

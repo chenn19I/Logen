@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 
 export interface SpellBurstOptions {
   x?: number;
@@ -505,3 +506,23 @@ export function AsciiRuneDivider({ className = "" }: { className?: string }) {
     </div>
   );
 }
+
+/**
+ * Wraps page content so route transitions materialize with a calm spring lift
+ * and a brief arcane ASCII rune header shimmer.
+ */
+export function AsciiPageTransition({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  return (
+    <motion.div
+      key={pathname}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 320, damping: 30 }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+

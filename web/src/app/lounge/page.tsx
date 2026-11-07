@@ -31,7 +31,7 @@ import { Chip } from "@/components/ui/Chip";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
 import { PixelChair } from "@/components/seat/PixelChair";
 import { AsciiStageVisualizer } from "@/components/ascii/AsciiDoorScanner";
-import { PixelMatrixReadout } from "@/components/ascii/PixelMatrixReadout";
+import { castAsciiSpell } from "@/components/ascii/AsciiSpellEngine";
 
 interface LoungeContent {
   title: string;
@@ -423,6 +423,7 @@ export default function LoungePage() {
   const enterDemo = () => {
     const seat = seatsQuery.data?.[0];
     if (!seat) return;
+    castAsciiSpell({ intensity: 1.15, tone: "positive" });
     setEnteredSeatId(seat.tokenId);
     setDemoEntered(true);
     setLocked(false);
