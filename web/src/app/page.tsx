@@ -48,7 +48,6 @@ import { VerifyDrawer } from "@/components/seat/VerifyDrawer";
 import { ConfirmationSheet } from "@/components/seat/ConfirmationSheet";
 import { HandoffOverlay, type HandoffMode } from "@/components/seat/Handoff";
 import { AsciiVaultField } from "@/components/ascii/AsciiVaultField";
-import { SignalTape } from "@/components/ascii/SignalTape";
 import { AsciiArchitectureFlow } from "@/components/ascii/AsciiArchitectureFlow";
 import { PixelMatrixReadout } from "@/components/ascii/PixelMatrixReadout";
 
@@ -82,8 +81,7 @@ function ConnectScreen() {
       <section className="terminal-grid relative overflow-hidden rounded border border-line bg-surface">
         <div className="grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-14">
           <div className="min-w-0">
-            <span className="bracket-label">[ 01 / SEAT ]</span>
-            <h1 className="mt-6 max-w-[12ch] text-40 font-semibold leading-[0.98] tracking-[-0.035em] text-paper sm:text-72">
+            <h1 className="max-w-[12ch] text-40 font-semibold leading-[0.98] tracking-[-0.035em] text-paper sm:text-72">
               Sell the seat.
               <br />
               <span className="text-signal">The wallet goes with it.</span>
@@ -104,7 +102,6 @@ function ConnectScreen() {
                 size="lg"
                 className="w-full sm:w-auto"
               >
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
                 Mint a seat
               </LinkButton>
             </div>
@@ -151,45 +148,24 @@ function ConnectScreen() {
             <MascotPass className="max-w-[430px]" />
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-6 py-3 sm:px-10 lg:px-14">
-          <p className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
-            Membership seats · Event revenue · Safe resale
-          </p>
-          <p className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-positive">
-            <span className="h-1 w-1 rounded-full bg-positive" aria-hidden="true" />
-            No keys. Ever.
-          </p>
-        </div>
       </section>
-
-      <SignalTape />
 
       <Reveal>
         <section className="grid gap-px overflow-hidden rounded border border-line bg-line sm:grid-cols-3">
-          {moves.map((move) => {
-            const Icon = move.icon;
-            return (
-              <div
-                key={move.number}
-                className="group bg-surface p-4 transition-colors hover:bg-surface-raised sm:p-5"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-mono text-[10px] uppercase tracking-label text-signal">
-                    [ {move.number} / STEP ]
-                  </span>
-                  <Icon
-                    className="h-4 w-4 text-paper-muted transition-colors group-hover:text-signal"
-                    aria-hidden="true"
-                  />
-                </div>
-                <h2 className="mt-3 text-16 font-medium text-paper">{move.title}</h2>
-                <p className="mt-1 text-12 leading-relaxed text-paper-muted">
-                  {move.copy}
-                </p>
-              </div>
-            );
-          })}
+          {moves.map((move) => (
+            <div
+              key={move.number}
+              className="bg-surface p-4 sm:p-5"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-label text-signal">
+                {move.number}
+              </span>
+              <h2 className="mt-2 text-16 font-medium text-paper">{move.title}</h2>
+              <p className="mt-1 text-12 leading-relaxed text-paper-muted">
+                {move.copy}
+              </p>
+            </div>
+          ))}
         </section>
       </Reveal>
 
@@ -199,14 +175,13 @@ function ConnectScreen() {
 
           <Panel className="flex flex-col justify-between p-5 sm:p-6">
             <div>
-              <span className="bracket-label">[ 02 / TELEMETRY ]</span>
-              <h2 className="mt-3 text-24 font-semibold text-paper">
-                An NFT that acts as a sovereign vault.
+              <h2 className="text-24 font-semibold text-paper">
+                Every seat is a keyless vault.
               </h2>
               <p className="mt-2 text-14 leading-relaxed text-paper-muted">
-                Every seat is a dedicated NEAR sub-account with zero access keys.
-                Revenue from club events flows in automatically via an O(1) accumulator,
-                and selling the NFT transfers the entire vault atomically.
+                Each seat is a dedicated NEAR sub-account with zero access keys.
+                Event revenue flows in automatically, and selling the NFT transfers
+                the entire vault atomically.
               </p>
 
               <div className="mt-6 grid grid-cols-3 gap-3 border-y border-line py-4">
@@ -215,43 +190,31 @@ function ConnectScreen() {
                   <div className="mt-2">
                     <PixelMatrixReadout value="00" size="sm" tone="positive" label="0 access keys" />
                   </div>
-                  <div className="mt-1 font-mono text-[9px] uppercase tracking-label text-paper-muted">
-                    Keyless lock
-                  </div>
                 </div>
                 <div>
                   <div className="mono-label">Pool split</div>
                   <div className="mt-2">
-                    <PixelMatrixReadout value="40" size="sm" tone="signal" label="40 percent pool split" />
-                  </div>
-                  <div className="mt-1 font-mono text-[9px] uppercase tracking-label text-paper-muted">
-                    % to holders
+                    <PixelMatrixReadout value="40%" size="sm" tone="signal" label="40 percent pool split" />
                   </div>
                 </div>
                 <div>
-                  <div className="mono-label">Defense</div>
+                  <div className="mono-label">Attacks blocked</div>
                   <div className="mt-2">
-                    <PixelMatrixReadout value="12" size="sm" tone="paper" label="12 of 12 attacks blocked" />
-                  </div>
-                  <div className="mt-1 font-mono text-[9px] uppercase tracking-label text-paper-muted">
-                    / 12 blocked
+                    <PixelMatrixReadout value="12/12" size="sm" tone="paper" label="12 of 12 attacks blocked" />
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 space-y-2.5">
-              <div className="mono-label">Interactive verification</div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <LinkButton href="/lab" variant="secondary" size="sm" className="justify-between">
-                  <span>Try Attack Lab (12 tests)</span>
-                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </LinkButton>
-                <LinkButton href="/lounge" variant="secondary" size="sm" className="justify-between">
-                  <span>Test NEP-413 Lounge Gate</span>
-                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </LinkButton>
-              </div>
+            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+              <LinkButton href="/lab" variant="secondary" size="sm" className="justify-between">
+                <span>Attack Lab</span>
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </LinkButton>
+              <LinkButton href="/lounge" variant="secondary" size="sm" className="justify-between">
+                <span>Lounge Gate</span>
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </LinkButton>
             </div>
           </Panel>
         </section>
@@ -813,16 +776,8 @@ export default function SeatWalletPage() {
               )}
             </div>
           </Panel>
-
-          <AsciiVaultField compact initialMode="cube" />
         </div>
       </div>
-
-      <SignalTape />
-
-      <Reveal>
-        <AsciiArchitectureFlow />
-      </Reveal>
 
       <VerifyDrawer
         open={proofOpen}
