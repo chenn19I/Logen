@@ -14,7 +14,11 @@ import {
   type ThreatScenario,
 } from "@/lib/near/sim";
 import { EXPLORER_URL } from "@/lib/near/rpc";
-import { useSound } from "@/lib/sound";
+import {
+  AsciiRuneDivider,
+  AsciiSpellText,
+  castAsciiSpell,
+} from "@/components/ascii/AsciiSpellEngine";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
@@ -172,29 +176,23 @@ const VISUAL_RACES = [
 ] as const;
 
 function ReceiptInterleavingWorkbench() {
-  const {
-    playTactileClick: click,
-    playBlockedThud: blocked,
-    playSuccessChime: success,
-  } = useSound();
   const [raceId, setRaceId] = useState<(typeof VISUAL_RACES)[number]["id"]>("payout");
   const [activeStep, setActiveStep] = useState<number>(2);
   const [playing, setPlaying] = useState(false);
 
   const race = VISUAL_RACES.find((r) => r.id === raceId) ?? VISUAL_RACES[0];
 
-  const playRace = async (targetId = raceId) => {
+  const playRace = async (targetId = raceId, e?: React.MouseEvent) => {
     if (playing) return;
-    click();
+    castAsciiSpell({ x: e?.clientX, y: e?.clientY, intensity: 0.9, tone: "signal" });
     setRaceId(targetId);
     setPlaying(true);
     setActiveStep(0);
     await new Promise((r) => window.setTimeout(r, 420));
     setActiveStep(1);
-    blocked();
     await new Promise((r) => window.setTimeout(r, 480));
     setActiveStep(2);
-    success();
+    castAsciiSpell({ x: e?.clientX, y: e?.clientY, intensity: 0.95, tone: "positive" });
     setPlaying(false);
   };
 
@@ -211,7 +209,7 @@ function ReceiptInterleavingWorkbench() {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => void playRace(item.id)}
+                onClick={(e) => void playRace(item.id, e)}
                 className={cn(
                   "relative rounded px-3 py-1.5 font-mono text-[10px] uppercase tracking-label transition-colors",
                   active ? "text-paper" : "text-paper-muted hover:text-paper"
@@ -235,7 +233,7 @@ function ReceiptInterleavingWorkbench() {
           size="sm"
           variant="secondary"
           loading={playing}
-          onClick={() => void playRace(raceId)}
+          onClick={(e) => void playRace(raceId, e)}
         >
           <Play className="h-3 w-3" aria-hidden="true" />
           Simulate race
@@ -258,12 +256,16 @@ function ReceiptInterleavingWorkbench() {
               className="rounded border border-line bg-ink-deep p-3.5"
             >
               <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-label">
-                <span className="text-paper-muted">Step {step.tag}</span>
+                <span className="text-paper-muted">✦ {step.tag}</span>
                 <span className={step.ok ? "text-positive" : "text-danger"}>
                   {step.status}
                 </span>
               </div>
-              <div className="mt-2 text-14 font-medium text-paper">{step.title}</div>
+              <AsciiSpellText
+                as="div"
+                text={step.title}
+                className="mt-2 text-14 font-medium text-paper"
+              />
             </motion.div>
           );
         })}
@@ -273,11 +275,6 @@ function ReceiptInterleavingWorkbench() {
 }
 
 export default function AttackLabPage() {
-  const {
-    playTactileClick: click,
-    playBlockedThud: blocked,
-    playSuccessChime: success,
-  } = useSound();
   const [report, setReport] = useState<AttackReport | null>(null);
   const [reportError, setReportError] = useState(false);
   const [tried, setTried] = useState<Set<string>>(new Set());
@@ -325,19 +322,19 @@ export default function AttackLabPage() {
 
   const tryAttack = (scenario: ThreatScenario) => {
     if (runningId) return;
-    click();
+    castAsciiSpell({ intensity: 0.85, tone: "signal" });
     setRunningId(scenario.id);
     window.setTimeout(() => {
       setTried((current) => new Set(current).add(scenario.id));
       setRunningId(null);
-      blocked();
+      castAsciiSpell({ intensity: 0.9, tone: "positive" });
       const code = reportById.get(scenario.id)?.error_code ?? scenario.errorCode;
       setAnnouncement(`Attack ${scenario.id} blocked. ${code}.`);
-    }, 650);
+    }, 520);
   };
 
   const reset = () => {
-    click();
+    castAsciiSpell({ intensity: 0.7, tone: "paper" });
     setTried(new Set());
     setRunningId(null);
     setRunningAll(false);
@@ -346,17 +343,16 @@ export default function AttackLabPage() {
 
   const runAll = async () => {
     if (runningId || runningAll) return;
-    click();
+    castAsciiSpell({ intensity: 1.1, tone: "signal" });
     setRunningAll(true);
     for (const scenario of THREAT_MODEL_A1_A12) {
       setRunningId(scenario.id);
-      await new Promise((resolve) => window.setTimeout(resolve, 140));
+      await new Promise((resolve) => window.setTimeout(resolve, 120));
       setTried((current) => new Set(current).add(scenario.id));
-      blocked();
     }
     setRunningId(null);
     setRunningAll(false);
-    success();
+    castAsciiSpell({ intensity: 1.2, tone: "positive" });
     setAnnouncement("All 12 attack vectors blocked.");
   };
 
@@ -461,6 +457,8 @@ export default function AttackLabPage() {
       </div>
 
       <ReceiptInterleavingWorkbench />
+
+      <AsciiRuneDivider />
 
       <div className="space-y-10">
         {groups.map((group) => (

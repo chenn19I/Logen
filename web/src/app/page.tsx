@@ -26,7 +26,11 @@ import { useDemo } from "@/lib/demo/DemoProvider";
 import { useEvents, useProof, useSeatHistory, useSeats } from "@/lib/chain/hooks";
 import type { HistoryEntry } from "@/lib/chain/types";
 import { parseNearToYocto } from "@/lib/near/format";
-import { playTactileClick } from "@/lib/sound";
+import {
+  AsciiRuneDivider,
+  AsciiSpellText,
+  castAsciiSpell,
+} from "@/components/ascii/AsciiSpellEngine";
 import {
   countdownLabel,
   formatDate,
@@ -73,28 +77,28 @@ function ConnectScreen() {
   const activePreview = PREVIEW_ROLL[activeRollIdx] ?? PREVIEW_ROLL[6];
 
   const moves: Array<{
-    number: string;
+    rune: string;
     title: string;
     copy: string;
     mode: FieldMode;
     icon: typeof ImagePlus;
   }> = [
     {
-      number: "01",
+      rune: "✦",
       title: "Upload a portrait",
       copy: "Give the seat its own face. Mint it in one step.",
       mode: "seat",
       icon: ImagePlus,
     },
     {
-      number: "02",
+      rune: "⟡",
       title: "Hold a keyless wallet",
       copy: "Ticket revenue lands directly inside the seat.",
       mode: "cube",
       icon: Sparkles,
     },
     {
-      number: "03",
+      rune: "✧",
       title: "Sell them together",
       copy: "When the seat changes hands, the money inside goes with it.",
       mode: "prism",
@@ -120,8 +124,8 @@ function ConnectScreen() {
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
               <Button
                 size="lg"
-                onClick={() => {
-                  playTactileClick();
+                onClick={(e) => {
+                  castAsciiSpell({ x: e.clientX, y: e.clientY });
                   openWalletModal();
                 }}
                 className="w-full sm:w-auto"
@@ -133,7 +137,6 @@ function ConnectScreen() {
                 href="/mint"
                 variant="secondary"
                 size="lg"
-                onClick={() => playTactileClick()}
                 className="w-full sm:w-auto"
               >
                 Mint a seat
@@ -142,8 +145,8 @@ function ConnectScreen() {
 
             <button
               type="button"
-              onClick={() => {
-                playTactileClick();
+              onClick={(e) => {
+                castAsciiSpell({ x: e.clientX, y: e.clientY, tone: "positive" });
                 setDemo(true);
               }}
               className="mt-5 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 transition-colors hover:text-paper"
@@ -166,8 +169,8 @@ function ConnectScreen() {
                       type="button"
                       onMouseEnter={() => setActiveRollIdx(index)}
                       onFocus={() => setActiveRollIdx(index)}
-                      onClick={() => {
-                        playTactileClick();
+                      onClick={(e) => {
+                        castAsciiSpell({ x: e.clientX, y: e.clientY, intensity: 0.75 });
                         setActiveRollIdx(index);
                       }}
                       aria-label={`Preview seat ${seatItem.num} (${seatItem.balance} NEAR inside)`}
@@ -202,7 +205,6 @@ function ConnectScreen() {
                 </p>
                 <Link
                   href="/seats"
-                  onClick={() => playTactileClick()}
                   className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 transition-colors hover:text-paper"
                 >
                   Open the roll
@@ -225,6 +227,8 @@ function ConnectScreen() {
         </div>
       </section>
 
+      <AsciiRuneDivider />
+
       <Reveal>
         <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
           <AsciiVaultField activeMode={vaultMode} onModeChange={setVaultMode} />
@@ -234,10 +238,15 @@ function ConnectScreen() {
               const active = vaultMode === move.mode;
               return (
                 <button
-                  key={move.number}
+                  key={move.mode}
                   type="button"
-                  onClick={() => {
-                    playTactileClick();
+                  onClick={(e) => {
+                    castAsciiSpell({
+                      x: e.clientX,
+                      y: e.clientY,
+                      intensity: 0.95,
+                      tone: "signal",
+                    });
                     setVaultMode(move.mode);
                   }}
                   aria-pressed={active}
@@ -255,13 +264,15 @@ function ConnectScreen() {
                       aria-hidden="true"
                     />
                   ) : null}
-                  <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-label">
-                    <span className="text-signal">{move.number}</span>
-                    {active ? <span className="text-positive">Active view</span> : null}
+                  <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-label">
+                    <span className="text-signal" aria-hidden="true">{move.rune}</span>
+                    {active ? <span className="text-[9px] text-positive">Active</span> : null}
                   </div>
-                  <h2 className="mt-1.5 text-16 font-medium text-paper">
-                    {move.title}
-                  </h2>
+                  <AsciiSpellText
+                    as="h2"
+                    text={move.title}
+                    className="mt-1.5 text-16 font-medium text-paper"
+                  />
                   <p className="mt-1 text-12 leading-relaxed text-paper-muted">
                     {move.copy}
                   </p>

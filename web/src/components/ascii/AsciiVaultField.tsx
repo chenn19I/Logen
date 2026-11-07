@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Pause, Play, ZoomIn } from "lucide-react";
-import { playScanPulse, playTactileClick } from "@/lib/sound";
+import { Pause, Play } from "lucide-react";
+import { castAsciiSpell } from "./AsciiSpellEngine";
 import { cn } from "@/lib/utils";
 
 export type FieldMode = "seat" | "cube" | "prism";
@@ -310,14 +310,14 @@ export function AsciiVaultField({
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const timeRef = useRef(0);
-  const restippleRef = useRef(0); // 1.0 -> 0.0 cellular stipple transition (TONASY99 Restipple)
+  const scrollYawRef = useRef(0);
+  const restippleRef = useRef(0); // 1.0 -> 0.0 cellular stipple transition
   const [internalMode, setInternalMode] = useState<FieldMode>(initialMode);
   const mode = activeMode ?? internalMode;
-  const [zoomIdx, setZoomIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
 
-  const zoom = ZOOM_LEVELS[zoomIdx] ?? 1.0;
+  const zoom = 1.05;
 
   useEffect(() => {
     if (activeMode && activeMode !== internalMode) {
@@ -326,12 +326,23 @@ export function AsciiVaultField({
     }
   }, [activeMode, internalMode]);
 
-  const switchMode = (nextMode: FieldMode) => {
+  useEffect(() => {
+    const onScroll = () => {
+      scrollYawRef.current = window.scrollY * 0.0028;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const switchMode = (nextMode: FieldMode, e?: React.MouseEvent) => {
     if (nextMode !== mode) {
       restippleRef.current = 1.0;
-      playScanPulse();
-    } else {
-      playTactileClick();
+      castAsciiSpell({
+        x: e?.clientX,
+        y: e?.clientY,
+        intensity: 0.9,
+        tone: "signal",
+      });
     }
     setInternalMode(nextMode);
     onModeChange?.(nextMode);
@@ -453,11 +464,12 @@ export function AsciiVaultField({
       const bottomEdge = height - 16;
 
       const ptr = pointerRef.current;
+      const scrollYaw = scrollYawRef.current;
       const yaw =
         mode === "seat"
-          ? -0.34 + Math.sin(t * 0.38) * 0.58 + ptr.x * 0.85
-          : t * 0.2 + ptr.x * 0.72;
-      const pitch = 0.28 + ptr.y * 0.38 + Math.sin(t * 0.35) * 0.05;
+          ? -0.34 + Math.sin(t * 0.38) * 0.58 + ptr.x * 0.85 + scrollYaw
+          : t * 0.2 + ptr.x * 0.72 + scrollYaw;
+      const pitch = 0.28 + ptr.y * 0.38 + Math.sin(t * 0.35 + scrollYaw * 0.5) * 0.06;
 
       const cosY = Math.cos(yaw);
       const sinY = Math.sin(yaw);
@@ -786,54 +798,39 @@ export function AsciiVaultField({
         className
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3.5 py-2">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
-            Keyless vault
-          </span>
-          <span className="font-mono text-[9px] text-signal">
-            {mode === "seat" ? "01/03" : mode === "cube" ? "02/03" : "03/03"}
-          </span>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-4 py-2.5">
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+          <span className="text-signal" aria-hidden="true">✦</span>
+          <span>ASCII Vault</span>
         </div>
 
         <div className="flex items-center gap-1.5">
-          {(["seat", "cube", "prism"] as const).map((item, idx) => (
+          {(
+            [
+              { id: "seat", label: "Seat" },
+              { id: "cube", label: "Vault" },
+              { id: "prism", label: "Handoff" },
+            ] as const
+          ).map((item) => (
             <button
-              key={item}
+              key={item.id}
               type="button"
-              onClick={() => switchMode(item)}
-              aria-pressed={mode === item}
+              onClick={(e) => switchMode(item.id, e)}
+              aria-pressed={mode === item.id}
               className={cn(
-                "rounded border px-2 py-0.5 font-mono text-[9px] uppercase tracking-label transition-colors",
-                mode === item
+                "rounded border px-2.5 py-1 font-mono text-[10px] uppercase tracking-label transition-colors",
+                mode === item.id
                   ? "border-signal bg-signal-soft text-paper"
                   : "border-line bg-surface-sunken text-paper-muted hover:border-line-strong hover:text-paper"
               )}
             >
-              <span className="mr-1 text-[8px] opacity-65">0{idx + 1}</span>
-              {item}
+              {item.label}
             </button>
           ))}
 
           <button
             type="button"
-            onClick={() => {
-              playTactileClick();
-              setZoomIdx((prev) => (prev + 1) % ZOOM_LEVELS.length);
-            }}
-            aria-label={`Cycle vault zoom level (currently ${zoom.toFixed(2)}x)`}
-            className="inline-flex items-center gap-1 rounded border border-line bg-surface-sunken px-2 py-0.5 font-mono text-[9px] uppercase tracking-label text-paper-muted transition-colors hover:border-line-strong hover:text-paper"
-          >
-            <ZoomIn className="h-2.5 w-2.5 text-signal" aria-hidden="true" />
-            {zoom.toFixed(2)}×
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              playTactileClick();
-              setPaused((p) => !p);
-            }}
+            onClick={() => setPaused((p) => !p)}
             disabled={reduced}
             aria-label={
               reduced
@@ -842,14 +839,13 @@ export function AsciiVaultField({
                   ? "Resume ASCII animation"
                   : "Pause ASCII animation"
             }
-            className="ml-0.5 inline-flex items-center gap-1 rounded border border-line bg-surface-sunken px-2 py-0.5 font-mono text-[9px] uppercase tracking-label text-paper-muted transition-colors hover:border-line-strong hover:text-paper disabled:opacity-50"
+            className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded border border-line bg-surface-sunken text-paper-muted transition-colors hover:border-line-strong hover:text-paper disabled:opacity-50"
           >
             {paused ? (
               <Play className="h-2.5 w-2.5" aria-hidden="true" />
             ) : (
               <Pause className="h-2.5 w-2.5" aria-hidden="true" />
             )}
-            {reduced ? "STATIC" : paused ? "RESUME" : "PAUSE"}
           </button>
         </div>
       </div>

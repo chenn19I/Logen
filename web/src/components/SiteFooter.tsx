@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
-import { useSound } from "@/lib/sound";
+import { castAsciiSpell } from "@/components/ascii/AsciiSpellEngine";
 
 const clubLinks = [
   { href: "/mint", label: "Mint a seat" },
@@ -23,7 +23,6 @@ const systemLinks = [
 
 export function SiteFooter() {
   const [atmosphere, setAtmosphere] = useState<"cobalt" | "obsidian">("cobalt");
-  const { playTactileClick } = useSound();
   const isCobalt = atmosphere === "cobalt";
 
   return (
@@ -144,8 +143,8 @@ export function SiteFooter() {
           <span>© 2026 Logen · NEAR Track 10</span>
           <button
             type="button"
-            onClick={() => {
-              playTactileClick();
+            onClick={(e) => {
+              castAsciiSpell({ x: e.clientX, y: e.clientY, intensity: 0.85 });
               setAtmosphere((prev) => (prev === "cobalt" ? "obsidian" : "cobalt"));
             }}
             className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-[9px] text-paper-dim transition-colors hover:border-line-strong hover:text-paper"

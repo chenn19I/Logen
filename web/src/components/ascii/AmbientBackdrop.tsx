@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { AsciiSpellCanvas } from "./AsciiSpellEngine";
 
 /**
- * Quiet terminal backdrop for the application.
- * Provides a soft top wash, subtle masked dot-grid, and gentle cursor spotlight.
+ * Calm terminal backdrop + interactive ASCII wizard spell canvas.
+ * Dormant when idle; responds to scrolling, route transitions, and feature switches
+ * with weightless ASCII rune animations.
  */
 export function AmbientBackdrop() {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -41,18 +43,17 @@ export function AmbientBackdrop() {
   }, []);
 
   return (
-    <div
-      ref={rootRef}
-      aria-hidden="true"
-      className="ambient-backdrop pointer-events-none fixed inset-0 z-0 overflow-hidden select-none"
-    >
-      <div className="ambient-backdrop-wash absolute inset-0" />
-      <div className="ambient-backdrop-grid absolute inset-0" />
-      <div className="ambient-backdrop-spotlight absolute inset-0" />
-      <div className="mx-auto hidden h-full w-full max-w-page justify-between px-4 sm:px-6 lg:flex">
-        <div className="h-full w-px bg-paper/[0.03]" />
-        <div className="h-full w-px bg-paper/[0.03]" />
+    <>
+      <div
+        ref={rootRef}
+        aria-hidden="true"
+        className="ambient-backdrop pointer-events-none fixed inset-0 z-0 overflow-hidden select-none"
+      >
+        <div className="ambient-backdrop-wash absolute inset-0" />
+        <div className="ambient-backdrop-grid absolute inset-0" />
+        <div className="ambient-backdrop-spotlight absolute inset-0" />
       </div>
-    </div>
+      <AsciiSpellCanvas />
+    </>
   );
 }

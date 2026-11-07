@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Eye, Lock, ShieldCheck, Sparkles } from "lucide-react";
 import { LogenMascot } from "@/components/brand/LogenMascot";
 import { SeatGlyph } from "@/components/seat/SeatGlyph";
-import { playScanPulse, playTactileClick } from "@/lib/sound";
+import { castAsciiSpell } from "@/components/ascii/AsciiSpellEngine";
 import { cn } from "@/lib/utils";
 
 export interface MascotPassProps {
@@ -61,11 +61,16 @@ export function MascotPass({
     setTilt({ rx: 0, ry: 0, gx: 50, gy: 30, active: false });
   };
 
-  const toggleXray = () => {
+  const toggleXray = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const next = !xray;
     setXray(next);
-    if (next) playScanPulse();
-    else playTactileClick();
+    castAsciiSpell({
+      x: e?.clientX,
+      y: e?.clientY,
+      intensity: next ? 1.05 : 0.7,
+      tone: next ? "positive" : "signal",
+    });
   };
 
   return (

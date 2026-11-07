@@ -18,7 +18,7 @@ import { useDemo } from "@/lib/demo/DemoProvider";
 import { useProof, useSeats } from "@/lib/chain/hooks";
 import type { ProofRow } from "@/lib/chain/types";
 import { EXPLORER_URL } from "@/lib/near/rpc";
-import { useSound } from "@/lib/sound";
+import { castAsciiSpell } from "@/components/ascii/AsciiSpellEngine";
 import { formatTime, near, seatLabel } from "@/lib/utils";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
@@ -44,7 +44,6 @@ function RowMark({ row }: { row: ProofRow }) {
 export default function VerifyPage() {
   const { accountId, openWalletModal } = useNear();
   const { demo, demoAccount } = useDemo();
-  const { playTactileClick, playSuccessChime } = useSound();
   const currentAccount = demo ? demoAccount : accountId;
   const seatsQuery = useSeats();
   const seats = seatsQuery.data ?? [];
@@ -57,14 +56,14 @@ export default function VerifyPage() {
   const [checkingAll, setCheckingAll] = useState(false);
   const [announcement, setAnnouncement] = useState("");
 
-  const recheck = async (rowId?: string) => {
-    playTactileClick();
+  const recheck = async (rowId?: string, e?: React.MouseEvent) => {
+    castAsciiSpell({ x: e?.clientX, y: e?.clientY, intensity: 0.9, tone: "signal" });
     if (rowId) setCheckingRow(rowId);
     else setCheckingAll(true);
     setAnnouncement(rowId ? "Checking this row." : "Checking every row.");
     try {
       await proofQuery.refetch();
-      playSuccessChime();
+      castAsciiSpell({ x: e?.clientX, y: e?.clientY, intensity: 1.0, tone: "positive" });
       setAnnouncement(
         rowId ? "Row checked against the chain." : "All five rows checked."
       );
@@ -230,7 +229,7 @@ export default function VerifyPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => void recheck(row.id)}
+                      onClick={(e) => void recheck(row.id, e)}
                       disabled={checkingRow === row.id}
                       className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-label text-paper-muted transition-colors hover:text-paper disabled:opacity-50"
                     >
@@ -269,7 +268,7 @@ export default function VerifyPage() {
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => void recheck()}
+              onClick={(e) => void recheck(undefined, e)}
               loading={checkingAll}
             >
               <RefreshCw className="h-3 w-3" aria-hidden="true" />
