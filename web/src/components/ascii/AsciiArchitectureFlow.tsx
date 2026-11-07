@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Check, Cpu, Lock, ShieldCheck, Terminal, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Chip } from "@/components/ui/Chip";
 
 interface FlowSpec {
   id: "mint" | "accrual" | "resale";
@@ -12,7 +10,6 @@ interface FlowSpec {
   subtitle: string;
   method: string;
   invariant: string;
-  gas: string;
   asciiLines: string[];
   steps: Array<{
     tag: string;
@@ -24,13 +21,12 @@ interface FlowSpec {
 const FLOWS: FlowSpec[] = [
   {
     id: "mint",
-    code: "01 / KEYLESS VAULT",
+    code: "Keyless Vault",
     title: "Mint Seat & Delete All Keys",
     subtitle:
-      "Each seat is deployed as a direct NEAR sub-account with its own contract code and zero access keys.",
+      "Each seat is deployed as a NEAR sub-account with its own contract code and zero access keys.",
     method: "registry.mint_seat({ handle })",
-    invariant: "view_access_key_list() == [] (0 keys)",
-    gas: "220 TGas · 1 Cross-Contract Receipt",
+    invariant: "view_access_key_list() == []",
     asciiLines: [
       "┌──────────────────┐    mint_seat()     ┌────────────────────────┐",
       "│   holder.near    │ ═════════════════► │ registry.logen.testnet │",
@@ -46,31 +42,30 @@ const FLOWS: FlowSpec[] = [
     ],
     steps: [
       {
-        tag: "STEP 01",
+        tag: "01",
         label: "Sub-account creation",
-        detail: "Registry creates <handle>.logen.testnet and deploys the pinned vault WASM.",
+        detail: "Registry creates <handle>.logen.testnet and deploys the vault WASM.",
       },
       {
-        tag: "STEP 02",
-        label: "Cryptographic key lock",
-        detail: "All full & function-call keys are deleted on creation. Nobody can sign as the vault.",
+        tag: "02",
+        label: "Key deletion",
+        detail: "All access keys are deleted on creation. Nobody can sign as the vault.",
       },
       {
-        tag: "STEP 03",
-        label: "Portrait & NEP-171 bind",
-        detail: "The NFT and the keyless vault are bound 1:1. Whoever holds the NFT commands the vault.",
+        tag: "03",
+        label: "NFT & vault bind",
+        detail: "Whoever holds the NEP-171 seat NFT controls the vault.",
       },
     ],
   },
   {
     id: "accrual",
-    code: "02 / O(1) REVENUE SPLIT",
+    code: "Revenue Split",
     title: "Event Ticket Revenue Accrual",
     subtitle:
-      "Every ticket sold splits NEAR in O(1) gas using a global accumulator—never looping over seats.",
+      "Ticket sales split NEAR in O(1) gas using a global accumulator.",
     method: "registry.buy_ticket({ event_id })",
     invariant: "acc += (pool_cut + carry) / seats_minted",
-    gas: "30 TGas · O(1) Constant Time",
     asciiLines: [
       "┌──────────────────┐   buy_ticket()     ┌────────────────────────┐",
       "│  attendee.near   │ ═════════════════► │ registry.logen.testnet │",
@@ -86,31 +81,30 @@ const FLOWS: FlowSpec[] = [
     ],
     steps: [
       {
-        tag: "40% POOL",
-        label: "Member Pool Accumulator",
-        detail: "40% of every ticket immediately increases every minted seat's withdrawable balance in O(1).",
+        tag: "40%",
+        label: "Member Pool",
+        detail: "40% of every ticket increases every minted seat's withdrawable balance.",
       },
       {
-        tag: "50% KAS",
-        label: "Kas Klub Treasury Ledger",
-        detail: "50% accrues to the immutable club treasury via pull-ledger so transfers never block sales.",
+        tag: "50%",
+        label: "Kas Klub Treasury",
+        detail: "50% accrues to the club treasury via pull-ledger.",
       },
       {
-        tag: "10% ORG",
-        label: "Organizer Pull Ledger",
-        detail: "10% accrues to the event organizer. Remainder yoctoNEAR is preserved in `carry`.",
+        tag: "10%",
+        label: "Event Organizer",
+        detail: "10% accrues to the organizer. Remainder yoctoNEAR is kept in carry.",
       },
     ],
   },
   {
     id: "resale",
-    code: "03 / SAFE ATOMIC SALE",
+    code: "Safe Resale",
     title: "Escrow-Locked Seat & Wallet Handoff",
     subtitle:
-      "While listed, vault withdrawals are locked. Buyer verifies minimum inside balance at settlement.",
+      "While listed, vault withdrawals are locked and the buyer verifies the balance at settlement.",
     method: "registry.buy_seat({ token_id, nonce, min_balance })",
     invariant: "vault.balance >= listing.min_balance && seq++",
-    gas: "300 TGas · Atomic Two-Phase Commit",
     asciiLines: [
       "┌──────────────────┐  1. list_seat()    ┌────────────────────────┐",
       "│   seller.near    │ ─────────────────► │ Vault status = LISTED  │",
@@ -126,19 +120,19 @@ const FLOWS: FlowSpec[] = [
     ],
     steps: [
       {
-        tag: "GUARD A2",
-        label: "Withdrawal freeze on list",
-        detail: "Listing locks the vault (`E_WITHDRAW_LOCKED`). Seller cannot front-run and drain the seat.",
+        tag: "A2",
+        label: "Withdrawal freeze",
+        detail: "Listing locks the vault so the seller cannot drain the seat before sale.",
       },
       {
-        tag: "GUARD A4",
-        label: "Minimum balance assertion",
-        detail: "Buyer's tx asserts `min_balance` and `nonce` on-chain. If balance dropped, buyer gets 100% refund.",
+        tag: "A4",
+        label: "Balance assertion",
+        detail: "Buyer's transaction asserts min_balance and nonce on-chain.",
       },
       {
-        tag: "GUARD A11",
-        label: "Session rotation (`rotation_seq`)",
-        detail: "Transfer increments `rotation_seq`, instantly invalidating the old holder's Lounge session.",
+        tag: "A11",
+        label: "Session rotation",
+        detail: "Transfer increments rotation_seq, invalidating the previous holder's session.",
       },
     ],
   },
@@ -163,14 +157,12 @@ export function AsciiArchitectureFlow({ className }: { className?: string }) {
         "overflow-hidden rounded border border-line bg-surface",
         className
       )}
-      aria-label="Interactive NEAR Protocol Architecture Blueprint"
+      aria-label="On-chain architecture"
     >
-      {/* Top terminal header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface-sunken px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-2.5">
-          <Terminal className="h-4 w-4 text-signal" aria-hidden="true" />
-          <span className="bracket-label">[ ARCHITECTURE / ON-CHAIN MECHANICS ]</span>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface-sunken px-4 py-2.5 sm:px-6">
+        <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+          On-chain flow
+        </span>
         <div className="flex flex-wrap items-center gap-1.5">
           {FLOWS.map((flow) => {
             const active = flow.id === activeId;
@@ -198,18 +190,12 @@ export function AsciiArchitectureFlow({ className }: { className?: string }) {
       </div>
 
       <div className="grid lg:grid-cols-[1.15fr_0.85fr]">
-        {/* Left: Animated ASCII Blueprint */}
         <div className="flex flex-col justify-between border-b border-line bg-ink-deep p-4 sm:p-6 lg:border-b-0 lg:border-r">
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-4">
-            <div>
-              <h3 className="text-16 font-semibold text-paper">{current.title}</h3>
-              <p className="mt-1 max-w-[54ch] text-12 leading-relaxed text-paper-muted">
-                {current.subtitle}
-              </p>
-            </div>
-            <Chip tone="positive" dot>
-              Verified
-            </Chip>
+          <div className="pb-4">
+            <h3 className="text-16 font-semibold text-paper">{current.title}</h3>
+            <p className="mt-1 max-w-[54ch] text-12 leading-relaxed text-paper-muted">
+              {current.subtitle}
+            </p>
           </div>
 
           <div className="relative overflow-x-auto rounded border border-line bg-[#080a07] p-4 no-scrollbar">
@@ -262,73 +248,40 @@ export function AsciiArchitectureFlow({ className }: { className?: string }) {
             </pre>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 font-mono text-[10px] uppercase tracking-label">
-            <span className="inline-flex items-center gap-1.5 text-signal">
-              <Cpu className="h-3.5 w-3.5" aria-hidden="true" />
-              Call: {current.method}
-            </span>
-            <span className="text-paper-muted">{current.gas}</span>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 font-mono text-[10px] text-paper-muted">
+            <span className="text-signal">{current.method}</span>
+            <span>{current.invariant}</span>
           </div>
         </div>
 
-        {/* Right: Step-by-step protocol breakdown & invariant */}
-        <div className="flex flex-col justify-between p-4 sm:p-6">
-          <div className="space-y-3">
-            <div className="mono-label">Protocol execution steps</div>
-            <div className="space-y-2.5">
-              {current.steps.map((step, index) => {
-                const active = pulseStep === index;
-                return (
-                  <div
-                    key={step.tag}
-                    onMouseEnter={() => setPulseStep(index)}
-                    className={cn(
-                      "cursor-default rounded border p-3 transition-colors",
-                      active
-                        ? "border-signal bg-signal-soft"
-                        : "border-line bg-surface-sunken hover:border-line-strong"
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-[10px] uppercase tracking-label text-signal">
-                        [ {step.tag} ]
-                      </span>
-                      {active ? (
-                        <span className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-label text-positive">
-                          <Zap className="h-2.5 w-2.5" aria-hidden="true" />
-                          Active stage
-                        </span>
-                      ) : (
-                        <Check className="h-3 w-3 text-paper-muted" aria-hidden="true" />
-                      )}
-                    </div>
-                    <div className="mt-1.5 text-14 font-medium text-paper">
-                      {step.label}
-                    </div>
-                    <p className="mt-1 text-12 leading-relaxed text-paper-muted">
-                      {step.detail}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-4 rounded border border-line bg-ink-deep px-3.5 py-2.5">
-            <div className="flex items-center justify-between gap-2 font-mono text-[9px] uppercase tracking-label text-paper-muted">
-              <span className="inline-flex items-center gap-1 text-positive">
-                <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-                Enforced Invariant
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Lock className="h-2.5 w-2.5" aria-hidden="true" />
-                Rust Contract
-              </span>
-            </div>
-            <div className="mt-1 truncate font-mono text-12 text-paper">
-              {current.invariant}
-            </div>
-          </div>
+        <div className="flex flex-col justify-center gap-2.5 p-4 sm:p-6">
+          {current.steps.map((step, index) => {
+            const active = pulseStep === index;
+            return (
+              <div
+                key={step.tag}
+                onMouseEnter={() => setPulseStep(index)}
+                className={cn(
+                  "cursor-default rounded border p-3 transition-colors",
+                  active
+                    ? "border-signal bg-signal-soft"
+                    : "border-line bg-surface-sunken hover:border-line-strong"
+                )}
+              >
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-label text-signal">
+                    {step.tag}
+                  </span>
+                  <span className="text-14 font-medium text-paper">
+                    {step.label}
+                  </span>
+                </div>
+                <p className="mt-1 text-12 leading-relaxed text-paper-muted">
+                  {step.detail}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
