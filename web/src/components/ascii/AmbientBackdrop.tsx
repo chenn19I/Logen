@@ -3,11 +3,8 @@
 import React, { useEffect, useRef } from "react";
 
 /**
- * Quiet, architectural terminal backdrop for the entire application.
- * Combines:
- * 1. Top atmospheric signal wash + masked micro-dot matrix
- * 2. Structural 1200px page-margin rails with `+` calibration intersections
- * 3. Subtle cursor-tracked grid illumination (disabled on reduced motion / touch)
+ * Quiet terminal backdrop for the application.
+ * Provides a soft top wash, subtle masked dot-grid, and gentle cursor spotlight.
  */
 export function AmbientBackdrop() {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -49,46 +46,12 @@ export function AmbientBackdrop() {
       aria-hidden="true"
       className="ambient-backdrop pointer-events-none fixed inset-0 z-0 overflow-hidden select-none"
     >
-      {/* Top atmospheric signal wash */}
       <div className="ambient-backdrop-wash absolute inset-0" />
-
-      {/* Masked micro-dot matrix + fine architectural grid */}
       <div className="ambient-backdrop-grid absolute inset-0" />
-
-      {/* Subtle cursor-tracked illumination over the grid */}
       <div className="ambient-backdrop-spotlight absolute inset-0" />
-
-      {/* Structural 1200px margin rails & calibration markers on wide screens */}
       <div className="mx-auto hidden h-full w-full max-w-page justify-between px-4 sm:px-6 lg:flex">
-        <div className="relative h-full w-px bg-paper/[0.035]">
-          <span className="absolute -left-[3.5px] top-20 font-mono text-[10px] leading-none text-paper/20">
-            +
-          </span>
-          <span className="absolute -left-[3.5px] top-1/2 font-mono text-[10px] leading-none text-signal/30">
-            +
-          </span>
-          <span className="absolute -left-[3.5px] bottom-24 font-mono text-[10px] leading-none text-paper/20">
-            +
-          </span>
-          <span className="absolute -left-3 top-44 hidden origin-top-left -rotate-90 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.22em] text-paper/[0.14] xl:block">
-            SYS.01 // KEYLESS.VAULT
-          </span>
-        </div>
-
-        <div className="relative h-full w-px bg-paper/[0.035]">
-          <span className="absolute -left-[3.5px] top-20 font-mono text-[10px] leading-none text-paper/20">
-            +
-          </span>
-          <span className="absolute -left-[3.5px] top-1/2 font-mono text-[10px] leading-none text-positive/30">
-            +
-          </span>
-          <span className="absolute -left-[3.5px] bottom-24 font-mono text-[10px] leading-none text-paper/20">
-            +
-          </span>
-          <span className="absolute -right-3 bottom-44 hidden origin-bottom-right -rotate-90 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.22em] text-paper/[0.14] xl:block">
-            NEP-171 // ZERO.KEYS
-          </span>
-        </div>
+        <div className="h-full w-px bg-paper/[0.03]" />
+        <div className="h-full w-px bg-paper/[0.03]" />
       </div>
     </div>
   );
