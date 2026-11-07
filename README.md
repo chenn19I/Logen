@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="./web/public/logen-mascot.png" alt="Logen — Keeper of the Keyless Seat" width="220" />
+
 # Logen
 
 ### The membership NFT that carries its own wallet
@@ -18,7 +20,13 @@
 ![Rust](https://img.shields.io/badge/Rust-1.86.0-DE4A1F?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
 
-[**Live demo**](https://logen-roan.vercel.app) · [Attack Lab](https://logen-roan.vercel.app/lab) · [Threat model](./docs/THREAT_MODEL.md) · [Contract API](./docs/API.md) · [Testnet deployment](./docs/deployment.testnet.json)
+[**Live demo**](https://logen-seat-tan.vercel.app/) · [Attack Lab](https://logen-seat-tan.vercel.app/lab) · [Threat model](./docs/THREAT_MODEL.md) · [Contract API](./docs/API.md) · [Testnet deployment](./docs/deployment.testnet.json)
+
+<br>
+
+<a href="https://logen-seat-tan.vercel.app/">
+  <img src="./web/screenshots/landing-1280.png" alt="Logen landing page — Mascot Pass, 3D Seat Throne ASCII Vault Field, and On-Chain Flow" width="100%" />
+</a>
 
 </div>
 
@@ -40,7 +48,7 @@
 [Compliance](#hackathon-compliance-and-disclosures) ·
 [Glossary](#glossary)
 
-> **Reviewing quickly?** Run the one-minute on-chain check in [Level 1](#level-1-on-chain-proof-no-clone), then `make judge` from [Level 2](#level-2-full-local-run), then open the [Attack Lab](https://logen-roan.vercel.app/lab). Each claim in this README is mapped to its evidence in the [claim-to-evidence table](#claim-to-evidence-map).
+> **Reviewing quickly?** Run the one-minute on-chain check in [Level 1](#level-1-on-chain-proof-no-clone), then `make judge` from [Level 2](#level-2-full-local-run), then open the [Attack Lab](https://logen-seat-tan.vercel.app/lab). Each claim in this README is mapped to its evidence in the [claim-to-evidence table](#claim-to-evidence-map).
 
 ---
 
@@ -56,7 +64,7 @@ Logen is a members club on NEAR. Each **seat** is an NEP-171 NFT and, at the sam
 | **Track** | `nfts`: NFTs That Do Something |
 | **NEAR features used** | Sub-accounts; NEP-171 with NEP-297 events; atomic batch receipts (`CreateAccount` → `Transfer` → `DeployContract` → `FunctionCall`); cross-contract calls and callbacks; `DeleteKey` to seal the parent; NEP-413 message signing for wallet sign-in; RPC `view_access_key_list` and `view_account` as public proofs; `nft_item_info()` from the Sharded NFT Items draft. |
 | **Status** | Deployed to NEAR Testnet and exercised end to end: mint, ticket sale, revenue claim, list, buy, four live attack attempts, parent seal. Testnet only. Not audited. |
-| **Live demo** | https://logen-roan.vercel.app |
+| **Live demo** | https://logen-seat-tan.vercel.app/ |
 | **Fastest check** | One `curl` loop, see [Level 1](#level-1-on-chain-proof-no-clone) |
 | **Full check** | `make judge` (Rust tests, wasm build, Vitest), then `make attack` |
 
@@ -111,9 +119,9 @@ Every claim here has a check you can run. Pick the depth you need. Nothing below
 
 ### Level 0: browser only
 
-1. Open the **[Attack Lab](https://logen-roan.vercel.app/lab)**. It lists 12 seller and gate attacks grouped as *Before the sale*, *During the sale*, *After the sale* and *Keys and signatures*. Open a card to read the control that stops the attack, its error code and the test or transaction behind it.
-2. Open the **[app](https://logen-roan.vercel.app)** and switch on **Demo** in the navbar. You can walk through the Seat Wallet, Market, per-seat History and the Proof Verifier with sample data and no wallet.
-3. **[`/lounge`](https://logen-roan.vercel.app/lounge)** stays closed until a wallet that holds a seat signs in. The server-side gate logic (challenge, NEP-413 signature, same-block pair check) is covered by the Vitest suite in Level 2.
+1. Open the **[Attack Lab](https://logen-seat-tan.vercel.app/lab)**. It lists 12 seller and gate attacks grouped as *Before the sale*, *During the sale*, *After the sale* and *Keys and signatures*. Open a card to read the control that stops the attack, its error code and the test or transaction behind it.
+2. Open the **[app](https://logen-seat-tan.vercel.app/)** and switch on **Demo** in the navbar. You can walk through the Seat Wallet, Market, per-seat History and the Proof Verifier with sample data and no wallet.
+3. **[`/lounge`](https://logen-seat-tan.vercel.app/lounge)** stays closed until a wallet that holds a seat signs in. The server-side gate logic (challenge, NEP-413 signature, same-block pair check) is covered by the Vitest suite in Level 2.
 
 ### Level 1: on-chain proof, no clone
 
@@ -438,21 +446,31 @@ Handle rules match the contract: 2–20 lowercase `[a-z0-9-]` characters, no lea
 
 ### Design, mascot and motion
 
-- **Favicon**: `web/src/app/icon.svg` is the Logen dotted seat glyph. `layout.tsx` also wires OpenGraph/Twitter metadata and uses the mascot portrait as the social image.
+- **Favicon & social identity**: `web/src/app/icon.png` (`256×256`) and `web/src/app/apple-icon.png` (`180×180`) use the Logen cybernetic wizard mascot for the browser URL icon, paired with OpenGraph/Twitter social cards in `layout.tsx`.
 - **Mascot**: `web/public/logen-mascot.png` is the original pixel-art wizard. `LogenMascot` frames it with a float, aura, cube glow and sparks; `mix-blend-screen` lets the dark portrait sit on the terminal background.
-- **Hero pass**: `MascotPass` turns the mascot into a physical member credential — corner marks, an oversized seat number, the balance inside and a three-cell network/wallet/access strip — so the landing page previews the product instead of showing a portrait in a card. The 12-glyph roll links to `/seats`.
+- **Interactive Hero Pass & 12-Seat Roll**: `MascotPass` turns the mascot into a physical member credential with 3D perspective cursor tilt, specular light sheen, corner marks, oversized seat number, and live balance inside. Hovering or clicking any glyph in the 12-seat roll previews that seat's sub-account ID and balance in real time.
+- **3D ASCII Vault Field & On-Chain Flow**: `AsciiVaultField` renders a 60fps HTML5 canvas 3D ASCII projection (`Seat Throne + Floating Keyless Vault`, `4D Tesseract Vault Cube`, and `Octahedral Crystal Prism`) with offscreen sprite caching and pointer-reactive tilt. `AsciiArchitectureFlow` lets judges interactively step through `Keyless Vault`, `Revenue Split`, and `Safe Resale` receipts while inspecting live vault state transitions (`owner_id`, `rotation_seq`, `status`, `vault`).
 - **Footer**: club and system link columns, the "No keys. Ever." line and an oversized, low-contrast LOGEN watermark close every page.
-- **Motion**: `Reveal` and `app/template.tsx` provide one-time section and page entrances; `card-lift`, the mint dropzone and the preview scanlines add small affordances. Every animation is disabled or reduced under `prefers-reduced-motion: reduce`.
-- The palette, Geist/Geist Mono type, hairline borders and single blue accent are unchanged. The mascot and uploaded portraits are the only new brand assets.
+- **Motion**: `Reveal`, spring-animated navigation indicator (`layoutId`), 3D perspective card tilt on `MascotPass` and `SeatCard`, `card-lift`, the mint dropzone and preview scanlines provide tactile affordances. Every animation is disabled or reduced under `prefers-reduced-motion: reduce`.
 
-### Screenshots
+### Screenshots & Visual Walkthrough
+
+Live deployment: **[https://logen-seat-tan.vercel.app/](https://logen-seat-tan.vercel.app/)**
+
+| Seat Wallet (`/`) | Mint Studio (`/mint`) |
+| :---: | :---: |
+| ![Seat Wallet](./web/screenshots/home-1280.png) | ![Mint Studio](./web/screenshots/mint-filled-1280.png) |
+| **Safe Secondary Market (`/market`)** | **Holder-Only Lounge (`/lounge`)** |
+| ![Safe Market](./web/screenshots/market-1280.png) | ![Holder Lounge](./web/screenshots/lounge-open-1280.png) |
+| **Attack Lab (`/lab`)** | **5-Row On-Chain Proof Verifier (`/verify`)** |
+| ![Attack Lab](./web/screenshots/lab-tried-1280.png) | ![Proof Verifier](./web/screenshots/verify-1280.png) |
 
 `web/screenshots/` is generated with `node scripts/capture.mjs <scenario> <width> <height>`:
 
-- `landing-{390,768,1280}.png` — connect screen, member pass, 12-seat glyph roll and the three-step strip
+- `landing-{390,768,1280}.png` — connect screen, 3D-tilting member pass, interactive 12-seat glyph roll, 3D Seat Throne ASCII Vault Field, and On-Chain Flow
 - `mint-{empty,filled,success}-{390,768,1280}.png` — Mint Studio, portrait drop, preview and success sheet
 - `home-{390,768,1280}.png`, `market-{390,768,1280}.png`, `seats-{390,768,1280}.png` — wallet, market and the full seat directory
-- `seat-{390,768,1280}.png`, `verify-{390,768,1280}.png`, `kit-1280.png` — seat history, proof verifier and design specimens
+- `seat-{390,768,1280}.png`, `verify-{390,768,1280}.png`, `verify-drawer-*`, `kit-{390,768,1280}.png` — seat history, proof verifier and design specimens
 - `market-sheet-*` and `handoff-*` — buy confirmation and post-purchase handoff overlays
 - `lounge-{closed,open,locked}-{390,768,1280}.png` and `lab-*` — responsive Lounge and Attack Lab states
 
@@ -561,7 +579,7 @@ Ideas that are **not part of this submission**:
 | Existing product on another chain (Q-002) | None |
 | Testnet-only and integrations (Q-010, Q-011) | Testnet deployment. Own contracts on NEAR that fit the track, no mandatory integration. |
 | Reproducible README for AI screening (Q-017) | See [Verify it yourself](#verify-it-yourself) |
-| Hosted demo (Q-012) | https://logen-roan.vercel.app on Vercel. HACKATHON.md asks for it to stay up through 2026-11-18. |
+| Hosted demo (Q-012) | https://logen-seat-tan.vercel.app/ on Vercel. HACKATHON.md asks for it to stay up through 2026-11-18. |
 | Libraries, templates and AI code (Q-005) | See the disclosure below |
 | Track | `nfts` |
 
