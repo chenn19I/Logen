@@ -531,9 +531,13 @@ export default function SeatWalletPage() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [delistOpen, setDelistOpen] = useState(false);
+  const [delegateOpen, setDelegateOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("0.50");
   const [listPrice, setListPrice] = useState("6.40");
   const [privateBuyer, setPrivateBuyer] = useState("");
+  const [delegateAccount, setDelegateAccount] = useState("agent.demo.testnet");
+  const [delegateAllowance, setDelegateAllowance] = useState("0.50");
+  const [delegateTtlHours, setDelegateTtlHours] = useState("24");
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -706,6 +710,87 @@ export default function SeatWalletPage() {
       }
       setDelistOpen(false);
       setNotice("Listing removed. Withdrawals resume in about 2 minutes.");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const openDelegate = () => {
+    if (!selectedSeat) return;
+    setDelegateAccount(selectedSeat.delegate?.accountId || "agent.demo.testnet");
+    setDelegateAllowance(
+      selectedSeat.delegate
+        ? near(selectedSeat.delegate.remainingYocto, 2)
+        : Math.min(0.8, nearValue(selectedSeat.withdrawableYocto, 2)).toFixed(2)
+    );
+    setDelegateTtlHours("24");
+    setActionError(null);
+    setNotice(null);
+    setDelegateOpen(true);
+  };
+
+  const saveDelegate = async () => {
+    if (!selectedSeat) return;
+    setActionError(null);
+    setPending(true);
+    try {
+      const allowanceYocto = parseNearToYocto(delegateAllowance);
+      const ttlSec = Math.max(60, Math.round(Number(delegateTtlHours || "24") * 3600));
+      const targetAccount = delegateAccount.trim().toLowerCase();
+      if (!targetAccount) throw new Error("Enter a delegate account ID");
+      if (BigInt(allowanceYocto) <= 0n) throw new Error("Allowance must be above zero");
+      if (demo) {
+        await new Promise((resolve) => window.setTimeout(resolve, 750));
+        await mock.setDelegate(selectedSeat.tokenId, targetAccount, allowanceYocto, ttlSec);
+      } else {
+        await callContractMethod({
+          receiverId: selectedSeat.tokenId,
+          methodName: "set_delegate",
+          args: {
+            account_id: targetAccount,
+            allowance: allowanceYocto,
+            ttl_sec: ttlSec,
+          },
+          gas: "30000000000000",
+          deposit: "1",
+        });
+        await refreshAll();
+      }
+      setDelegateOpen(false);
+      setNotice(
+        `Epoch-bound delegate set for ${targetAccount} (${delegateAllowance} NEAR at seq #${
+          selectedSeat.rotationSeq ?? Math.max(0, selectedSeat.holdersCount - 1)
+        }).`
+      );
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const revokeDelegate = async () => {
+    if (!selectedSeat) return;
+    setActionError(null);
+    setPending(true);
+    try {
+      if (demo) {
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        await mock.clearDelegate(selectedSeat.tokenId);
+      } else {
+        await callContractMethod({
+          receiverId: selectedSeat.tokenId,
+          methodName: "clear_delegate",
+          args: {},
+          gas: "30000000000000",
+          deposit: "1",
+        });
+        await refreshAll();
+      }
+      setDelegateOpen(false);
+      setNotice("Vault spending delegate revoked.");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Unknown error");
     } finally {
@@ -976,6 +1061,77 @@ export default function SeatWalletPage() {
               )}
             </div>
           </Panel>
+
+          <Panel>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+              <div>
+                <div className="mono-label">
+                  Epoch-bound delegate · seq #
+                  {selectedSeat.rotationSeq ?? Math.max(0, selectedSeat.holdersCount - 1)}
+                </div>
+                <h2 className="mt-1 text-16 font-medium text-paper">
+                  Agent / hot-key spending allowance
+                </h2>
+              </div>
+              <Chip tone={selectedSeat.delegate ? "positive" : "neutral"} dot>
+                {selectedSeat.delegate ? "Active for this epoch" : "None configured"}
+              </Chip>
+            </div>
+            <div className="px-4 py-4">
+              {selectedSeat.delegate ? (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <div className="mono-label">Delegate account</div>
+                    <div className="mt-1 truncate font-mono text-14 text-paper">
+                      {selectedSeat.delegate.accountId}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mono-label">Remaining allowance</div>
+                    <div className="mt-1 font-mono text-14 tabular text-positive">
+                      {near(selectedSeat.delegate.remainingYocto, 2)} NEAR
+                    </div>
+                  </div>
+                  <div className="sm:text-right">
+                    <div className="mono-label">Bound to epoch</div>
+                    <div className="mt-1 font-mono text-14 tabular text-paper">
+                      rotation_seq #{selectedSeat.delegate.seq}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-12 leading-relaxed text-paper-muted">
+                  Grant a bounded NEAR spending allowance (`set_delegate`) to an AI agent or
+                  hot wallet without adding an access key to the seat.
+                </p>
+              )}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+                <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+                  Auto-wiped on sale or transfer (`v_rotate` / `v_settle_sale`)
+                </span>
+                <div className="flex items-center gap-2">
+                  {selectedSeat.delegate ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={listed || pending}
+                      onClick={() => void revokeDelegate()}
+                    >
+                      Revoke
+                    </Button>
+                  ) : null}
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={listed || cooldown}
+                    onClick={openDelegate}
+                  >
+                    {selectedSeat.delegate ? "Update allowance" : "Set delegate"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Panel>
         </div>
       </div>
 
@@ -1101,6 +1257,86 @@ export default function SeatWalletPage() {
         ]}
         note="Withdrawals resume in about 2 minutes."
       />
+
+      <ConfirmationSheet
+        open={delegateOpen}
+        onOpenChange={setDelegateOpen}
+        title="Epoch-bound spending delegate"
+        description="Appoint an AI agent or hot wallet to spend up to a fixed allowance during your ownership epoch."
+        primaryLabel={`Authorize ${delegateAllowance || "0"} NEAR`}
+        onConfirm={saveDelegate}
+        pending={pending}
+        error={actionError}
+        confirmDisabled={
+          !delegateAccount.trim() || !delegateAllowance || Number(delegateAllowance) <= 0
+        }
+        blocks={[
+          {
+            label: "What will happen",
+            value: `${delegateAccount.trim() || "—"} can call delegate_withdraw up to ${
+              delegateAllowance || "0"
+            } NEAR while you hold the seat.`,
+          },
+          {
+            label: "Zero-key guarantee",
+            value:
+              "Zero NEAR access keys are added to the seat. The allowance is stored inside the vault contract.",
+          },
+          {
+            label: "Automatic cutoff (A3)",
+            value: `Bound to rotation_seq #${
+              selectedSeat.rotationSeq ?? Math.max(0, selectedSeat.holdersCount - 1)
+            }. Frozen while listed and destroyed on transfer or sale.`,
+          },
+        ]}
+        note="If you list, transfer, or sell the seat, this delegate loses access in the same block."
+      >
+        <div className="space-y-4">
+          <label className="block">
+            <span className="mono-label">Delegate / agent account</span>
+            <input
+              type="text"
+              value={delegateAccount}
+              onChange={(event) => setDelegateAccount(event.target.value)}
+              placeholder="agent.demo.testnet"
+              className="mt-2 min-h-11 w-full rounded border border-line bg-surface-sunken px-3 font-mono text-14 text-paper outline-none placeholder:text-paper-muted focus:border-signal"
+            />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mono-label">Allowance cap</span>
+              <div className="mt-2 flex min-h-11 items-center rounded border border-line bg-surface-sunken px-3 focus-within:border-signal">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={delegateAllowance}
+                  onChange={(event) => setDelegateAllowance(event.target.value)}
+                  className="w-full bg-transparent py-2 font-mono text-16 text-paper outline-none tabular"
+                />
+                <span className="ml-2 font-mono text-12 uppercase tracking-label text-paper-muted">
+                  NEAR
+                </span>
+              </div>
+            </label>
+            <label className="block">
+              <span className="mono-label">TTL (hours)</span>
+              <div className="mt-2 flex min-h-11 items-center rounded border border-line bg-surface-sunken px-3 focus-within:border-signal">
+                <input
+                  type="number"
+                  min={1}
+                  max={720}
+                  value={delegateTtlHours}
+                  onChange={(event) => setDelegateTtlHours(event.target.value)}
+                  className="w-full bg-transparent py-2 font-mono text-16 text-paper outline-none tabular"
+                />
+                <span className="ml-2 font-mono text-12 uppercase tracking-label text-paper-muted">
+                  HRS
+                </span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </ConfirmationSheet>
 
       <HandoffOverlay
         open={handoff.open}

@@ -305,6 +305,7 @@ function seedHistory(seed: Seed): HistoryEntry[] {
 
 function seatFromSeed(seed: Seed): Seat {
   const balance = near(seed.balance);
+  const rotationSeq = Math.max(0, seed.holders - 1);
   return {
     tokenId: tokenIdFor(seed.n),
     number: seed.n,
@@ -321,6 +322,16 @@ function seatFromSeed(seed: Seed): Seat {
     innerDots: seed.dots,
     cooldownUntilMs: null,
     privateBuyer: null,
+    rotationSeq,
+    delegate:
+      seed.n === 7
+        ? {
+            accountId: "agent.demo.testnet",
+            remainingYocto: near(0.8),
+            expiresAtMs: Date.UTC(2026, 11, 31, 23, 59),
+            seq: rotationSeq,
+          }
+        : null,
   };
 }
 
@@ -584,6 +595,7 @@ export class MockChain implements ChainPort {
     if (!seat || !listing) throw new Error("Seat is not for sale");
     if (seat.ownerId === DEMO_ACCOUNT) throw new Error("You already hold this seat");
     const now = Date.now();
+    const nextSeq = (seat.rotationSeq ?? Math.max(0, seat.holdersCount - 1)) + 1;
     const updated: Seat = {
       ...seat,
       ownerId: DEMO_ACCOUNT,
@@ -592,6 +604,8 @@ export class MockChain implements ChainPort {
       holderSinceMs: now,
       holdersCount: seat.holdersCount + 1,
       privateBuyer: null,
+      rotationSeq: nextSeq,
+      delegate: null,
     };
     this.seats.set(tokenId, updated);
     this.listings.delete(tokenId);
@@ -619,6 +633,45 @@ export class MockChain implements ChainPort {
       holderSeq: seat.holdersCount,
       txHash: null,
     });
+    this.emit();
+    return updated;
+  }
+
+  async setDelegate(
+    tokenId: string,
+    delegateAccountId: string,
+    allowanceYocto: string,
+    ttlSec: number
+  ): Promise<Seat> {
+    const found = this.seats.get(tokenId);
+    if (!found) throw new Error("Seat not found");
+    const seat = this.normalizeSeat(found);
+    if (seat.status === "listed") throw new Error("E_FROZEN");
+    const trimmed = delegateAccountId.trim().toLowerCase();
+    if (!trimmed) throw new Error("Delegate account ID is required");
+    const seq = seat.rotationSeq ?? Math.max(0, seat.holdersCount - 1);
+    const updated: Seat = {
+      ...seat,
+      delegate: {
+        accountId: trimmed,
+        remainingYocto: allowanceYocto,
+        expiresAtMs: Date.now() + Math.max(60, ttlSec) * 1000,
+        seq,
+      },
+    };
+    this.seats.set(tokenId, updated);
+    this.emit();
+    return updated;
+  }
+
+  async clearDelegate(tokenId: string): Promise<Seat> {
+    const found = this.seats.get(tokenId);
+    if (!found) throw new Error("Seat not found");
+    const updated: Seat = {
+      ...found,
+      delegate: null,
+    };
+    this.seats.set(tokenId, updated);
     this.emit();
     return updated;
   }
@@ -654,6 +707,8 @@ export class MockChain implements ChainPort {
       description: input.description?.trim() || null,
       imageUrl: input.imageUrl ?? null,
       handle,
+      rotationSeq: 0,
+      delegate: null,
     };
 
     this.seats.set(tokenId, seat);
@@ -691,6 +746,7 @@ export class MockChain implements ChainPort {
     const seat = this.seats.get(tokenId);
     if (!seat || seat.ownerId !== DEMO_ACCOUNT) return null;
     const now = Date.now();
+    const nextSeq = (seat.rotationSeq ?? Math.max(0, seat.holdersCount - 1)) + 1;
     const updated: Seat = {
       ...seat,
       ownerId: "mara.near",
@@ -698,6 +754,8 @@ export class MockChain implements ChainPort {
       listedPriceYocto: null,
       holderSinceMs: now,
       holdersCount: seat.holdersCount + 1,
+      rotationSeq: nextSeq,
+      delegate: null,
     };
     this.seats.set(tokenId, updated);
     this.listings.delete(tokenId);

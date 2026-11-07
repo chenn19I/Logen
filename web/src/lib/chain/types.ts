@@ -1,5 +1,12 @@
 export type SeatStatus = "active" | "listed" | "pending" | "cooldown";
 
+export interface SeatDelegate {
+  accountId: string;
+  remainingYocto: string;
+  expiresAtMs: number;
+  seq: number;
+}
+
 export interface Seat {
   tokenId: string;
   number: number;
@@ -25,6 +32,10 @@ export interface Seat {
   imageUrl?: string | null;
   /** Custom sub-account handle, when the seat was minted with one. */
   handle?: string | null;
+  /** Current vault rotation sequence (epoch). */
+  rotationSeq?: number;
+  /** Optional epoch-bound spending delegate (auto-wiped on transfer/sale). */
+  delegate?: SeatDelegate | null;
 }
 
 export interface MintSeatInput {

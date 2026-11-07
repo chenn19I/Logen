@@ -61,6 +61,20 @@ function mapSeat(
   ).toString();
   const numberFromId = Number((tokenId.split(".")[0] || "").replace(/\D/g, "")) || 0;
   const portrait = getPortrait(tokenId);
+  const rotationSeq = vault?.rotation_seq ?? seat?.rotation_seq ?? 0;
+  const rawDelegate = vault?.delegate;
+  const delegateAccountId = rawDelegate?.account_id || rawDelegate?.account || null;
+  const delegateExpiresAt = rawDelegate?.expires_at_ms ?? rawDelegate?.expires_at ?? 0;
+  const delegate =
+    rawDelegate && delegateAccountId && rawDelegate.seq === rotationSeq
+      ? {
+          accountId: delegateAccountId,
+          remainingYocto: rawDelegate.remaining,
+          expiresAtMs: delegateExpiresAt,
+          seq: rawDelegate.seq,
+        }
+      : null;
+
   return {
     tokenId,
     number: seat?.number || numberFromId || 1,
@@ -81,6 +95,8 @@ function mapSeat(
     description: portrait?.description ?? null,
     imageUrl: portrait?.dataUrl ?? null,
     handle: seat?.handle ?? null,
+    rotationSeq,
+    delegate,
   };
 }
 
