@@ -231,14 +231,7 @@ export default function AttackLabPage() {
             <div className="mt-1 font-mono text-40 tabular text-positive">
               {tried.size} <span className="text-24 text-paper-muted">/ 12</span>
             </div>
-            <div className="mt-2 flex lg:justify-end">
-              <PixelMatrixReadout
-                value={`${String(tried.size).padStart(2, "0")}/12`}
-                size="sm"
-                tone={tried.size === 12 ? "positive" : "signal"}
-              />
-            </div>
-            <div className="mt-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            <div className="mt-1 font-mono text-[10px] uppercase tracking-label text-paper-muted">
               {reportError ? "Report unavailable" : "Live report"}
             </div>
           </div>
@@ -248,15 +241,13 @@ export default function AttackLabPage() {
       {/* Interactive ASCII Threat Defense Matrix */}
       <div className="overflow-hidden rounded border border-line bg-ink-deep">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-4 py-2.5">
-          <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-label text-paper-dim">
-            <Terminal className="h-3.5 w-3.5 text-signal" aria-hidden="true" />
-            [ ASCII DEFENSE MATRIX · A1–A12 INVARIANTS ]
+          <span className="font-mono text-[10px] uppercase tracking-label text-paper-muted">
+            A1–A12 Defense Matrix
           </span>
-          <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-positive">
-            <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="font-mono text-[10px] uppercase tracking-label text-positive">
             {tried.size === 12
-              ? "ALL 12 VECTORS VERIFIED BLOCKED"
-              : `${12 - tried.size} VECTORS READY TO TEST`}
+              ? "All 12 blocked"
+              : `${12 - tried.size} ready to test`}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-px bg-line sm:grid-cols-6 lg:grid-cols-12">
