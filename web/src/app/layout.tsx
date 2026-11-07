@@ -10,7 +10,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { AmbientBackdrop } from "@/components/ascii/AmbientBackdrop";
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://logen-roan.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://logen-seat-tan.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
