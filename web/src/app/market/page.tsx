@@ -28,6 +28,7 @@ function CompareBar({ inside, price }: { inside: string; price: string }) {
   const priceValue = nearValue(price, 4);
   const pct = priceValue > 0 ? Math.min(100, (insideValue / priceValue) * 100) : 0;
   const covers = insideValue >= priceValue;
+  const netCost = Math.max(0, priceValue - insideValue);
   return (
     <div>
       <div
@@ -38,15 +39,20 @@ function CompareBar({ inside, price }: { inside: string; price: string }) {
         )} percent of the asking price.`}
       >
         <div
-          className={`h-full rounded-full ${covers ? "bg-positive" : "bg-signal"}`}
+          className={`h-full rounded-full transition-all duration-500 ${covers ? "bg-positive" : "bg-signal"}`}
           style={{ width: `${Math.max(2, pct)}%` }}
         />
       </div>
-      <p className="mt-2 text-12 leading-relaxed text-paper-muted">
-        {covers
-          ? "Inside is worth more than the asking price."
-          : `Inside covers ${Math.round(pct)}% of the asking price.`}
-      </p>
+      <div className="mt-2 flex items-center justify-between gap-2 text-12 leading-relaxed text-paper-muted">
+        <span>
+          {covers
+            ? "Inside is worth more than the asking price."
+            : `Inside covers ${Math.round(pct)}% of the asking price.`}
+        </span>
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-label text-paper-dim tabular">
+          {covers ? "Net 0.00 NEAR" : `Net ${netCost.toFixed(2)} NEAR`}
+        </span>
+      </div>
     </div>
   );
 }
@@ -66,9 +72,11 @@ function ListingCard({
   const inside = near(listing.insideYocto, 2);
 
   return (
-    <Panel className="flex flex-col">
+    <Panel className="card-lift flex flex-col">
       <div className="flex items-start justify-between gap-2 border-b border-line px-4 py-3">
-        <span className="bracket-label">[ {number} / SEAT ]</span>
+        <span className="font-mono text-12 uppercase tracking-label text-paper-muted">
+          Seat {number}
+        </span>
         <Chip tone="caution" dot>
           Listed
         </Chip>
