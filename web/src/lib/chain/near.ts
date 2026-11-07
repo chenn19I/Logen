@@ -339,9 +339,11 @@ export class NearChain implements ChainPort {
         {
           id: "build",
           label: "Build",
-          value: "UNSEALED",
-          detail: "Testnet build. A sealed build is required before mainnet.",
-          status: "warn",
+          value: proof.parentSegelOk ? "SEALED (0 KEYS)" : "UNSEALED",
+          detail: proof.parentSegelOk
+            ? "Parent registry has 0 access keys. Neither the club nor the deployer can upgrade or mint outside protocol rules."
+            : `Parent registry has ${proof.parentKeysCount} key(s). A sealed build is required before mainnet.`,
+          status: proof.parentSegelOk ? "ok" : "warn",
           recheckable: true,
         },
       ],

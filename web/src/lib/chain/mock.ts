@@ -497,9 +497,9 @@ export class MockChain implements ChainPort {
         {
           id: "build",
           label: "Build",
-          value: "UNSEALED",
-          detail: "Testnet build. A sealed build is required before mainnet.",
-          status: "warn",
+          value: "SEALED (0 KEYS)",
+          detail: "Parent registry sealed (0 access keys, matching logen-84b273.testnet tx BETN1taR…4ek).",
+          status: "ok",
           recheckable: true,
         },
       ],
