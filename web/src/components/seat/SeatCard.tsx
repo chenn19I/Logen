@@ -94,6 +94,7 @@ export function SeatCard({
   defaultFlipped?: boolean;
 }) {
   const [flipped, setFlipped] = useState(defaultFlipped);
+  const [hoverTilt, setHoverTilt] = useState({ rx: 0, ry: 0, gx: 50, gy: 30, active: false });
   const reduced = useReducedMotion();
   const id = useId();
   const number = seatLabel(seat.tokenId);
@@ -102,6 +103,24 @@ export function SeatCard({
   const flipButton = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     flip();
+  };
+
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (reduced) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const nx = (event.clientX - rect.left) / rect.width;
+    const ny = (event.clientY - rect.top) / rect.height;
+    setHoverTilt({
+      rx: (0.5 - ny) * 6,
+      ry: (nx - 0.5) * 7,
+      gx: Math.round(nx * 100),
+      gy: Math.round(ny * 100),
+      active: true,
+    });
+  };
+
+  const onPointerLeave = () => {
+    setHoverTilt({ rx: 0, ry: 0, gx: 50, gy: 30, active: false });
   };
 
   if (compact) {
@@ -135,7 +154,9 @@ export function SeatCard({
   const front = (
     <div className="flex h-full flex-col justify-between p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
-        <span className="bracket-label">[ {number} / SEAT ]</span>
+        <span className="font-mono text-12 uppercase tracking-label text-paper-muted">
+          Seat {number}
+        </span>
         {statusChip(seat)}
       </div>
 
@@ -207,7 +228,9 @@ export function SeatCard({
     <div className="flex h-full flex-col justify-between p-5 sm:p-6">
       <div>
         <div className="flex items-start justify-between gap-3">
-          <span className="bracket-label">[ {number} / PROOF ]</span>
+          <span className="font-mono text-12 uppercase tracking-label text-paper-muted">
+            Proof / {number}
+          </span>
           <Chip tone="positive" icon={<Check className="h-3 w-3" aria-hidden="true" />}>
             Keyless
           </Chip>
@@ -234,10 +257,21 @@ export function SeatCard({
       <div
         className="card-lift group relative block w-full cursor-pointer rounded border border-line bg-surface text-left hover:border-line-strong"
         onClick={flip}
+        onPointerMove={onPointerMove}
+        onPointerLeave={onPointerLeave}
         style={{ perspective: 1200 }}
         data-seat-card={id}
       >
         <div className="surface-wash relative aspect-[1.62/1] w-full overflow-hidden rounded">
+          {/* Specular sheen on pointer hover */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-300"
+            style={{
+              opacity: hoverTilt.active ? 1 : 0,
+              background: `radial-gradient(260px circle at ${hoverTilt.gx}% ${hoverTilt.gy}%, rgba(59, 155, 255, 0.1), transparent 72%)`,
+            }}
+          />
           {reduced ? (
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
@@ -255,8 +289,11 @@ export function SeatCard({
             <motion.div
               className="absolute inset-0"
               style={{ transformStyle: "preserve-3d" }}
-              animate={{ rotateY: flipped ? 180 : 0 }}
-              transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }}
+              animate={{
+                rotateY: (flipped ? 180 : 0) + (hoverTilt.active ? hoverTilt.ry : 0),
+                rotateX: hoverTilt.active ? hoverTilt.rx : 0,
+              }}
+              transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
             >
               <div
                 className="absolute inset-0"
