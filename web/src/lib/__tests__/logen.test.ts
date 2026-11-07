@@ -191,6 +191,125 @@ describe("Threat Model A1-A12 & Simulator Presets", () => {
     const presets = createSimulatorPresets();
     expect(presets.length).toBeGreaterThanOrEqual(3);
   });
+
+  it("proves R4 S1 Sale in the Middle of a Payout under both payout-before-sale and payout-after-sale schedules", () => {
+    const presets = createSimulatorPresets();
+    const s1 = presets.find((p) => p.id === "s1_payout_race")!;
+    expect(s1).toBeDefined();
+
+    // Schedule A: Ticket -> Claim R1 -> Claim R2 (payout lands in vault) -> Seller withdraw attempt -> Agent withdraw attempt -> Bob buy R1..R3
+    const worldA = structuredClone(s1.initialWorld);
+    const txMap = Object.fromEntries(s1.transactions.map((t) => [t.txId, t]));
+    txMap.tx_ticket.receipts[0].execute(worldA);
+    txMap.tx_claim.receipts[0].execute(worldA);
+    txMap.tx_claim.receipts[1].execute(worldA);
+    txMap.tx_seller_withdraw.receipts[0].execute(worldA);
+    txMap.tx_agent_withdraw.receipts[0].execute(worldA);
+    txMap.tx_buy.receipts[0].execute(worldA);
+    txMap.tx_buy.receipts[1].execute(worldA);
+    txMap.tx_buy.receipts[2].execute(worldA);
+
+    expect(worldA.vaultOwner).toBe("bob.testnet");
+    expect(worldA.vaultSeq).toBe(1);
+    expect(worldA.vaultBalance).toBe(40); // 20 initial + 20 ticket payout
+    expect(worldA.delegateAccount).toBeNull();
+    expect(
+      worldA.logs.filter((l) => l.outcome === "BLOCKED").map((l) => l.code)
+    ).toEqual(["E_FROZEN", "E_FROZEN"]);
+
+    // Schedule B: Ticket -> Claim R1 -> Bob buy R1 -> Bob buy R2 (cut-off!) -> Seller withdraw -> Agent withdraw -> Claim R2 lands -> Bob buy R3
+    const worldB = structuredClone(s1.initialWorld);
+    txMap.tx_ticket.receipts[0].execute(worldB);
+    txMap.tx_claim.receipts[0].execute(worldB);
+    txMap.tx_buy.receipts[0].execute(worldB);
+    txMap.tx_buy.receipts[1].execute(worldB);
+    txMap.tx_seller_withdraw.receipts[0].execute(worldB);
+    txMap.tx_agent_withdraw.receipts[0].execute(worldB);
+    txMap.tx_claim.receipts[1].execute(worldB);
+    txMap.tx_buy.receipts[2].execute(worldB);
+
+    expect(worldB.vaultOwner).toBe("bob.testnet");
+    expect(worldB.vaultBalance).toBe(40);
+    expect(
+      worldB.logs.filter((l) => l.outcome === "BLOCKED").map((l) => l.code)
+    ).toEqual(["E_NOT_OWNER", "E_NOT_OWNER"]);
+  });
+
+  it("foils S2 Bait-and-Switch relist via monotonic listing_nonce and refunds buyer 100%", () => {
+    const s2 = createSimulatorPresets().find((p) => p.id === "s2_bait_and_switch")!;
+    const world = structuredClone(s2.initialWorld);
+    const txMap = Object.fromEntries(s2.transactions.map((t) => [t.txId, t]));
+
+    // Bob enters escrow quoting nonce=1 -> Alice cancels, drains 16N, relists at nonce=2 -> Bob settlement runs
+    txMap.tx_bob_buy.receipts[0].execute(world);
+    txMap.tx_alice_bait.receipts[0].execute(world);
+    txMap.tx_alice_bait.receipts[1].execute(world);
+    txMap.tx_alice_bait.receipts[2].execute(world);
+    txMap.tx_bob_buy.receipts[1].execute(world);
+    txMap.tx_bob_buy.receipts[2].execute(world);
+
+    expect(world.listingNonce).toBe(2);
+    expect(world.vaultOwner).toBe("alice.testnet");
+    expect(world.wallets["bob.testnet"]).toBe(1000); // 100% refunded
+    expect(world.logs.some((l) => l.code === "E_NONCE_MISMATCH")).toBe(true);
+  });
+
+  it("heals S4 Lost Callback divergence via permissionless sync()", () => {
+    const s4 = createSimulatorPresets().find((p) => p.id === "s4_lost_callback_sync")!;
+    const world = structuredClone(s4.initialWorld);
+    const txMap = Object.fromEntries(s4.transactions.map((t) => [t.txId, t]));
+
+    // Stale owner Alice tries to transfer to Mallory -> Vault rejects -> Keeper runs sync()
+    txMap.tx_stale_transfer.receipts[0].execute(world);
+    txMap.tx_stale_transfer.receipts[1].execute(world);
+    txMap.tx_sync.receipts[0].execute(world);
+    txMap.tx_sync.receipts[1].execute(world);
+
+    expect(world.vaultOwner).toBe("bob.testnet");
+    expect(world.indexOwner).toBe("bob.testnet");
+    expect(world.indexSeq).toBe(1);
+    expect(world.logs.some((l) => l.code === "E_NOT_OWNER")).toBe(true);
+  });
+});
+
+describe("MockChain epoch-bound delegate & 5/5 sealed proof", () => {
+  it("configures epoch-bound delegate, blocks delegate changes while listed, and wipes delegate on sale/handoff", async () => {
+    const chain = new MockChain();
+    const seat7 = await chain.getSeat("s007.logen.testnet");
+    expect(seat7?.delegate?.accountId).toBe("agent.demo.testnet");
+    expect(seat7?.rotationSeq).toBe(1);
+
+    const updated = await chain.setDelegate(
+      "s007.logen.testnet",
+      "bot.logen.testnet",
+      parseNearToYocto("1.25"),
+      7200
+    );
+    expect(updated.delegate?.accountId).toBe("bot.logen.testnet");
+    expect(updated.delegate?.seq).toBe(1);
+
+    // Listing freezes delegate mutations
+    await chain.listSeat("s007.logen.testnet", parseNearToYocto("9.5"));
+    await expect(
+      chain.setDelegate("s007.logen.testnet", "evil.testnet", parseNearToYocto("1"), 3600)
+    ).rejects.toThrow("E_FROZEN");
+
+    // Handoff rotates seq to 2 and wipes delegate automatically
+    const handedOff = await chain.simulateHandoff("s007.logen.testnet");
+    expect(handedOff?.ownerId).toBe("mara.near");
+    expect(handedOff?.rotationSeq).toBe(2);
+    expect(handedOff?.delegate).toBeNull();
+  });
+
+  it("returns 5/5 passing checks including SEALED (0 KEYS) build status", async () => {
+    const chain = new MockChain();
+    const proof = await chain.getProof("s007.logen.testnet");
+    expect(proof.allOk).toBe(true);
+    expect(proof.rows).toHaveLength(5);
+    expect(proof.rows.every((r) => r.status === "ok")).toBe(true);
+    const buildRow = proof.rows.find((r) => r.id === "build");
+    expect(buildRow?.value).toBe("SEALED (0 KEYS)");
+  });
 });
 
 describe("MockChain mint with a portrait", () => {
