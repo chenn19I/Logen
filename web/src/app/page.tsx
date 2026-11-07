@@ -7,8 +7,10 @@ import {
   ArrowRight,
   ArrowUpRight,
   CalendarDays,
+  Check,
   ChevronRight,
   CircleAlert,
+  Copy,
   FlaskConical,
   ImagePlus,
   Lock,
@@ -16,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   Tag,
+  Terminal,
   Ticket,
   UserRound,
 } from "lucide-react";
@@ -25,6 +28,7 @@ import { useDemo } from "@/lib/demo/DemoProvider";
 import { useEvents, useProof, useSeatHistory, useSeats } from "@/lib/chain/hooks";
 import type { HistoryEntry } from "@/lib/chain/types";
 import { parseNearToYocto } from "@/lib/near/format";
+import { playSuccessChime, playTactileClick } from "@/lib/sound";
 import {
   countdownLabel,
   formatDate,
@@ -67,10 +71,25 @@ const PREVIEW_ROLL = [
 ] as const;
 
 function ConnectScreen() {
-  const { openWalletModal } = useNear();
+  const { openWalletModal, registryId } = useNear();
   const { setDemo } = useDemo();
   const [activeRollIdx, setActiveRollIdx] = useState(6);
+  const [copiedCmd, setCopiedCmd] = useState(false);
   const activePreview = PREVIEW_ROLL[activeRollIdx] ?? PREVIEW_ROLL[6];
+
+  const proofCmd = `curl -s https://rpc.testnet.near.org -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":"1","method":"query","params":{"request_type":"view_access_key_list","finality":"final","account_id":"s001.${registryId || "logen-84b273.testnet"}"}}'`;
+
+  const copyProofCmd = async () => {
+    playTactileClick();
+    try {
+      await navigator.clipboard.writeText(proofCmd);
+      setCopiedCmd(true);
+      playSuccessChime();
+      window.setTimeout(() => setCopiedCmd(false), 1800);
+    } catch {
+      // Clipboard blocked
+    }
+  };
 
   const moves = [
     {
@@ -96,8 +115,47 @@ function ConnectScreen() {
   return (
     <div className="space-y-6">
       <section className="terminal-grid relative overflow-hidden rounded border border-line bg-surface">
-        <div className="grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-14">
+        {/* NORRVIK Architectural Telemetry Sub-Header Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-ink-deep/80 px-4 py-2 font-mono text-[9px] uppercase tracking-label text-paper-muted sm:px-6">
+          <div className="flex items-center gap-3">
+            <span className="text-paper-dim">
+              FIG. 01 / KEYLESS SEAT ARCHITECTURE / SHARDED-ITEM-1.0.0
+            </span>
+            <span className="hidden text-paper-muted/60 md:inline">
+              · LOCAL GRID / 1 : 1
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-positive">KEYS 00 / SEALED</span>
+            <span className="hidden text-paper-dim sm:inline">
+              {registryId || "logen-84b273.testnet"}
+            </span>
+          </div>
+        </div>
+
+        <div className="relative grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-14 lg:pl-16">
+          {/* Left-edge vertical elevation ruler (NORRVIK CAD scale) */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-0 hidden w-8 flex-col justify-between border-r border-line/60 bg-ink-deep/40 py-8 font-mono text-[8px] text-paper-muted/65 lg:flex"
+          >
+            {["06", "07", "08", "09", "10", "11", "12"].map((tick) => (
+              <div key={tick} className="flex items-center gap-1">
+                <span className="h-px w-2 bg-line-strong" />
+                <span>{tick}</span>
+              </div>
+            ))}
+          </div>
+
           <div className="min-w-0">
+            <div className="mb-3 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-label text-signal">
+              <span>(01) NEP-171 SEAT</span>
+              <span className="text-paper-muted">/</span>
+              <span>SUB-ACCOUNT VAULT</span>
+              <span className="text-paper-muted">/</span>
+              <span className="text-positive">ZERO KEYS</span>
+            </div>
+
             <h1 className="max-w-[12ch] text-40 font-semibold leading-[0.98] tracking-[-0.035em] text-paper sm:text-72">
               Sell the seat.
               <br />
@@ -109,14 +167,27 @@ function ConnectScreen() {
               Mint it with your own portrait. Hold the seat, hold the money.
             </p>
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-              <Button size="lg" onClick={openWalletModal} className="w-full sm:w-auto">
-                Connect wallet
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Button>
+              {/* NORRVIK Split Architectural Primary CTA */}
+              <button
+                type="button"
+                onClick={() => {
+                  playTactileClick();
+                  openWalletModal();
+                }}
+                className="group inline-flex min-h-12 w-full items-stretch overflow-hidden rounded border border-line-strong bg-paper text-left font-mono text-12 font-semibold uppercase tracking-label text-ink-deep transition-transform active:translate-y-px sm:w-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+              >
+                <span className="flex flex-1 items-center px-5 py-3 transition-colors group-hover:bg-white">
+                  Connect wallet
+                </span>
+                <span className="flex w-12 items-center justify-center border-l border-ink-deep/15 bg-signal text-ink-deep transition-colors group-hover:bg-[var(--accent-strong)]">
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                </span>
+              </button>
               <LinkButton
                 href="/mint"
                 variant="secondary"
                 size="lg"
+                onClick={() => playTactileClick()}
                 className="w-full sm:w-auto"
               >
                 Mint a seat
@@ -126,16 +197,49 @@ function ConnectScreen() {
               Signing proves you hold a seat. No transaction, no fee. Minting is free
               in demo.
             </p>
+
+            {/* Lettra-style one-click RPC zero-key verification command pill */}
+            <div className="mt-4 flex max-w-[480px] items-center justify-between gap-2 rounded border border-line bg-ink-deep px-3 py-2 font-mono text-[11px]">
+              <div className="flex min-w-0 items-center gap-2">
+                <Terminal className="h-3.5 w-3.5 shrink-0 text-signal" aria-hidden="true" />
+                <span className="truncate text-paper-dim">
+                  rpc view_access_key_list({activePreview.tokenId}) →{" "}
+                  <span className="text-positive">&quot;keys&quot;:[]</span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => void copyProofCmd()}
+                aria-label="Copy curl on-chain zero-key proof command"
+                className="inline-flex h-6 shrink-0 items-center gap-1 rounded border border-line bg-surface px-2 text-[9px] uppercase tracking-label text-paper-muted transition-colors hover:border-signal hover:text-paper"
+              >
+                {copiedCmd ? (
+                  <>
+                    <Check className="h-3 w-3 text-positive" aria-hidden="true" />
+                    <span className="text-positive">Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3" aria-hidden="true" />
+                    <span>curl</span>
+                  </>
+                )}
+              </button>
+            </div>
+
             <button
               type="button"
-              onClick={() => setDemo(true)}
+              onClick={() => {
+                playTactileClick();
+                setDemo(true);
+              }}
               className="mt-5 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 transition-colors hover:text-paper"
             >
               Preview with demo data
               <ChevronRight className="h-3 w-3" aria-hidden="true" />
             </button>
 
-            <div className="mt-9">
+            <div className="mt-8">
               <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Preview club seats">
                 {PREVIEW_ROLL.map((seatItem, index) => {
                   const selected = index === activeRollIdx;
@@ -145,7 +249,10 @@ function ConnectScreen() {
                       type="button"
                       onMouseEnter={() => setActiveRollIdx(index)}
                       onFocus={() => setActiveRollIdx(index)}
-                      onClick={() => setActiveRollIdx(index)}
+                      onClick={() => {
+                        playTactileClick();
+                        setActiveRollIdx(index);
+                      }}
                       aria-label={`Preview seat ${seatItem.num} (${seatItem.balance} NEAR inside)`}
                       aria-pressed={selected}
                       className={`rounded p-0.5 transition-transform duration-150 ${
@@ -172,6 +279,7 @@ function ConnectScreen() {
                 </p>
                 <Link
                   href="/seats"
+                  onClick={() => playTactileClick()}
                   className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-label text-paper-muted underline decoration-line underline-offset-4 transition-colors hover:text-paper"
                 >
                   Open the roll
@@ -191,6 +299,54 @@ function ConnectScreen() {
               innerDots={activePreview.dots}
             />
           </div>
+        </div>
+
+        {/* NORRVIK Multi-Cell Telemetry Dock at bottom of hero */}
+        <div className="grid grid-cols-2 gap-px border-t border-line bg-line font-mono text-[9px] uppercase tracking-label sm:grid-cols-4 lg:grid-cols-7">
+          <div className="bg-ink-deep px-3.5 py-3">
+            <div className="text-paper-muted">Interleavings</div>
+            <div className="mt-1 text-12 font-semibold text-paper tabular">80,620</div>
+          </div>
+          <div className="bg-ink-deep px-3.5 py-3">
+            <div className="text-paper-muted">Access keys</div>
+            <div className="mt-1 text-12 font-semibold text-positive tabular">0 / 0</div>
+          </div>
+          <div className="bg-ink-deep px-3.5 py-3">
+            <div className="text-paper-muted">Pool share</div>
+            <div className="mt-1 text-12 font-semibold text-signal tabular">40.0%</div>
+          </div>
+          <Link
+            href="/mint"
+            onClick={() => playTactileClick()}
+            className="bg-ink-deep px-3.5 py-3 transition-colors hover:bg-surface"
+          >
+            <div className="text-signal">01</div>
+            <div className="mt-1 text-paper-dim">Mint seat</div>
+          </Link>
+          <Link
+            href="/events"
+            onClick={() => playTactileClick()}
+            className="bg-ink-deep px-3.5 py-3 transition-colors hover:bg-surface"
+          >
+            <div className="text-signal">02</div>
+            <div className="mt-1 text-paper-dim">Ticket pool</div>
+          </Link>
+          <Link
+            href="/lounge"
+            onClick={() => playTactileClick()}
+            className="bg-ink-deep px-3.5 py-3 transition-colors hover:bg-surface"
+          >
+            <div className="text-signal">03</div>
+            <div className="mt-1 text-paper-dim">Lounge gate</div>
+          </Link>
+          <Link
+            href="/lab"
+            onClick={() => playTactileClick()}
+            className="col-span-2 bg-ink-deep px-3.5 py-3 transition-colors hover:bg-surface sm:col-span-1"
+          >
+            <div className="text-signal">04</div>
+            <div className="mt-1 text-paper-dim">Attack lab</div>
+          </Link>
         </div>
       </section>
 
