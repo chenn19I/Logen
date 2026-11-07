@@ -61,15 +61,13 @@ export function AsciiStageVisualizer({
       aria-hidden="true"
     >
       <div className="flex items-center justify-between gap-2 border-b border-line pb-1.5 text-[9px] uppercase tracking-label text-paper-muted">
-        <span>
-          [ NEP-413 GATE RADAR · SEAT {seatLabel} ]
-        </span>
+        <span>Seat {seatLabel}</span>
         <span className={toneClass}>
           {state === "open"
-            ? "● VERIFIED"
+            ? "Verified"
             : state === "locked"
-              ? "▲ ROTATED OUT"
-              : "○ STANDBY"}
+              ? "Rotated out"
+              : "Standby"}
         </span>
       </div>
       <pre
